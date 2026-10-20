@@ -56,7 +56,8 @@ function montarCabecalho(usuario) {
   return h(
     'header', { class: 'app-cabecalho' },
     h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
-      h('img', { class: 'app-logo', src: '/img/intecs-logo-laranja.png', alt: 'INTECS', width: 113, height: 30 })),
+      h('img', { class: 'app-logo', src: '/img/logo-associal.png', alt: '', width: 40, height: 40 }),
+      h('span', { class: 'app-marca-nome' }, 'ASSOCIAL')),
     h(
       'div', { class: 'app-usuario' },
       h('div', { class: 'nome' }, usuario.nome, h('small', {}, [ROTULO_PERFIL[usuario.perfil], unidades].filter(Boolean).join(' · '))),
@@ -70,8 +71,8 @@ function montarMenu(chaveAtual, itens) {
   const nav = h('nav', { class: 'app-menu', 'aria-label': 'Menu principal' },
     // Logo no topo do menu lateral (visível só no desktop)
     h('a', { class: 'app-menu-marca', href: '/index.html' },
-      h('img', { src: '/img/intecs-logo-laranja.png', alt: 'INTECS', width: 145, height: 38 }),
-      'ASSOCIAL · Serviço Social'));
+      h('img', { src: '/img/logo-associal.png', alt: '', width: 48, height: 48 }),
+      h('span', { class: 'app-menu-marca-texto' }, h('strong', {}, 'ASSOCIAL'), 'Serviço Social')));
   const excesso = itens.length > MAX_ITENS_CELULAR;
   const visiveisNoCelular = excesso ? MAX_ITENS_CELULAR - 1 : itens.length;
 
