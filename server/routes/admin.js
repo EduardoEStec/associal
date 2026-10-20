@@ -157,6 +157,7 @@ router.put('/usuarios/:id', soAdmin, async (req, res) => {
       if (id === req.usuario.id) throw erros.conflito('Você não pode alterar o seu próprio perfil.');
       if (atual.perfil === PERFIS.ADMIN && atual.ativo) await exigirOutroAdminAtivo(tx, id);
     }
+    const antes = [...(await unidadesDosUsuarios([id], tx)).get(id).map((x) => x.id)].sort().join(',');
     await tx.consultar(
       `UPDATE usuario SET nome = @nome, email = @email, cress = @cress,
               perfil_id = (SELECT id FROM perfil WHERE codigo = @perfil),
@@ -164,7 +165,11 @@ router.put('/usuarios/:id', soAdmin, async (req, res) => {
         WHERE id = @id`,
       { id, nome: dados.nome, email: dados.email, cress: dados.cress, perfil: dados.perfil, por: req.usuario.id });
     await gravarVinculos(tx, id, dados.unidadeIds);
-    await registrarAuditoria(req, 'ALTERAR', 'usuario', id, { perfil: dados.perfil }, tx);
+    // mudou perfil ou unidades: o acesso precisa ser reavaliado, então derruba as sessões (menos a própria)
+    const mudouAcesso = atual.perfil !== dados.perfil || antes !== [...dados.unidadeIds].sort().join(',');
+    const detalhes = { perfil: dados.perfil };
+    if (mudouAcesso) detalhes.sessoesEncerradas = await svc.encerrarSessoes(tx, id, id === req.usuario.id ? req.sessionID : undefined);
+    await registrarAuditoria(req, 'ALTERAR', 'usuario', id, detalhes, tx);
   });
   res.json(await carregarUsuario(id));
 });
@@ -184,7 +189,9 @@ router.patch('/usuarios/:id/ativo', soAdmin, async (req, res) => {
     await tx.consultar(
       'UPDATE usuario SET ativo = @ativo, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
       { id, ativo: ativo ? 1 : 0, por: req.usuario.id });
-    await registrarAuditoria(req, 'ALTERAR', 'usuario', id, { ativo }, tx);
+    const detalhes = { ativo };
+    if (!ativo) detalhes.sessoesEncerradas = await svc.encerrarSessoes(tx, id);
+    await registrarAuditoria(req, 'ALTERAR', 'usuario', id, detalhes, tx);
   });
   res.json({ id, ativo });
 });
@@ -196,10 +203,14 @@ router.post('/usuarios/:id/redefinir-senha', soAdmin, async (req, res) => {
   if (!alvo) throw erros.naoEncontrado('Usuário não encontrado.');
   const senhaProvisoria = svc.gerarSenhaProvisoria();
   const hash = await bcrypt.hash(senhaProvisoria, svc.CUSTO_BCRYPT);
-  await consultar(
-    `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_por = @por, alterado_em = SYSUTCDATETIME()
-      WHERE id = @id`, { id, hash, por: req.usuario.id });
-  await registrarAuditoria(req, 'ALTERAR', 'usuario', id, { campo: 'senha', acao: 'redefinicao' });
+  await transacao(async (tx) => {
+    await tx.consultar(
+      `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_por = @por, alterado_em = SYSUTCDATETIME()
+        WHERE id = @id`, { id, hash, por: req.usuario.id });
+    // o admin que redefine a PRÓPRIA senha mantém a sessão atual (será levado à troca obrigatória)
+    const sessoesEncerradas = await svc.encerrarSessoes(tx, id, id === req.usuario.id ? req.sessionID : undefined);
+    await registrarAuditoria(req, 'ALTERAR', 'usuario', id, { campo: 'senha', acao: 'redefinicao', sessoesEncerradas }, tx);
+  });
   res.json({ id, senhaProvisoria });
 });
 

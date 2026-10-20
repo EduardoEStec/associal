@@ -16,6 +16,19 @@ function gerarSenhaProvisoria(tamanho = 12) {
   return senha;
 }
 
+// ---------- Sessões ----------
+
+// Apaga as sessões abertas do usuário (dbo.sessao.dados é JSON com usuarioId). `manterSid` preserva a sessão atual.
+// Devolve quantas foram encerradas.
+async function encerrarSessoes(executor, usuarioId, manterSid) {
+  const params = { id: usuarioId };
+  let extra = '';
+  if (manterSid) { extra = ' AND sid <> @manterSid'; params.manterSid = manterSid; }
+  const apagadas = await executor.consultar(
+    `DELETE FROM sessao OUTPUT DELETED.sid WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id${extra}`, params);
+  return apagadas.length;
+}
+
 // ---------- Tabelas de apoio ----------
 
 const colunasApoio = (tabela) =>
@@ -73,5 +86,5 @@ function validarConfig(chave, bruto) {
 }
 
 module.exports = {
-  CUSTO_BCRYPT, SENHA_MINIMA, gerarSenhaProvisoria, colunasApoio, sqlEmUso, referenciasDe, CONFIG_REGRAS, validarConfig,
+  CUSTO_BCRYPT, SENHA_MINIMA, gerarSenhaProvisoria, encerrarSessoes, colunasApoio, sqlEmUso, referenciasDe, CONFIG_REGRAS, validarConfig,
 };

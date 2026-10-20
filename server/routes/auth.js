@@ -3,7 +3,8 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const rateLimit = require('express-rate-limit');
-const { consultar, consultarUm } = require('../db');
+const { consultar, consultarUm, transacao } = require('../db');
+const { encerrarSessoes } = require('../services/admin');
 const { erros, ErroApp } = require('../lib/erros');
 const { registrarAuditoria } = require('../lib/auditoria');
 const { texto, lancarSeErros } = require('../lib/validacao');
@@ -104,13 +105,17 @@ router.post('/senha', requireAuthSenhaPendente, async (req, res) => {
   if (!confere) throw erros.validacao({ senhaAtual: 'Senha atual incorreta.' });
 
   const novoHash = await bcrypt.hash(novaSenha, CUSTO_BCRYPT);
-  await consultar(
-    `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 0,
-            alterado_por = @id, alterado_em = SYSUTCDATETIME()
-      WHERE id = @id`,
-    { hash: novoHash, id: req.usuario.id },
-  );
-  await registrarAuditoria(req, 'ALTERAR', 'usuario', req.usuario.id, { campo: 'senha' });
+  const sessoesEncerradas = await transacao(async (tx) => {
+    await tx.consultar(
+      `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 0,
+              alterado_por = @id, alterado_em = SYSUTCDATETIME()
+        WHERE id = @id`,
+      { hash: novoHash, id: req.usuario.id },
+    );
+    // troca de senha encerra as OUTRAS sessões do usuário; a atual continua
+    return encerrarSessoes(tx, req.usuario.id, req.sessionID);
+  });
+  await registrarAuditoria(req, 'ALTERAR', 'usuario', req.usuario.id, { campo: 'senha', sessoesEncerradas });
   res.json({ ok: true });
 });
 

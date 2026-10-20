@@ -21,12 +21,14 @@ const estado = {
   unidades: [{ id: 1, sigla: 'UN1' }, { id: 2, sigla: 'UN2' }],
   config: { prazo_questionario_final_dias: '90', upload_max_mb: '10' },
   demandaEmUso: new Set([1]),
+  sessoes: [],
   chamadas: [],
 };
 
 async function consultar(sql, p = {}) {
   estado.chamadas.push(sql.replace(/\s+/g, ' ').trim());
   const s = sql.replace(/\s+/g, ' ');
+  if (s.startsWith('DELETE FROM sessao')) { estado.sqlSessao = s; estado.paramsSessao = p; return estado.sessoes.splice(0).map((sid) => ({ sid })); }
   if (s.includes('INSERT INTO auditoria') || s.startsWith('DELETE FROM usuario_unidade') || s.startsWith('INSERT INTO usuario_unidade')) return [];
   if (s.includes('FROM sys.foreign_key_columns')) return [{ tabela: 'atendimento_demanda', coluna: 'demanda_id' }];
   if (s.includes("p.codigo = 'ADMIN' AND u.ativo = 1 AND u.id <> @id")) {
@@ -154,6 +156,22 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
     assert.strictEqual((await chamar('PATCH', '/usuarios/2/ativo', { ativo: false })).status, 200);
     assert.strictEqual(estado.usuarios.find((u) => u.id === 2).ativo, 0);
     assert.strictEqual((await chamar('PATCH', '/usuarios/999/ativo', { ativo: false })).status, 404);
+  });
+  await teste('desativar e redefinir senha encerram as sessões do alvo e auditam a contagem', async () => {
+    estado.sessoes = ['a', 'b'];
+    estado.usuarios.find((u) => u.id === 2).ativo = 1;
+    assert.strictEqual((await chamar('PATCH', '/usuarios/2/ativo', { ativo: false })).status, 200);
+    assert.ok(estado.sqlSessao.includes("JSON_VALUE(dados, '$.usuarioId')"));
+    assert.strictEqual(estado.paramsSessao.id, 2);
+    assert.ok(estado.chamadas.some((c) => c.includes('INSERT INTO auditoria')));
+    estado.sessoes = ['c'];
+    await chamar('POST', '/usuarios/2/redefinir-senha');
+    assert.strictEqual(estado.sessoes.length, 0, 'sessões apagadas');
+  });
+  await teste('reativar não mexe nas sessões', async () => {
+    estado.sqlSessao = null;
+    await chamar('PATCH', '/usuarios/2/ativo', { ativo: true });
+    assert.strictEqual(estado.sqlSessao, null);
   });
   await teste('redefinir senha devolve nova senha e troca o hash', async () => {
     const r = await chamar('POST', '/usuarios/2/redefinir-senha');
