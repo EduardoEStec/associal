@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta B — App acolhedor · ASSOCIAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde: #1F8A4C;
+  --verde-esc: #14613A;
+  --verde-claro: #E3F4E8;
+  --laranja: #F58220;
+  --laranja-esc: #B24F00;
+  --laranja-claro: #FFE8D0;
+  --roxo: #6D35D6;
+  --roxo-claro: #EFE7FD;
+  --creme: #FFF8EC;
+  --papel: #FFFFFF;
+  --texto: #23332A;
+  --suave: #5C6B62;
+  --borda: #EADFC9;
+  --erro: #C23B2B;
+  --erro-claro: #FDE7E3;
+  --sombra: 0 6px 18px rgba(80, 60, 20, .10);
+  --fonte: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: var(--fonte); color: var(--texto); background: #F1EBDD; line-height: 1.45; }
+h1, h2, h3, p { margin: 0; }
+button, input, textarea, select { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--laranja); outline-offset: 2px; }
+
+/* ============ Página de apresentação (fora do protótipo) ============ */
+.apresentacao { max-width: 1180px; margin: 0 auto; padding: 32px 20px 12px; }
+.selo-proposta { display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--laranja-claro); color: var(--laranja-esc); font-weight: 800; font-size: 14px; }
+.apresentacao h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 900; line-height: 1.1; margin: 12px 0 10px; color: var(--verde-esc); }
+.apresentacao p.lead { max-width: 760px; font-size: 18px; color: #3C4C42; }
+.apresentacao ul { max-width: 760px; margin: 14px 0 0; padding-left: 20px; color: #3C4C42; }
+.paleta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.cor { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; background: #fff; border-radius: 999px; box-shadow: var(--sombra); font-size: 14px; font-weight: 700; }
+.cor i { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(0,0,0,.08); display: block; }
+.cor small { font-weight: 600; color: var(--suave); }
+.tela-bloco { max-width: 1240px; margin: 0 auto; padding: 40px 20px 8px; }
+.tela-bloco > h2 { font-size: 26px; font-weight: 900; color: var(--verde-esc); display: flex; align-items: center; gap: 12px; }
+.tela-bloco > h2 span { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--laranja); color: #2b1500; font-size: 18px; }
+.tela-bloco > p { color: var(--suave); margin: 4px 0 22px; }
+.par { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.rotulo-moldura { font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); margin-bottom: 10px; }
+.rodape-apresentacao { max-width: 1180px; margin: 0 auto; padding: 36px 20px 60px; color: var(--suave); font-size: 14px; }
+
+/* ============ Molduras ============ */
+.phone { width: 414px; padding: 12px; border-radius: 54px; background: #1C2A22; box-shadow: 0 24px 50px rgba(30,40,30,.30), inset 0 0 0 2px #3a4a40; flex: none; }
+.phone-in { position: relative; width: 390px; height: 844px; border-radius: 42px; overflow: hidden; background: var(--creme); display: flex; flex-direction: column; }
+.phone-in::before { content: ""; position: absolute; z-index: 5; top: 10px; left: 50%; width: 110px; height: 26px; margin-left: -55px; border-radius: 20px; background: #1C2A22; }
+.statusbar { flex: none; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 6px 28px 0; font-weight: 800; font-size: 14px; background: var(--creme); }
+.statusbar .sinais { display: flex; gap: 5px; align-items: center; }
+.statusbar .sinais i { display: block; width: 18px; height: 10px; border-radius: 3px; background: var(--texto); }
+.statusbar .sinais i:first-child { width: 14px; height: 10px; clip-path: polygon(0 100%, 100% 100%, 100% 0); }
+.phone .screen { flex: 1; min-height: 0; }
+
+.desk-wrap { --s: .58; width: calc(1280px * var(--s)); height: calc(860px * var(--s)); flex: none; }
+.desk { width: 1280px; height: 860px; transform: scale(var(--s)); transform-origin: top left; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 24px 50px rgba(30,40,30,.28), 0 0 0 2px #cfc6b2; display: flex; flex-direction: column; }
+.desk-bar { flex: none; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #E9E1CF; }
+.desk-bar i { width: 12px; height: 12px; border-radius: 50%; background: #C9BFA7; display: block; }
+.desk-bar span { margin-left: 16px; flex: 1; max-width: 520px; padding: 5px 16px; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 700; color: var(--suave); }
+.desk .screen { flex: 1; min-height: 0; }
+@media (max-width: 1200px) { .desk-wrap { --s: .5; } }
+@media (max-width: 760px) { .desk-wrap { --s: .3; } .phone { transform-origin: top left; } }
+@media (max-width: 460px) { .phone { transform: scale(.82); margin-bottom: -150px; } .par { gap: 16px; } .desk-wrap { --s: .26; } }
+
+/* ============ O APP ============ */
+.screen { overflow: auto; overflow-x: hidden; container: scr / size; background: var(--creme); scrollbar-width: thin; }
+.app { min-height: 100cqh; display: flex; flex-direction: column; font-size: 16px; }
+.app svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.main-col { flex: 1; display: flex; flex-direction: column; }
+.side { display: none; }
+
+.topo { display: flex; align-items: center; gap: 12px; padding: 14px 18px 6px; }
+.avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--laranja); color: #2b1500; font-weight: 900; font-size: 20px; flex: none; }
+.topo .quem { flex: 1; min-width: 0; line-height: 1.2; }
+.topo .quem strong { display: block; font-size: 17px; font-weight: 800; }
+.topo .quem span { font-size: 14px; color: var(--suave); font-weight: 600; }
+.sino { position: relative; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--papel); border: 0; box-shadow: var(--sombra); cursor: pointer; }
+.sino b { position: absolute; top: 8px; right: 9px; width: 12px; height: 12px; border-radius: 50%; background: var(--laranja); border: 2px solid #fff; }
+.voltar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--papel); border: 0; box-shadow: var(--sombra); cursor: pointer; }
+.topo h1 { font-size: 22px; font-weight: 900; line-height: 1.15; }
+.topo .sub { font-size: 14px; color: var(--suave); font-weight: 600; }
+
+main { padding: 8px 18px 28px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+.card { background: var(--papel); border-radius: 22px; padding: 18px; box-shadow: var(--sombra); border: 1px solid #F3EAD6; }
+.card h2 { font-size: 19px; font-weight: 900; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.titulo-secao { font-size: 20px; font-weight: 900; margin-bottom: -6px; }
+
+/* Botões */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 24px; border: 0; border-radius: 18px; font-weight: 800; font-size: 17px; cursor: pointer; text-decoration: none; background: var(--verde); color: #fff; box-shadow: 0 4px 0 var(--verde-esc); transition: transform .08s, box-shadow .08s, background .15s; }
+.btn:hover { background: #197A42; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--verde-esc); }
+.btn-laranja { background: var(--laranja); color: #2b1500; box-shadow: 0 4px 0 #C4640F; }
+.btn-laranja:hover { background: #FF9238; }
+.btn-laranja:active { box-shadow: 0 1px 0 #C4640F; }
+.btn-claro { background: var(--papel); color: var(--verde-esc); box-shadow: 0 0 0 2px var(--verde) inset; }
+.btn-claro:hover { background: var(--verde-claro); }
+.btn-pequeno { min-height: 46px; font-size: 15px; padding: 0 18px; border-radius: 14px; }
+.btn-bloco { width: 100%; }
+
+/* Herói da saudação */
+.heroi { position: relative; overflow: hidden; border-radius: 26px; padding: 22px 20px; color: #fff; background: linear-gradient(135deg, #1F8A4C 0%, #2FA463 60%, #46B676 100%); box-shadow: 0 10px 22px rgba(31,138,76,.30); }
+.heroi::before, .heroi::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,.12); }
+.heroi::before { width: 150px; height: 150px; right: -40px; top: -50px; }
+.heroi::after { width: 90px; height: 90px; right: 50px; bottom: -40px; background: rgba(245,130,32,.9); }
+.heroi h2 { font-size: 26px; font-weight: 900; line-height: 1.15; margin: 0 0 6px; display: block; }
+.heroi p { font-size: 16px; font-weight: 600; max-width: 26ch; position: relative; }
+.heroi .data { display: inline-flex; margin-bottom: 10px; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.22); font-size: 13px; font-weight: 800; position: relative; }
+
+/* Resumo do mês */
+.resumo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 20px; min-height: 116px; }
+.tile .ic { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; background: rgba(255,255,255,.85); }
+.tile strong { font-size: 32px; font-weight: 900; line-height: 1; }
+.tile span { font-size: 14px; font-weight: 700; line-height: 1.15; }
+.tile.t-verde { background: var(--verde-claro); color: var(--verde-esc); }
+.tile.t-verde .ic { color: var(--verde); }
+.tile.t-laranja { background: var(--laranja-claro); color: var(--laranja-esc); }
+.tile.t-laranja .ic { color: var(--laranja-esc); }
+.tile.t-roxo { background: var(--roxo-claro); color: #4B1FA6; }
+.tile.t-roxo .ic { color: var(--roxo); }
+.tile.t-amarelo { background: #FFF1B8; color: #6B5200; }
+.tile.t-amarelo .ic { color: #8A6A00; }
+.tile.t-rosa { background: #FFE0E6; color: #9B2342; }
+.tile.t-rosa .ic { color: #C23458; }
+.resumo .tile:last-child { grid-column: span 2; flex-direction: row; align-items: center; gap: 14px; min-height: 0; }
+.resumo .tile:last-child .txt { display: flex; flex-direction: column; gap: 2px; }
+
+/* Pendências */
+.pendencia { display: flex; gap: 14px; align-items: flex-start; padding: 14px; border-radius: 18px; background: var(--laranja-claro); border: 2px solid #FFCF9F; }
+.pendencia + .pendencia { margin-top: 10px; background: var(--roxo-claro); border-color: #D8C8F8; }
+.pendencia .ic { width: 46px; height: 46px; border-radius: 15px; background: #fff; display: grid; place-items: center; color: var(--laranja-esc); flex: none; }
+.pendencia + .pendencia .ic { color: var(--roxo); }
+.pendencia p { font-weight: 700; }
+.pendencia p small { display: block; font-weight: 600; color: var(--suave); font-size: 14px; }
+.pendencia .btn { margin-top: 10px; }
+
+/* Atalhos */
+.atalhos { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.atalho { display: flex; align-items: center; gap: 16px; min-height: 84px; padding: 14px 16px; border-radius: 22px; text-decoration: none; color: #fff; font-weight: 900; font-size: 19px; box-shadow: 0 5px 0 rgba(0,0,0,.14); transition: transform .1s; }
+.atalho:hover { transform: translateY(-2px); }
+.atalho:active { transform: translateY(2px); }
+.atalho .ic { width: 56px; height: 56px; border-radius: 18px; background: rgba(255,255,255,.28); display: grid; place-items: center; flex: none; }
+.atalho .ic svg { width: 32px; height: 32px; }
+.atalho small { display: block; font-size: 14px; font-weight: 600; opacity: .95; }
+.atalho .seta { margin-left: auto; opacity: .9; }
+.a-verde { background: var(--verde); }
+.a-laranja { background: var(--laranja); color: #2b1500; box-shadow: 0 5px 0 rgba(120,60,0,.22); }
+.a-roxo { background: var(--roxo); }
+
+/* Barra inferior (celular) */
+.tabbar { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: space-around; gap: 2px; padding: 8px 8px 12px; background: var(--papel); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 20px rgba(80,60,20,.12); }
+.tabbar a { flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 18px; text-decoration: none; font-size: 12px; font-weight: 800; color: var(--suave); }
+.tabbar a:hover { background: var(--verde-claro); }
+.tabbar a[aria-current="page"] { color: var(--verde-esc); }
+.tabbar a[aria-current="page"] .pilula { background: var(--verde); color: #fff; }
+.tabbar .pilula { width: 56px; height: 32px; border-radius: 16px; display: grid; place-items: center; transition: background .15s; }
+.no-tab .tabbar { display: none; }
+
+/* Formulário */
+.secao-num { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--verde); color: #fff; font-weight: 900; font-size: 17px; flex: none; }
+.secao-num.n-laranja { background: var(--laranja); color: #2b1500; }
+.secao-num.n-roxo { background: var(--roxo); }
+.secao-num.n-rosa { background: #C23458; }
+.campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.campo:last-child { margin-bottom: 0; }
+.campo > label, .campo > .rot { font-weight: 800; font-size: 15px; }
+.campo > label em, .rot em { color: var(--erro); font-style: normal; }
+.campo .dica { font-size: 13px; color: var(--suave); font-weight: 600; }
+.input, .textarea { width: 100%; min-height: 54px; padding: 0 16px; border: 2px solid var(--borda); border-radius: 16px; background: #FFFDF8; font-size: 17px; font-weight: 600; transition: border-color .15s, box-shadow .15s; }
+.textarea { padding: 14px 16px; min-height: 130px; resize: vertical; line-height: 1.4; }
+.input:hover, .textarea:hover { border-color: #D8C79F; }
+.input:focus, .textarea:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 4px rgba(31,138,76,.18); background: #fff; }
+.input.ok { border-color: var(--verde); background: var(--verde-claro); }
+.campo.invalido .input { border-color: var(--erro); background: var(--erro-claro); }
+.campo.invalido .input:focus { box-shadow: 0 0 0 4px rgba(194,59,43,.18); }
+.msg-erro { display: flex; gap: 8px; align-items: flex-start; color: var(--erro); font-weight: 800; font-size: 14px; }
+.msg-erro svg { width: 20px; height: 20px; margin-top: 1px; }
+.aviso-ok { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin-top: 10px; border-radius: 16px; background: var(--verde-claro); border: 2px solid #A9DDB9; color: var(--verde-esc); font-weight: 800; font-size: 15px; }
+.aviso-ok svg { color: var(--verde); margin-top: 1px; }
+.aviso-ok small { display: block; font-weight: 600; color: #2d5a3f; font-size: 13px; }
+.dois { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { position: relative; display: inline-flex; }
+.chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.chip span { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 999px; border: 2px solid var(--borda); background: #FFFDF8; font-weight: 700; font-size: 16px; line-height: 1.15; transition: all .12s; }
+.chip:hover span { border-color: var(--verde); background: var(--verde-claro); }
+.chip input:focus-visible + span { outline: 3px solid var(--laranja); outline-offset: 2px; }
+.chip input:checked + span { background: var(--verde); border-color: var(--verde); color: #fff; }
+.chip input:checked + span::before { content: "✓"; font-weight: 900; }
+.chips.laranja .chip input:checked + span { background: var(--laranja); border-color: var(--laranja); color: #2b1500; }
+.chips.roxo .chip input:checked + span { background: var(--roxo); border-color: var(--roxo); }
+.chips.nivel .chip input:checked + span::before { content: ""; }
+.chips.nivel .chip span::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; opacity: .0; }
+.chips.nivel .chip input:checked + span { background: #fff; color: var(--laranja-esc); border-color: var(--laranja); box-shadow: 0 0 0 3px rgba(245,130,32,.25) inset; }
+.chips.nivel .chip input:checked + span::after { opacity: 1; }
+
+/* Barra salvar */
+.salvar { position: sticky; bottom: 0; z-index: 10; display: flex; gap: 12px; align-items: center; padding: 12px 18px 18px; background: linear-gradient(to bottom, rgba(255,248,236,0), var(--creme) 28%); }
+.salvar .btn { flex: 1; }
+.salvar .rasc { display: none; }
+
+/* Famílias */
+.busca { position: relative; }
+.busca svg { position: absolute; left: 16px; top: 15px; color: var(--suave); }
+.busca .input { padding-left: 50px; border-radius: 999px; background: #fff; }
+.abas { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: none; margin: 0 -18px; padding-left: 18px; padding-right: 18px; }
+.abas::-webkit-scrollbar { display: none; }
+.aba { flex: none; min-height: 46px; padding: 0 16px; border-radius: 999px; border: 2px solid var(--borda); background: #fff; font-weight: 800; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.aba b { display: inline-grid; place-items: center; min-width: 24px; height: 24px; border-radius: 12px; background: var(--creme); font-size: 13px; padding: 0 6px; }
+.aba:hover { border-color: var(--verde); }
+.aba[aria-selected="true"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+.aba[aria-selected="true"] b { background: rgba(255,255,255,.25); color: #fff; }
+.contagem { font-size: 14px; font-weight: 700; color: var(--suave); margin-top: -6px; }
+.lista-fam { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.fam { display: block; text-decoration: none; position: relative; padding: 16px; border-radius: 22px; background: var(--papel); box-shadow: var(--sombra); border: 2px solid transparent; transition: border-color .12s, transform .1s; }
+.fam:hover { border-color: var(--verde); transform: translateY(-2px); }
+.fam[hidden] { display: none; }
+.fam .linha1 { display: flex; align-items: center; gap: 14px; }
+.fam .foto { width: 56px; height: 56px; border-radius: 20px; display: grid; place-items: center; font-weight: 900; font-size: 22px; flex: none; }
+.f1 { background: var(--laranja-claro); color: var(--laranja-esc); }
+.f2 { background: #FFE0E6; color: #9B2342; }
+.f3 { background: var(--verde-claro); color: var(--verde-esc); }
+.f4 { background: var(--roxo-claro); color: #4B1FA6; }
+.f5 { background: #FFF1B8; color: #6B5200; }
+.fam h3 { font-size: 19px; font-weight: 900; line-height: 1.15; }
+.fam .resp { font-size: 14px; font-weight: 600; color: var(--suave); }
+.fam .seta { margin-left: auto; color: var(--suave); }
+.fam .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0; font-size: 14px; font-weight: 700; color: #3C4C42; }
+.fam .meta span { display: inline-flex; align-items: center; gap: 6px; }
+.fam .meta svg { width: 18px; height: 18px; color: var(--verde); }
+.selo { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; font-weight: 800; font-size: 14px; }
+.selo svg { width: 18px; height: 18px; }
+.selo-ok { background: var(--verde-claro); color: var(--verde-esc); }
+.selo-aviso { background: var(--laranja-claro); color: var(--laranja-esc); box-shadow: 0 0 0 2px #FFCF9F inset; }
+.selo-venc { background: var(--erro-claro); color: #A12C1E; box-shadow: 0 0 0 2px #F4B8B0 inset; }
+.selo-fim { background: var(--roxo-claro); color: #4B1FA6; }
+.vazio { display: none; text-align: center; padding: 28px 12px; color: var(--suave); font-weight: 700; }
+.fab { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 0 18px 12px; margin-top: -4px; pointer-events: none; }
+.fab .btn { pointer-events: auto; box-shadow: 0 5px 0 #C4640F, 0 12px 22px rgba(0,0,0,.18); }
+
+/* ===== Desktop (largura do contêiner da tela) ===== */
+@container scr (min-width: 800px) {
+  .app { display: grid; grid-template-columns: 260px 1fr; }
+  .side { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100cqh; padding: 22px 16px; background: var(--papel); border-right: 1px solid var(--borda); }
+  .marca { display: flex; align-items: center; gap: 12px; padding: 4px 8px 18px; }
+  .marca .logo { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(135deg, #1F8A4C, #46B676); color: #fff; }
+  .marca strong { display: block; font-size: 21px; font-weight: 900; color: var(--verde-esc); line-height: 1; }
+  .marca small { font-size: 12px; font-weight: 700; color: var(--suave); }
+  .side nav { display: flex; flex-direction: column; gap: 6px; }
+  .side nav a { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 16px; border-radius: 18px; text-decoration: none; font-weight: 800; font-size: 17px; color: var(--suave); }
+  .side nav a:hover { background: var(--verde-claro); color: var(--verde-esc); }
+  .side nav a[aria-current="page"] { background: var(--verde); color: #fff; box-shadow: 0 4px 0 var(--verde-esc); }
+  .side .rodape-lateral { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; background: var(--creme); }
+  .side .rodape-lateral .avatar { width: 42px; height: 42px; font-size: 17px; }
+  .side .rodape-lateral strong { display: block; font-size: 15px; line-height: 1.1; }
+  .side .rodape-lateral small { font-size: 12px; color: var(--suave); font-weight: 700; }
+  .tabbar { display: none; }
+  .topo { padding: 26px 36px 8px; }
+  .topo h1 { font-size: 30px; }
+  main { padding: 10px 36px 36px; }
+  .no-tab .salvar { bottom: 0; }
+  .btn { font-size: 18px; }
+  .resumo { grid-template-columns: repeat(5, 1fr); }
+  .resumo .tile:last-child { grid-column: auto; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 116px; }
+  .atalhos { grid-template-columns: repeat(3, 1fr); }
+  .atalho { flex-direction: column; align-items: flex-start; min-height: 150px; }
+  .atalho .seta { display: none; }
+  .home-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; align-items: start; }
+  .home-grid > div { display: flex; flex-direction: column; gap: 20px; }
+  .heroi { padding: 30px 32px; }
+  .heroi h2 { font-size: 34px; }
+  .heroi p { max-width: 44ch; font-size: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .form-grid .larga { grid-column: 1 / -1; }
+  .dois { grid-template-columns: 1fr 1fr; }
+  .salvar { padding: 14px 36px 22px; justify-content: flex-end; }
+  .salvar .btn, .salvar .btn.btn-bloco { flex: none; width: auto; min-width: 280px; }
+  .salvar .rasc { display: inline-flex; margin-right: auto; font-weight: 700; color: var(--suave); align-items: center; gap: 8px; }
+  .lista-fam { grid-template-columns: 1fr 1fr; }
+  .barra-busca { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+  .abas { margin: 0; padding: 4px 0 10px; flex-wrap: wrap; overflow: visible; }
+  .fab { display: none; }
+  .topo-acao { margin-left: auto; }
+}
+.topo-acao { display: none; }
+@container scr (min-width: 800px) { .topo-acao { display: inline-flex; } }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- Ícones (sprite) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H10v-5.5h4v5.5h3.5a1 1 0 0 0 1-1V10"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H9l-5 3.5V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/><path d="M8.5 9h7M8.5 12.5h4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6.5-8 12-8 12S4 16.5 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.5 15.3 3.5 9A4.7 4.7 0 0 1 12 6.6 4.7 4.7 0 0 1 20.5 9c0 6.3-8.5 11.5-8.5 11.5z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3l-6.5 18-4-7-7-4z"/></symbol>
+    <symbol id="i-group" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2a5.5 5.5 0 0 1 4.5 5.3"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="i-basket" viewBox="0 0 24 24"><path d="M3 10h18l-1.7 9a2 2 0 0 1-2 1.6H6.7a2 2 0 0 1-2-1.6z"/><path d="m8 10 3-6M16 10l-3-6"/></symbol>
+  </defs>
+</svg>
+
+<header class="apresentacao">
+  <span class="selo-proposta">Proposta B</span>
+  <h1>App acolhedor · Armazém Solidário</h1>
+  <p class="lead">Um aplicativo de celular moderno e amigável: o verde e o laranja do Armazém Solidário sobre um fundo creme, cartões bem arredondados, ícones grandes e coloridos e botões “gordinhos” que convidam ao toque. A sensação é de conversa, não de sistema — quem usa se sente bem-vinda, mesmo no meio de uma visita.</p>
+  <ul>
+    <li><strong>Tipografia:</strong> Nunito (Google Fonts) — formas arredondadas, leitura fácil em tamanhos grandes (corpo 16–17&nbsp;px, títulos 800–900).</li>
+    <li><strong>Formas e gestos:</strong> cartões de 22&nbsp;px, botões de 56&nbsp;px com “sombra de relevo”, chips de 48&nbsp;px, barra inferior estilo app no celular e menu lateral no desktop.</li>
+    <li><strong>Acessibilidade:</strong> alvos ≥ 44&nbsp;px, foco visível laranja, contraste AA (texto escuro sobre laranja, branco sobre verde-escuro) e selos sempre com ícone + texto, nunca só cor.</li>
+  </ul>
+  <div class="paleta" aria-label="Paleta">
+    <div class="cor"><i style="background:#1F8A4C"></i><span>Verde Armazém <small>#1F8A4C</small></span></div>
+    <div class="cor"><i style="background:#14613A"></i><span>Verde escuro <small>#14613A</small></span></div>
+    <div class="cor"><i style="background:#F58220"></i><span>Laranja destaque <small>#F58220</small></span></div>
+    <div class="cor"><i style="background:#B24F00"></i><span>Laranja texto <small>#B24F00</small></span></div>
+    <div class="cor"><i style="background:#FFF8EC"></i><span>Creme <small>#FFF8EC</small></span></div>
+    <div class="cor"><i style="background:#E3F4E8"></i><span>Verde suave <small>#E3F4E8</small></span></div>
+    <div class="cor"><i style="background:#6D35D6"></i><span>Roxo INTECS (apoio) <small>#6D35D6</small></span></div>
+    <div class="cor"><i style="background:#23332A"></i><span>Texto <small>#23332A</small></span></div>
+  </div>
+</header>
+
+<section class="tela-bloco" aria-labelledby="t1">
+  <h2 id="t1"><span>1</span> Início da Assistente Social</h2>
+  <p>Saudação calorosa, resumo do mês em “blocos de cor”, pendências com ação direta e atalhos gigantes.</p>
+  <div class="par" data-tela="inicio"></div>
+</section>
+
+<section class="tela-bloco" aria-labelledby="t2">
+  <h2 id="t2"><span>2</span> Novo atendimento</h2>
+  <p>Seções numeradas e coloridas, chips para múltipla escolha, aviso de cadastro existente e um campo com erro (CEP). Botão Salvar fixo no rodapé.</p>
+  <div class="par" data-tela="atendimento"></div>
+</section>
+
+<section class="tela-bloco" aria-labelledby="t3">
+  <h2 id="t3"><span>3</span> Famílias acompanhadas</h2>
+  <p>Cartões no celular, grade de duas colunas no desktop; abas de filtro funcionam (toque para testar) e a busca é um campo em pílula.</p>
+  <div class="par" data-tela="familias"></div>
+</section>
+
+<footer class="rodape-apresentacao">Protótipo visual para aprovação — dados fictícios. Não altera o app. Interações simples: abas e chips são clicáveis.</footer>
+
+<!-- ======================= TELA 1 — INÍCIO ======================= -->
+<template id="t-inicio">
+  <div class="app">
+    <aside class="side"><div class="marca"><div class="logo"><svg class="i"><use href="#i-basket"/></svg></div><div><strong>ASSOCIAL</strong><small>Serviço Social · INTECS</small></div></div>
+      <nav class="nav-lateral" aria-label="Menu principal"></nav>
+      <div class="rodape-lateral"><div class="avatar" aria-hidden="true">J</div><div><strong>Juliana Prado</strong><small>Brasilândia</small></div></div>
+    </aside>
+    <div class="main-col">
+      <header class="topo">
+        <div class="avatar" aria-hidden="true">J</div>
+        <div class="quem"><strong>Juliana Prado</strong><span>📍 Armazém Solidário · Brasilândia</span></div>
+        <button class="sino" aria-label="Avisos (2 novos)"><svg class="i"><use href="#i-bell"/></svg><b></b></button>
+      </header>
+      <main>
+        <section class="heroi" aria-label="Boas-vindas">
+          <span class="data">terça-feira, 20 de outubro</span>
+          <h2>Bom dia, Juliana! 👋</h2>
+          <p>Cada atendimento é uma porta que se abre. Vamos cuidar de quem precisa hoje?</p>
+        </section>
+
+        <div class="home-grid">
+          <div>
+            <section class="card" aria-labelledby="h-mes">
+              <h2 id="h-mes">Seu mês de outubro 🌱</h2>
+              <div class="resumo">
+                <div class="tile t-verde"><div class="ic"><svg class="i"><use href="#i-chat"/></svg></div><strong>48</strong><span>Atendimentos</span></div>
+                <div class="tile t-laranja"><div class="ic"><svg class="i"><use href="#i-send"/></svg></div><strong>31</strong><span>Encaminhamentos</span></div>
+                <div class="tile t-roxo"><div class="ic"><svg class="i"><use href="#i-pin"/></svg></div><strong>3</strong><span>Ações realizadas</span></div>
+                <div class="tile t-amarelo"><div class="ic"><svg class="i"><use href="#i-group"/></svg></div><strong>95</strong><span>Participantes</span></div>
+                <div class="tile t-rosa"><div class="ic"><svg class="i"><use href="#i-heart"/></svg></div><div class="txt"><strong>4</strong><span>Famílias acompanhadas</span></div></div>
+              </div>
+            </section>
+            <h2 class="titulo-secao">O que vamos fazer?</h2>
+            <nav class="atalhos" aria-label="Atalhos">
+              <a class="atalho a-verde" href="#"><span class="ic"><svg class="i"><use href="#i-chat"/></svg></span><span>Novo atendimento<small>Registrar quem passou por aqui</small></span><svg class="i seta"><use href="#i-next"/></svg></a>
+              <a class="atalho a-laranja" href="#"><span class="ic"><svg class="i"><use href="#i-pin"/></svg></span><span>Nova ação<small>Visita, palestra, roda de conversa</small></span><svg class="i seta"><use href="#i-next"/></svg></a>
+              <a class="atalho a-roxo" href="#"><span class="ic"><svg class="i"><use href="#i-heart"/></svg></span><span>Famílias<small>Acompanhamento e questionários</small></span><svg class="i seta"><use href="#i-next"/></svg></a>
+            </nav>
+          </div>
+          <div>
+            <section class="card" aria-labelledby="h-pend">
+              <h2 id="h-pend">Pra ficar de olho ⏰</h2>
+              <div class="pendencia">
+                <div class="ic"><svg class="i"><use href="#i-alert"/></svg></div>
+                <div><p>Questionário final da Família Santos vence em 5 dias<small>Prazo: 25/10/2026 · Responsável: Ana Paula Santos</small></p>
+                  <a class="btn btn-laranja btn-pequeno" href="#">Aplicar agora</a></div>
+              </div>
+              <div class="pendencia">
+                <div class="ic"><svg class="i"><use href="#i-cal"/></svg></div>
+                <div><p>Família Oliveira está com o questionário final vencido<small>Venceu em 08/10/2026 · 12 dias de atraso</small></p>
+                  <a class="btn btn-claro btn-pequeno" href="#">Ver família</a></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+    <nav class="tabbar" aria-label="Menu principal"></nav>
+  </div>
+</template>
+
+<!-- ======================= TELA 2 — NOVO ATENDIMENTO ======================= -->
+<template id="t-atendimento">
+  <div class="app no-tab">
+    <aside class="side"><div class="marca"><div class="logo"><svg class="i"><use href="#i-basket"/></svg></div><div><strong>ASSOCIAL</strong><small>Serviço Social · INTECS</small></div></div>
+      <nav class="nav-lateral" aria-label="Menu principal"></nav>
+      <div class="rodape-lateral"><div class="avatar" aria-hidden="true">J</div><div><strong>Juliana Prado</strong><small>Brasilândia</small></div></div>
+    </aside>
+    <div class="main-col">
+      <header class="topo">
+        <button class="voltar" aria-label="Voltar"><svg class="i"><use href="#i-back"/></svg></button>
+        <div class="quem"><h1>Novo atendimento</h1><span class="sub">Brasilândia · 20/10/2026</span></div>
+      </header>
+      <main>
+        <form class="form-grid" onsubmit="return false" novalidate>
+          <section class="card" aria-labelledby="a-dp">
+            <h2 id="a-dp"><span class="secao-num">1</span> Dados pessoais</h2>
+            <div class="campo">
+              <label>CPF <em aria-hidden="true">*</em>
+                <input class="input ok" inputmode="numeric" value="529.982.247-25" autocomplete="off" style="margin-top:6px"></label>
+              <div class="aviso-ok" role="status"><svg class="i"><use href="#i-check"/></svg><div>Cadastro existente — dados preenchidos<small>Confira as informações e atualize o que mudou.</small></div></div>
+            </div>
+            <div class="campo"><label>Nome completo <em aria-hidden="true">*</em>
+              <input class="input" value="Maria Aparecida da Silva" style="margin-top:6px"></label></div>
+            <div class="dois">
+              <div class="campo"><label>Data de nascimento
+                <input class="input" value="14/03/1981" inputmode="numeric" style="margin-top:6px"></label></div>
+              <div class="campo"><label>Telefone
+                <input class="input" value="(11) 98765-4321" inputmode="tel" style="margin-top:6px"></label></div>
+            </div>
+            <div class="campo"><label>Endereço (rua e número)
+              <input class="input" value="Rua das Palmeiras, 128" style="margin-top:6px"></label></div>
+            <div class="dois">
+              <div class="campo invalido"><label>CEP
+                <input class="input" value="02701-12" inputmode="numeric" aria-invalid="true" aria-describedby="e-cep" style="margin-top:6px"></label>
+                <div class="msg-erro" id="e-cep" role="alert"><svg class="i"><use href="#i-alert"/></svg><span>CEP incompleto: digite os 8 números.</span></div></div>
+              <div class="campo"><label>Bairro
+                <input class="input" value="Brasilândia" style="margin-top:6px"></label></div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="a-dem">
+            <h2 id="a-dem"><span class="secao-num n-laranja">2</span> Demanda</h2>
+            <div class="campo"><div class="rot">O que a pessoa procurou? <span class="dica">(pode marcar várias)</span></div>
+              <div class="chips laranja" role="group" aria-label="Demandas">
+                <label class="chip"><input type="checkbox" checked><span>Atualização do CadÚnico</span></label>
+                <label class="chip"><input type="checkbox"><span>Novo cadastro do CadÚnico</span></label>
+                <label class="chip"><input type="checkbox" checked><span>Informações/Orientações</span></label>
+                <label class="chip"><input type="checkbox"><span>Saúde</span></label>
+                <label class="chip"><input type="checkbox"><span>Proteção Social Básica</span></label>
+                <label class="chip"><input type="checkbox"><span>Proteção Social Especial</span></label>
+                <label class="chip"><input type="checkbox"><span>Violação de direitos — Mulher</span></label>
+                <label class="chip"><input type="checkbox"><span>Outra</span></label>
+              </div></div>
+          </section>
+
+          <section class="card" aria-labelledby="a-vul">
+            <h2 id="a-vul"><span class="secao-num n-rosa">3</span> Vulnerabilidade</h2>
+            <div class="campo"><div class="rot">Nível de vulnerabilidade</div>
+              <div class="chips nivel" role="radiogroup" aria-label="Nível de vulnerabilidade">
+                <label class="chip"><input type="radio" name="nivel"><span>Altíssima</span></label>
+                <label class="chip"><input type="radio" name="nivel" checked><span>Alta</span></label>
+                <label class="chip"><input type="radio" name="nivel"><span>Média</span></label>
+                <label class="chip"><input type="radio" name="nivel"><span>Baixa</span></label>
+              </div></div>
+            <div class="campo"><div class="rot">Riscos identificados</div>
+              <div class="chips laranja" role="group" aria-label="Riscos">
+                <label class="chip"><input type="checkbox" checked><span>Insegurança alimentar</span></label>
+                <label class="chip"><input type="checkbox" checked><span>Desemprego ou subemprego</span></label>
+                <label class="chip"><input type="checkbox"><span>Moradia precária</span></label>
+                <label class="chip"><input type="checkbox"><span>Violência doméstica</span></label>
+              </div></div>
+          </section>
+
+          <section class="card" aria-labelledby="a-enc">
+            <h2 id="a-enc"><span class="secao-num n-roxo">4</span> Encaminhamento</h2>
+            <div class="campo"><div class="rot">Para onde a pessoa foi encaminhada?</div>
+              <div class="chips roxo" role="group" aria-label="Encaminhamentos">
+                <label class="chip"><input type="checkbox" checked><span>CRAS</span></label>
+                <label class="chip"><input type="checkbox"><span>CREAS</span></label>
+                <label class="chip"><input type="checkbox" checked><span>UBS</span></label>
+                <label class="chip"><input type="checkbox"><span>Centro de Referência da Mulher</span></label>
+                <label class="chip"><input type="checkbox"><span>Unidade Descomplica</span></label>
+                <label class="chip"><input type="checkbox"><span>Conselho Tutelar</span></label>
+              </div></div>
+          </section>
+
+          <section class="card larga" aria-labelledby="a-res">
+            <h2 id="a-res"><span class="secao-num">5</span> Resumo do atendimento</h2>
+            <div class="campo"><div class="rot">Conte, com suas palavras, o que foi conversado</div>
+              <textarea class="textarea" aria-label="Resumo do atendimento">Maria veio atualizar o CadÚnico após mudança de endereço. Relatou perda de renda e dificuldade para manter a alimentação das duas filhas. Orientada sobre o Bolsa Família e encaminhada ao CRAS e à UBS.</textarea></div>
+          </section>
+        </form>
+      </main>
+      <div class="salvar">
+        <span class="rasc"><svg class="i"><use href="#i-clock"/></svg> Rascunho salvo há instantes</span>
+        <button class="btn btn-bloco" type="button"><svg class="i"><use href="#i-save"/></svg> Salvar atendimento</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ======================= TELA 3 — FAMÍLIAS ======================= -->
+<template id="t-familias">
+  <div class="app">
+    <aside class="side"><div class="marca"><div class="logo"><svg class="i"><use href="#i-basket"/></svg></div><div><strong>ASSOCIAL</strong><small>Serviço Social · INTECS</small></div></div>
+      <nav class="nav-lateral" aria-label="Menu principal"></nav>
+      <div class="rodape-lateral"><div class="avatar" aria-hidden="true">J</div><div><strong>Juliana Prado</strong><small>Brasilândia</small></div></div>
+    </aside>
+    <div class="main-col">
+      <header class="topo">
+        <div class="quem"><h1>Famílias acompanhadas</h1><span class="sub">Brasilândia · prazo do questionário final: 90 dias</span></div>
+        <a class="btn btn-laranja topo-acao" href="#"><svg class="i"><use href="#i-plus"/></svg> Nova família</a>
+      </header>
+      <main>
+        <div class="barra-busca">
+          <div class="busca"><svg class="i"><use href="#i-search"/></svg><input class="input" type="search" placeholder="Buscar por nome ou CPF" aria-label="Buscar família"></div>
+          <div class="abas" role="tablist" aria-label="Filtrar por situação">
+            <button class="aba" role="tab" aria-selected="true" data-filtro="todas">Todas <b>5</b></button>
+            <button class="aba" role="tab" aria-selected="false" data-filtro="em-dia">Em dia <b>2</b></button>
+            <button class="aba" role="tab" aria-selected="false" data-filtro="vencendo">Vencendo <b>1</b></button>
+            <button class="aba" role="tab" aria-selected="false" data-filtro="vencido">Vencidos <b>1</b></button>
+            <button class="aba" role="tab" aria-selected="false" data-filtro="concluido">Concluídos <b>1</b></button>
+          </div>
+        </div>
+        <p class="contagem" aria-live="polite"><span class="n">5</span> famílias</p>
+        <div class="lista-fam">
+          <a class="fam" href="#" data-status="vencendo">
+            <div class="linha1"><div class="foto f1" aria-hidden="true">S</div><div><h3>Família Santos</h3><div class="resp">Resp.: Ana Paula Santos</div></div><svg class="i seta"><use href="#i-next"/></svg></div>
+            <div class="meta"><span><svg class="i"><use href="#i-group"/></svg>5 pessoas</span><span><svg class="i"><use href="#i-cal"/></svg>Início 27/07/2026</span></div>
+            <span class="selo selo-aviso"><svg class="i"><use href="#i-alert"/></svg>Vence em 5 dias</span>
+          </a>
+          <a class="fam" href="#" data-status="vencido">
+            <div class="linha1"><div class="foto f2" aria-hidden="true">O</div><div><h3>Família Oliveira</h3><div class="resp">Resp.: Joana Oliveira</div></div><svg class="i seta"><use href="#i-next"/></svg></div>
+            <div class="meta"><span><svg class="i"><use href="#i-group"/></svg>4 pessoas</span><span><svg class="i"><use href="#i-cal"/></svg>Início 10/07/2026</span></div>
+            <span class="selo selo-venc"><svg class="i"><use href="#i-alert"/></svg>Vencido há 12 dias</span>
+          </a>
+          <a class="fam" href="#" data-status="em-dia">
+            <div class="linha1"><div class="foto f3" aria-hidden="true">L</div><div><h3>Família Lima</h3><div class="resp">Resp.: Carla Lima</div></div><svg class="i seta"><use href="#i-next"/></svg></div>
+            <div class="meta"><span><svg class="i"><use href="#i-group"/></svg>3 pessoas</span><span><svg class="i"><use href="#i-cal"/></svg>Início 18/09/2026</span></div>
+            <span class="selo selo-ok"><svg class="i"><use href="#i-clock"/></svg>Em dia · vence em 58 dias</span>
+          </a>
+          <a class="fam" href="#" data-status="em-dia">
+            <div class="linha1"><div class="foto f5" aria-hidden="true">S</div><div><h3>Família Souza</h3><div class="resp">Resp.: Marta Souza</div></div><svg class="i seta"><use href="#i-next"/></svg></div>
+            <div class="meta"><span><svg class="i"><use href="#i-group"/></svg>4 pessoas</span><span><svg class="i"><use href="#i-cal"/></svg>Início 24/08/2026</span></div>
+            <span class="selo selo-ok"><svg class="i"><use href="#i-clock"/></svg>Em dia · vence em 33 dias</span>
+          </a>
+          <a class="fam" href="#" data-status="concluido">
+            <div class="linha1"><div class="foto f4" aria-hidden="true">F</div><div><h3>Família Ferreira</h3><div class="resp">Resp.: Rosângela Ferreira</div></div><svg class="i seta"><use href="#i-next"/></svg></div>
+            <div class="meta"><span><svg class="i"><use href="#i-group"/></svg>6 pessoas</span><span><svg class="i"><use href="#i-cal"/></svg>Início 02/03/2026</span></div>
+            <span class="selo selo-fim"><svg class="i"><use href="#i-check"/></svg>Concluído</span>
+          </a>
+        </div>
+        <p class="vazio">Nenhuma família nesta situação. 🌼</p>
+      </main>
+      <div class="fab"><a class="btn btn-laranja" href="#"><svg class="i"><use href="#i-plus"/></svg> Nova família</a></div>
+    </div>
+    <nav class="tabbar" aria-label="Menu principal"></nav>
+  </div>
+</template>
+
+<script>
+(function () {
+  var NAV = [
+    ['inicio', 'Início', 'i-home'],
+    ['atendimentos', 'Atendimentos', 'i-chat'],
+    ['acoes', 'Ações', 'i-pin'],
+    ['familias', 'Famílias', 'i-heart'],
+    ['relatorios', 'Relatórios', 'i-doc']
+  ];
+  var ATUAL = { inicio: 'inicio', atendimento: 'atendimentos', familias: 'familias' };
+  var contador = 0;
+
+  function icone(id) { return '<svg class="i" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
+
+  function montarNav(app, atual) {
+    var lateral = app.querySelector('.nav-lateral');
+    var barra = app.querySelector('.tabbar');
+    lateral.innerHTML = NAV.map(function (n) {
+      return '<a href="#"' + (n[0] === atual ? ' aria-current="page"' : '') + '>' + icone(n[2]) + '<span>' + n[1] + '</span></a>';
+    }).join('');
+    if (!barra) return;
+    barra.innerHTML = NAV.map(function (n) {
+      return '<a href="#"' + (n[0] === atual ? ' aria-current="page"' : '') + '><span class="pilula">' + icone(n[2]) + '</span><span>' + n[1] + '</span></a>';
+    }).join('');
+  }
+
+  function moldura(tipo, tpl, chave) {
+    var id = 'f' + (++contador);
+    var frag = tpl.content.cloneNode(true);
+    frag.querySelectorAll('input[name]').forEach(function (i) { i.name = i.name + '-' + id; });
+    var app = frag.firstElementChild;
+    montarNav(app, ATUAL[chave]);
+    var tela = document.createElement('div');
+    tela.className = 'screen';
+    tela.appendChild(frag);
+    var caixa = document.createElement('div');
+    if (tipo === 'phone') {
+      caixa.className = 'phone';
+      caixa.innerHTML = '<div class="phone-in"><div class="statusbar"><span>9:41</span><span class="sinais" aria-hidden="true"><i></i><i></i></span></div></div>';
+      caixa.firstChild.appendChild(tela);
+      return rotular('Celular · 390 × 844', caixa);
+    }
+    var desk = document.createElement('div');
+    desk.className = 'desk';
+    desk.innerHTML = '<div class="desk-bar" aria-hidden="true"><i></i><i></i><i></i><span>associal.intecs.org.br</span></div>';
+    desk.appendChild(tela);
+    var wrap = document.createElement('div');
+    wrap.className = 'desk-wrap';
+    wrap.appendChild(desk);
+    return rotular('Desktop · 1280 px (escala reduzida)', wrap);
+  }
+
+  function rotular(texto, el) {
+    var w = document.createElement('div');
+    var r = document.createElement('div');
+    r.className = 'rotulo-moldura';
+    r.textContent = texto;
+    w.appendChild(r);
+    w.appendChild(el);
+    return w;
+  }
+
+  document.querySelectorAll('[data-tela]').forEach(function (par) {
+    var chave = par.getAttribute('data-tela');
+    var tpl = document.getElementById('t-' + chave);
+    par.appendChild(moldura('phone', tpl, chave));
+    par.appendChild(moldura('desk', tpl, chave));
+  });
+
+  // Abas de filtro das famílias
+  document.addEventListener('click', function (e) {
+    var aba = e.target.closest('.aba');
+    if (!aba) return;
+    var app = aba.closest('.app');
+    app.querySelectorAll('.aba').forEach(function (a) { a.setAttribute('aria-selected', a === aba ? 'true' : 'false'); });
+    var f = aba.getAttribute('data-filtro');
+    var visiveis = 0;
+    app.querySelectorAll('.fam').forEach(function (c) {
+      var mostrar = f === 'todas' || c.getAttribute('data-status') === f;
+      c.hidden = !mostrar;
+      if (mostrar) visiveis++;
+    });
+    app.querySelector('.contagem .n').textContent = visiveis;
+    app.querySelector('.contagem').lastChild.textContent = visiveis === 1 ? ' família' : ' famílias';
+    app.querySelector('.vazio').style.display = visiveis ? 'none' : 'block';
+  });
+
+  // Links de demonstração não navegam
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href="#"]');
+    if (a) e.preventDefault();
+  });
+
+  // Busca simples por nome
+  document.addEventListener('input', function (e) {
+    if (e.target.type !== 'search') return;
+    var app = e.target.closest('.app');
+    var q = e.target.value.trim().toLowerCase();
+    var visiveis = 0;
+    app.querySelectorAll('.fam').forEach(function (c) {
+      var ok = !q || c.textContent.toLowerCase().indexOf(q) !== -1;
+      c.hidden = !ok;
+      if (ok) visiveis++;
+    });
+    app.querySelector('.contagem .n').textContent = visiveis;
+    app.querySelector('.contagem').lastChild.textContent = visiveis === 1 ? ' família' : ' famílias';
+    app.querySelector('.vazio').style.display = visiveis ? 'none' : 'block';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASSOCIAL — Proposta A: Institucional INTECS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --laranja:#F26A21; --roxo-marca:#7B3FE4;
+  --grad:linear-gradient(110deg,#F26A21 0%,#C2456E 48%,#7B3FE4 100%);
+  --primaria:#6D2FD0; --primaria-esc:#56239F; --primaria-clara:#F1EAFD; --primaria-borda:#D9C8F7;
+  --texto:#1E1B2E; --suave:#5B5870; --borda:#E4E1EC; --fundo:#F7F6FA; --branco:#fff;
+  --ok:#157A4A; --ok-bg:#E3F4EB; --aviso:#8A4B00; --aviso-bg:#FFF0DD; --erro:#B3261E; --erro-bg:#FCE8E6; --info-bg:#EEF2FF;
+  --raio:10px; --sombra:0 1px 2px rgba(30,27,46,.06),0 4px 14px rgba(30,27,46,.07);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#EDEBF3;color:var(--texto);font:400 16px/1.5 Inter,system-ui,sans-serif}
+h1,h2,h3,.tit{font-family:Poppins,Inter,sans-serif;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--primaria);outline-offset:2px}
+
+/* ---------- página de apresentação ---------- */
+.apres{max-width:1400px;margin:0 auto;padding:24px 16px 64px}
+.topo{background:var(--branco);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden;margin-bottom:32px}
+.topo::before{content:"";display:block;height:6px;background:var(--grad)}
+.topo-int{padding:24px 28px;display:grid;gap:20px;grid-template-columns:1.3fr 1fr}
+.topo h1{font-size:1.75rem;line-height:1.2}
+.topo h1 small{display:block;font:500 .875rem Inter;color:var(--primaria);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.topo p{margin:10px 0 0;color:var(--suave)}
+.paleta{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start}
+.amostra{display:flex;align-items:center;gap:8px;font-size:.8125rem;color:var(--suave)}
+.amostra i{width:28px;height:28px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+.tipo{width:100%;font-size:.875rem;color:var(--suave)}
+.tipo b{font-family:Poppins;color:var(--texto)}
+.secao-tela{margin-bottom:48px}
+.secao-tela>h2{font-size:1.25rem;margin-bottom:4px}
+.secao-tela>p{margin:0 0 16px;color:var(--suave);font-size:.9rem}
+.molduras{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.legenda{font-size:.75rem;color:var(--suave);text-align:center;margin-top:8px;text-transform:uppercase;letter-spacing:.06em}
+
+/* molduras */
+.celular{width:422px;padding:16px;background:#14121D;border-radius:52px;box-shadow:0 18px 40px rgba(30,27,46,.3);flex:none;max-width:100%}
+.celular .tela{width:390px;height:844px;border-radius:38px;overflow:hidden;background:var(--fundo);position:relative}
+.celular .tela::before{content:"";position:absolute;top:10px;left:50%;width:110px;height:26px;margin-left:-55px;background:#14121D;border-radius:20px;z-index:20}
+.desk-box{flex:1 1 640px;min-width:0}
+.desk{width:1280px;height:800px;transform-origin:top left;background:var(--fundo);border-radius:12px;overflow:hidden;border:1px solid var(--borda);box-shadow:0 18px 40px rgba(30,27,46,.18);position:relative}
+.desk-ajuste{overflow:hidden;border-radius:12px}
+.barra-nav{height:34px;background:#F0EEF6;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:7px;padding:0 14px;font-size:12px;color:var(--suave)}
+.barra-nav i{width:10px;height:10px;border-radius:50%;background:#CFCADB}
+.barra-nav span{margin-left:10px;background:#fff;border-radius:6px;padding:2px 14px;flex:0 1 380px}
+
+/* ---------- APP (compartilhado) ---------- */
+.app{height:100%;display:flex;font-size:16px}
+.m.app{flex-direction:column}
+.conteudo{flex:1;overflow:auto;min-height:0;position:relative}
+.m .conteudo{padding-top:0}
+
+/* cabeçalho com gradiente (parcimônia: só aqui e em realces) */
+.cab{background:var(--grad);color:#fff;padding:18px 20px 22px}
+.m .cab{padding-top:46px}
+.cab .linha-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font:700 1.0625rem Poppins}
+.logo svg{flex:none}
+.logo small{display:block;font:400 .6875rem Inter;opacity:.9;letter-spacing:.02em}
+.avatar{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.7);display:grid;place-items:center;font:600 .875rem Poppins}
+.cab h1{font-size:1.5rem;margin-top:16px;line-height:1.25}
+.cab p{margin:2px 0 0;opacity:.95;font-size:.9375rem}
+.d .cab{padding:26px 36px 30px}
+
+.pagina{padding:18px 16px 28px;display:grid;gap:16px}
+.d .pagina{padding:28px 36px 40px;max-width:1100px;margin:0 auto;width:100%}
+.m .pagina.sobe{margin-top:-14px}
+
+.card{background:var(--branco);border:1px solid var(--borda);border-radius:var(--raio);box-shadow:var(--sombra);padding:16px}
+.card h2{font-size:1rem;margin-bottom:12px}
+.card h2 small{font:400 .8125rem Inter;color:var(--suave);margin-left:6px}
+
+/* navegação */
+.nav-inf{display:flex;background:#fff;border-top:1px solid var(--borda);padding:6px 4px 14px;flex:none;box-shadow:0 -4px 14px rgba(30,27,46,.06)}
+.nav-inf a,.nav-lat a{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-height:48px;justify-content:center;color:var(--suave);text-decoration:none;font-size:.6875rem;font-weight:500;border-radius:8px}
+.nav-inf a svg{width:22px;height:22px}
+.nav-inf a.ativo{color:var(--primaria)}
+.nav-inf a.ativo span{position:relative}
+.nav-inf a.ativo::before{content:"";width:28px;height:3px;border-radius:3px;background:var(--grad);margin-bottom:2px}
+.nav-lat{width:236px;flex:none;background:#fff;border-right:1px solid var(--borda);padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+.nav-lat .marca{padding:6px 10px 18px;display:flex;gap:10px;align-items:center;font:700 1.125rem Poppins;color:var(--texto)}
+.nav-lat .marca small{display:block;font:400 .6875rem Inter;color:var(--suave)}
+.nav-lat a{flex-direction:row;justify-content:flex-start;gap:12px;padding:0 14px;font-size:.9375rem;min-height:46px;position:relative}
+.nav-lat a svg{width:20px;height:20px}
+.nav-lat a:hover{background:var(--primaria-clara);color:var(--primaria-esc)}
+.nav-lat a.ativo{background:var(--primaria-clara);color:var(--primaria-esc);font-weight:600}
+.nav-lat a.ativo::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--grad)}
+.nav-lat .rodape-nav{margin-top:auto;font-size:.8125rem;color:var(--suave);padding:12px 10px;border-top:1px solid var(--borda)}
+.principal{flex:1;min-width:0;display:flex;flex-direction:column;overflow:auto}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border-radius:var(--raio);border:1.5px solid transparent;background:var(--primaria);color:#fff;font:600 .9375rem Poppins;cursor:pointer;text-decoration:none;transition:background .15s,box-shadow .15s}
+.btn:hover{background:var(--primaria-esc);box-shadow:0 4px 12px rgba(109,47,208,.3)}
+.btn.sec{background:#fff;color:var(--primaria);border-color:var(--primaria-borda)}
+.btn.sec:hover{background:var(--primaria-clara);box-shadow:none}
+.btn.bloco{width:100%}
+
+/* início */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.d .stats{grid-template-columns:repeat(5,1fr);gap:14px}
+.stat{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:12px 12px 10px;box-shadow:var(--sombra);position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--grad);opacity:0}
+.stat.destaque::after{opacity:1}
+.stat b{font:700 1.75rem/1.1 Poppins;color:var(--texto);display:block}
+.stat span{font-size:.75rem;color:var(--suave);line-height:1.25;display:block;margin-top:2px}
+.m .stat:nth-child(4),.m .stat:nth-child(5){grid-column:span 1}
+.pend{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:var(--raio);background:var(--aviso-bg);border:1px solid #F3CF9F}
+.pend svg{flex:none;color:var(--aviso);margin-top:2px}
+.pend b{font-weight:600}
+.pend p{margin:2px 0 8px;font-size:.9375rem}
+.link{color:var(--primaria);font-weight:600;text-decoration:underline;text-underline-offset:3px;font-size:.9375rem}
+.atalhos{display:grid;gap:12px;grid-template-columns:1fr}
+.d .atalhos{grid-template-columns:repeat(3,1fr);gap:16px}
+.atalho{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:16px;box-shadow:var(--sombra);text-decoration:none;color:var(--texto);min-height:76px;transition:border-color .15s,transform .15s}
+.atalho:hover{border-color:var(--primaria);transform:translateY(-1px)}
+.atalho .ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--primaria-clara);color:var(--primaria);flex:none}
+.atalho.prim{background:var(--primaria);border-color:var(--primaria);color:#fff}
+.atalho.prim .ic{background:rgba(255,255,255,.18);color:#fff}
+.atalho b{font:600 1rem Poppins;display:block}
+.atalho small{color:var(--suave);font-size:.8125rem}
+.atalho.prim small{color:#E9DDFB}
+.duas{display:grid;gap:16px}
+.d .duas{grid-template-columns:1.2fr 1fr}
+.agenda li{display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--borda);list-style:none}
+.agenda li:last-child{border:0}
+.agenda ul{margin:0;padding:0}
+.dia{width:44px;text-align:center;border-radius:8px;background:var(--primaria-clara);color:var(--primaria-esc);padding:3px 0;flex:none;font:700 1.0625rem/1.1 Poppins}
+.dia small{display:block;font:500 .625rem Inter;text-transform:uppercase}
+.agenda small{color:var(--suave)}
+
+/* formulário */
+.form-corpo{padding:16px 16px 24px;display:grid;gap:16px}
+.d .form-corpo{padding:28px 36px 40px;max-width:900px;margin:0 auto;width:100%}
+.m .form-corpo{padding-bottom:96px}
+.cab-simples{background:#fff;border-bottom:1px solid var(--borda);position:relative;padding:16px 20px}
+.cab-simples::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--grad)}
+.m .cab-simples{padding-top:44px}
+.cab-simples h1{font-size:1.25rem}
+.cab-simples p{margin:2px 0 0;color:var(--suave);font-size:.875rem}
+.d .cab-simples{padding:28px 36px 18px}
+.passos{display:flex;gap:6px;margin-top:12px}
+.passos i{height:5px;flex:1;border-radius:4px;background:var(--borda)}
+.passos i.f{background:var(--grad)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+.fsec{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);box-shadow:var(--sombra);padding:16px}
+.fsec legend{float:left;width:100%;padding:0;margin-bottom:12px;font:600 1.0625rem Poppins;display:flex;align-items:center;gap:10px}
+.fsec legend span{width:26px;height:26px;border-radius:50%;background:var(--primaria-clara);color:var(--primaria-esc);display:grid;place-items:center;font-size:.8125rem}
+.fsec>*:not(legend){clear:both}
+.grade{display:grid;gap:12px}
+.d .grade.g2{grid-template-columns:1fr 1fr}
+.d .grade.g3{grid-template-columns:1.2fr 1fr 1fr}
+.campo{display:flex;flex-direction:column;gap:5px}
+.campo label,.rot{font-weight:600;font-size:.875rem}
+.campo label i,.rot i{color:var(--erro);font-style:normal}
+.input{min-height:48px;border:1.5px solid #C9C5D6;border-radius:var(--raio);padding:0 14px;background:#fff;width:100%;transition:border-color .15s,box-shadow .15s}
+.input:hover{border-color:#9B93B4}
+.input:focus{outline:none;border-color:var(--primaria);box-shadow:0 0 0 3px rgba(109,47,208,.2)}
+textarea.input{padding:12px 14px;min-height:110px;resize:vertical}
+.campo .aj{font-size:.8125rem;color:var(--suave)}
+.campo.erro .input{border-color:var(--erro);background:#FFFAF9}
+.campo.erro .msg{color:var(--erro);font-size:.8125rem;font-weight:500;display:flex;gap:6px;align-items:center}
+.aviso-ok{display:flex;gap:10px;align-items:flex-start;background:var(--ok-bg);border:1px solid #B6E0C8;color:#0F5C37;border-radius:var(--raio);padding:10px 12px;font-size:.875rem;margin-top:10px}
+.aviso-ok svg{flex:none;margin-top:1px}
+.aviso-ok button{margin-left:auto;background:none;border:0;color:#0F5C37;font-weight:600;text-decoration:underline;cursor:pointer;min-height:32px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.chip span{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid #C9C5D6;background:#fff;font-size:.9375rem;font-weight:500;transition:all .15s}
+.chip:hover span{border-color:var(--primaria)}
+.chip input:focus-visible+span{outline:3px solid var(--primaria);outline-offset:2px}
+.chip input:checked+span{background:var(--primaria);border-color:var(--primaria);color:#fff}
+.chip input:checked+span::before{content:"✓";font-weight:700}
+.niveis{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.nivel{position:relative}
+.nivel input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.nivel span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;border:1.5px solid #C9C5D6;border-radius:var(--raio);font-size:.8125rem;font-weight:600;padding:0 2px;background:#fff;line-height:1.15}
+.d .nivel span{font-size:.9375rem}
+.nivel input:checked+span{border-color:var(--primaria);background:var(--primaria-clara);color:var(--primaria-esc);box-shadow:inset 0 -4px 0 var(--primaria)}
+.nivel input:focus-visible+span{outline:3px solid var(--primaria);outline-offset:2px}
+.nivel:hover span{border-color:var(--primaria)}
+.rodape-fixo{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--borda);padding:12px 16px 22px;display:flex;gap:10px;box-shadow:0 -6px 18px rgba(30,27,46,.08);z-index:5}
+.rodape-fixo .btn.sec{flex:0 0 auto}
+.rodape-fixo .btn:not(.sec){flex:1}
+.d .rodape-inline{display:flex;gap:12px;justify-content:flex-end}
+
+/* famílias */
+.busca{position:relative}
+.busca svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--suave)}
+.busca .input{padding-left:44px}
+.filtros{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.d .filtros{flex-wrap:wrap}
+.filtros .chip span{min-height:40px;white-space:nowrap;font-size:.875rem;padding:0 14px}
+.fam-cartoes{display:grid;gap:12px}
+.fam-card{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);box-shadow:var(--sombra);padding:14px 16px;display:grid;gap:8px;cursor:pointer;transition:border-color .15s}
+.fam-card:hover{border-color:var(--primaria)}
+.fam-card .l1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.fam-card h3{font-size:1rem}
+.fam-card .meta{display:flex;gap:14px;color:var(--suave);font-size:.8125rem;flex-wrap:wrap}
+.meta span{display:inline-flex;gap:5px;align-items:center}
+.selo{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600;white-space:nowrap}
+.selo::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.selo.dia-ok{background:var(--ok-bg);color:var(--ok)}
+.selo.vence{background:var(--aviso-bg);color:var(--aviso)}
+.selo.venc{background:var(--erro-bg);color:var(--erro)}
+.selo.concl{background:var(--primaria-clara);color:var(--primaria-esc)}
+.fam-tabela{display:none;width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--borda);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
+.d .fam-tabela{display:table}.d .fam-cartoes{display:none}
+.fam-tabela th{text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--suave);background:#FAF9FC;padding:12px 16px;border-bottom:1px solid var(--borda)}
+.fam-tabela td{padding:14px 16px;border-bottom:1px solid var(--borda)}
+.fam-tabela tr:last-child td{border:0}
+.fam-tabela tbody tr:hover{background:var(--primaria-clara)}
+.fam-tabela td b{font-weight:600}
+.cabeca-lista{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.d .barra-lista{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.cont{font-size:.8125rem;color:var(--suave)}
+.fab{position:absolute;right:16px;bottom:88px;width:56px;height:56px;border-radius:50%;background:var(--primaria);color:#fff;border:0;display:grid;place-items:center;box-shadow:0 8px 20px rgba(109,47,208,.45);cursor:pointer;z-index:4}
+
+@media (max-width:900px){.topo-int{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="apres">
+  <header class="topo">
+    <div class="topo-int">
+      <div>
+        <h1><small>Proposta A</small>Institucional INTECS</h1>
+        <p>Branco limpo e muito respiro, com a identidade da INTECS aparecendo onde importa: o gradiente laranja → roxo fica restrito ao cabeçalho, aos indicadores de aba ativa e a pequenos realces — nunca em botões ou fundos grandes. O <b>roxo</b> é a cor de ação (botões, foco, seleção), o laranja entra só como acento decorativo.</p>
+        <p>Sensação: profissional e acolhedora, de instituição séria que cuida de pessoas. Cantos de 10px, sombras suaves, selos de status com ponto colorido e texto sempre em contraste AA.</p>
+      </div>
+      <div class="paleta">
+        <div class="amostra"><i style="background:linear-gradient(110deg,#F26A21,#7B3FE4)"></i>Marca #F26A21 → #7B3FE4</div>
+        <div class="amostra"><i style="background:#6D2FD0"></i>Primária #6D2FD0</div>
+        <div class="amostra"><i style="background:#56239F"></i>Hover #56239F</div>
+        <div class="amostra"><i style="background:#F1EAFD"></i>Realce #F1EAFD</div>
+        <div class="amostra"><i style="background:#1E1B2E"></i>Texto #1E1B2E</div>
+        <div class="amostra"><i style="background:#5B5870"></i>Suave #5B5870</div>
+        <div class="amostra"><i style="background:#F7F6FA"></i>Fundo #F7F6FA</div>
+        <div class="amostra"><i style="background:#157A4A"></i>Ok #157A4A</div>
+        <div class="amostra"><i style="background:#8A4B00"></i>Atenção #8A4B00</div>
+        <div class="amostra"><i style="background:#B3261E"></i>Erro #B3261E</div>
+        <div class="tipo"><b>Poppins</b> 500/600/700 nos títulos e botões · <b style="font-family:Inter">Inter</b> 400/500/600 no texto.</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="secao-tela"><h2>1 · Início da Assistente Social</h2><p>Unidade Brasilândia — resumo do mês, pendências e atalhos grandes.</p><div class="molduras" data-tela="inicio"></div></section>
+  <section class="secao-tela"><h2>2 · Novo atendimento</h2><p>Formulário em seções, com cadastro existente encontrado pelo CPF e um campo com erro de validação.</p><div class="molduras" data-tela="form"></div></section>
+  <section class="secao-tela"><h2>3 · Famílias acompanhadas</h2><p>Busca, filtros e selo do questionário final. Cards no celular, tabela no computador.</p><div class="molduras" data-tela="familias"></div></section>
+</div>
+
+<script>
+/* ---------- ícones ---------- */
+const I = {
+  inicio:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  atend:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  acoes:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  fam:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>',
+  rel:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  alerta:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
+  busca:'<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
+  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+  seta:'<path d="M5 12h14M12 5l7 7-7 7"/>',
+  voltar:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  erro:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'
+};
+const ic=(n,s=20,sw=2)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const logo=`<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F26A21"/><stop offset="1" stop-color="#7B3FE4"/></linearGradient></defs><rect width="34" height="34" rx="9" fill="#fff"/><path d="M9 25V9h3.4l4.6 8.2L21.6 9H25v16h-3V14.4l-4.2 7.4h-1.6L12 14.4V25z" fill="url(#lg)"/></svg>`;
+const logoMarca=`<svg width="36" height="36" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="url(#lg2)"/><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F26A21"/><stop offset="1" stop-color="#7B3FE4"/></linearGradient></defs><path d="M9 25V9h3.4l4.6 8.2L21.6 9H25v16h-3V14.4l-4.2 7.4h-1.6L12 14.4V25z" fill="#fff"/></svg>`;
+
+const NAV=[['inicio','Início','inicio'],['atend','Atendimentos','atend'],['acoes','Ações','acoes'],['fam','Famílias','fam'],['rel','Relatórios','rel']];
+const navInf=a=>`<nav class="nav-inf" aria-label="Principal">${NAV.map(([i,t,k])=>`<a href="#" class="${k===a?'ativo':''}" ${k===a?'aria-current="page"':''}>${ic(i)}<span>${t}</span></a>`).join('')}</nav>`;
+const navLat=a=>`<nav class="nav-lat" aria-label="Principal"><div class="marca">${logoMarca}<div>ASSOCIAL<small>Serviço Social · INTECS</small></div></div>${NAV.map(([i,t,k])=>`<a href="#" class="${k===a?'ativo':''}">${ic(i)}${t}</a>`).join('')}<div class="rodape-nav"><b style="color:var(--texto)">Marina Alves</b><br>Assistente Social · BRA</div></nav>`;
+const shell=(m,ativo,corpo)=> m
+  ? `<div class="m app"><div class="conteudo">${corpo}</div>${navInf(ativo)}</div>`
+  : `<div class="d app">${navLat(ativo)}<div class="principal">${corpo}</div></div>`;
+
+/* ---------- telas ---------- */
+function inicio(m){
+  const cab=`<header class="cab"><div class="linha-topo"><div class="logo">${m?logo:''}${m?'<div>ASSOCIAL<small>Serviço Social · INTECS</small></div>':''}</div><div class="avatar" title="Marina Alves">MA</div></div>
+    <h1>Bom dia, Marina!</h1><p>Armazém Solidário · Brasilândia · outubro de 2026</p></header>`;
+  const st=[['48','Atendimentos',1],['31','Encaminhamentos'],['3','Ações realizadas'],['95','Participantes'],['4','Famílias acompanhadas']];
+  const stats=`<div class="stats">${st.map(([n,t,d])=>`<div class="stat ${d?'destaque':''}"><b>${n}</b><span>${t}</span></div>`).join('')}</div>`;
+  const pend=`<div class="pend" role="alert">${ic('alerta',22)}<div><b>Questionário final vence em 5 dias</b><p>Família Santos · acompanhamento iniciado em 21/07/2026.</p><a href="#" class="link">Abrir família</a></div></div>`;
+  const atalhos=`<div class="atalhos">
+    <a href="#" class="atalho prim"><span class="ic">${ic('plus',24)}</span><span><b>Novo atendimento</b><small>Registrar agora</small></span></a>
+    <a href="#" class="atalho"><span class="ic">${ic('acoes',24)}</span><span><b>Nova ação</b><small>Visita ou palestra</small></span></a>
+    <a href="#" class="atalho"><span class="ic">${ic('fam',24)}</span><span><b>Famílias</b><small>4 em acompanhamento</small></span></a></div>`;
+  const agenda=`<div class="card agenda"><h2>Próximas ações<small>Brasilândia</small></h2><ul>
+    <li><div class="dia">23<small>out</small></div><div><b>Roda de conversa — Saúde da mulher</b><br><small>UBS Vila Penteado · 14h</small></div></li>
+    <li><div class="dia">29<small>out</small></div><div><b>Visita institucional</b><br><small>CRAS Brasilândia · 9h30</small></div></li></ul></div>`;
+  const resumoCard=`<div class="card"><h2>Neste mês</h2><p style="margin:0;color:var(--suave);font-size:.9375rem">Você registrou <b style="color:var(--texto)">12 atendimentos</b> esta semana. Ótimo ritmo — a meta de encaminhamentos está em <b style="color:var(--ok)">65%</b>.</p></div>`;
+  const corpo=m
+    ? `${cab}<div class="pagina sobe">${stats}${pend}${atalhos}${agenda}</div>`
+    : `${cab}<div class="pagina">${stats}${pend}${atalhos}<div class="duas">${agenda}${resumoCard}</div></div>`;
+  return shell(m,'inicio',corpo);
+}
+
+function chip(nome,txt,on){return `<label class="chip"><input type="checkbox" name="${nome}" ${on?'checked':''}><span>${txt}</span></label>`}
+function formulario(m){
+  const cab=`<header class="cab-simples"><h1>Novo atendimento</h1><p>Brasilândia · 20/10/2026</p><div class="passos"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></div></header>`;
+  const dados=`<fieldset class="fsec"><legend><span>1</span>Dados pessoais</legend>
+    <div class="grade g3">
+      <div class="campo"><label for="${m?'m':'d'}cpf">CPF <i>*</i></label><input id="${m?'m':'d'}cpf" class="input" inputmode="numeric" value="123.456.789-09"></div>
+      <div class="campo" style="grid-column:span 2"><label for="${m?'m':'d'}nome">Nome completo <i>*</i></label><input id="${m?'m':'d'}nome" class="input" value="Joana Aparecida da Silva"></div></div>
+    <div class="aviso-ok" role="status">${ic('check',20)}<div><b>Cadastro existente — dados preenchidos.</b><br>Confira se continuam atuais antes de salvar.</div></div>
+    <div class="grade g3" style="margin-top:12px">
+      <div class="campo"><label for="${m?'m':'d'}nasc">Nascimento <i>*</i></label><input id="${m?'m':'d'}nasc" class="input" value="14/03/1987"><span class="aj">Faixa etária: Adulto (30–59)</span></div>
+      <div class="campo erro"><label for="${m?'m':'d'}tel">Telefone</label><input id="${m?'m':'d'}tel" class="input" value="(11) 9876-54" aria-invalid="true" aria-describedby="${m?'m':'d'}te"><span class="msg" id="${m?'m':'d'}te">${ic('erro',15)}Telefone incompleto. Use DDD e 9 dígitos.</span></div>
+      <div class="campo"><label for="${m?'m':'d'}cad">Nº CadÚnico (NIS)</label><input id="${m?'m':'d'}cad" class="input" inputmode="numeric" value="16234567890"></div></div>
+    <div class="grade g2" style="margin-top:12px">
+      <div class="campo"><label for="${m?'m':'d'}end">Endereço</label><input id="${m?'m':'d'}end" class="input" value="Rua das Palmeiras, 128"></div>
+      <div class="campo"><label for="${m?'m':'d'}bai">Bairro</label><input id="${m?'m':'d'}bai" class="input" value="Vila Brasilândia"></div></div></fieldset>`;
+  const dem=`<fieldset class="fsec"><legend><span>2</span>Demanda</legend><div class="chips">
+    ${chip('d','Atualização do CadÚnico',1)}${chip('d','Novo cadastro do CadÚnico')}${chip('d','Informações/Orientações',1)}${chip('d','Saúde')}${chip('d','Proteção Social Básica')}${chip('d','Proteção Social Especial')}${chip('d','Violação de direitos — Mulher')}${chip('d','Outra')}</div></fieldset>`;
+  const niv=['Altíssima','Alta','Média','Baixa','Outra'];
+  const vul=`<fieldset class="fsec"><legend><span>3</span>Vulnerabilidade</legend><div class="rot" style="margin-bottom:8px">Nível</div><div class="niveis" role="radiogroup">
+    ${niv.map((n,i)=>`<label class="nivel"><input type="radio" name="${m?'mn':'dn'}" ${i===1?'checked':''}><span>${n}</span></label>`).join('')}</div>
+    <div class="rot" style="margin:14px 0 8px">Riscos identificados</div><div class="chips">${chip('v','Insegurança alimentar',1)}${chip('v','Desemprego ou subemprego',1)}${chip('v','Moradia precária')}${chip('v','Violência doméstica')}</div></fieldset>`;
+  const enc=`<fieldset class="fsec"><legend><span>4</span>Encaminhamento</legend><div class="chips">
+    ${chip('e','CRAS',1)}${chip('e','CREAS')}${chip('e','UBS')}${chip('e','Centro de Referência da Mulher')}${chip('e','Unidade Descomplica',1)}${chip('e','Conselho Tutelar')}</div></fieldset>`;
+  const res=`<fieldset class="fsec"><legend><span>5</span>Resumo do atendimento</legend><div class="campo"><label for="${m?'m':'d'}res" class="rot" style="position:absolute;left:-9999px">Resumo</label><textarea id="${m?'m':'d'}res" class="input" placeholder="Descreva o atendimento, as orientações dadas e os próximos passos...">Usuária procurou o serviço para atualizar o CadÚnico após mudança de endereço. Orientada sobre documentos necessários e encaminhada ao CRAS.</textarea></div></fieldset>`;
+  const rod=m
+    ? `<div class="rodape-fixo"><button class="btn sec">Cancelar</button><button class="btn">Salvar atendimento</button></div>`
+    : `<div class="rodape-inline"><button class="btn sec">Cancelar</button><button class="btn">Salvar atendimento</button></div>`;
+  const corpo=m
+    ? `${cab}<div class="form-corpo">${dados}${dem}${vul}${enc}${res}</div>${rod}`
+    : `${cab}<div class="form-corpo">${dados}${dem}${vul}${enc}${res}${rod}</div>`;
+  return m ? `<div class="m app" style="position:relative"><div class="conteudo">${cab}<div class="form-corpo">${dados}${dem}${vul}${enc}${res}</div></div>${rod}</div>` : shell(false,'atend',corpo);
+}
+
+const FAM=[
+ ['Família Santos','Ana Paula dos Santos','5','21/07/2026','Vence em 5 dias','vence'],
+ ['Família Oliveira','Marcos Oliveira','3','04/06/2026','Vencido há 12 dias','venc'],
+ ['Família Ferreira','Luciana Ferreira','4','15/08/2026','Em dia','dia-ok'],
+ ['Família Almeida','Josefa Almeida','6','10/03/2026','Concluído','concl'],
+ ['Família Costa','Renata Costa','2','02/09/2026','Em dia','dia-ok']];
+function familias(m){
+  const filtros=['Todas','Em dia','Vence em breve','Vencido','Concluído'].map((t,i)=>`<label class="chip"><input type="radio" name="${m?'mf':'df'}" ${i===0?'checked':''}><span>${t}</span></label>`).join('');
+  const cab=m
+   ? `<header class="cab"><div class="linha-topo"><div class="logo">${logo}<div>ASSOCIAL<small>Serviço Social · INTECS</small></div></div><div class="avatar">MA</div></div><h1>Famílias</h1><p>5 famílias · Brasilândia</p></header>`
+   : `<header class="cab"><h1>Famílias acompanhadas</h1><p>Brasilândia · 5 famílias no total</p></header>`;
+  const busca=`<div class="busca">${ic('busca',20)}<input class="input" placeholder="Buscar por nome ou CPF do responsável" aria-label="Buscar família"></div>`;
+  const cards=`<div class="fam-cartoes">${FAM.map(f=>`<article class="fam-card" tabindex="0"><div class="l1"><h3>${f[0]}</h3><span class="selo ${f[5]}">${f[4]}</span></div><div class="meta"><span>${ic('users',15)}${f[1]}</span></div><div class="meta"><span>${ic('fam',15)}${f[2]} membros</span><span>${ic('cal',15)}Início ${f[3]}</span></div></article>`).join('')}</div>`;
+  const tab=`<table class="fam-tabela"><thead><tr><th>Família</th><th>Responsável</th><th>Membros</th><th>Início</th><th>Questionário final</th><th></th></tr></thead><tbody>${FAM.map(f=>`<tr><td><b>${f[0]}</b></td><td>${f[1]}</td><td>${f[2]}</td><td>${f[3]}</td><td><span class="selo ${f[5]}">${f[4]}</span></td><td style="text-align:right;color:var(--primaria)">${ic('seta',18)}</td></tr>`).join('')}</tbody></table>`;
+  const barra=m
+    ? `<div class="pagina sobe" style="padding-bottom:90px">${busca}<div class="filtros" role="radiogroup" aria-label="Filtrar">${filtros}</div><div class="cont">5 famílias</div>${cards}</div><button class="fab" aria-label="Nova família">${ic('plus',26)}</button>`
+    : `<div class="pagina"><div class="barra-lista">${busca}<button class="btn">${ic('plus',18)}Nova família</button></div><div class="filtros" role="radiogroup" aria-label="Filtrar">${filtros}</div><div class="cont">Mostrando 5 de 5 famílias</div>${tab}</div>`;
+  return m ? `<div class="m app" style="position:relative"><div class="conteudo">${cab}${barra}</div>${navInf('fam')}</div>` : shell(false,'fam',`${cab}${barra}`);
+}
+
+/* ---------- montagem ---------- */
+const TELAS={inicio,form:formulario,familias};
+document.querySelectorAll('[data-tela]').forEach(box=>{
+  const fn=TELAS[box.dataset.tela];
+  box.innerHTML=`<div><div class="celular"><div class="tela">${fn(true)}</div></div><div class="legenda">Celular · 390 × 844</div></div>
+    <div class="desk-box"><div class="desk-ajuste"><div class="desk"><div class="barra-nav"><i></i><i></i><i></i><span>associal.intecs.org.br</span></div><div style="height:calc(100% - 34px)">${fn(false)}</div></div></div><div class="legenda">Computador · 1280 px</div></div>`;
+});
+function ajustar(){
+  document.querySelectorAll('.desk-ajuste').forEach(aj=>{
+    const d=aj.firstElementChild, disp=aj.parentElement.clientWidth;
+    const s=Math.min(1,disp/1280);
+    d.style.transform=`scale(${s})`; aj.style.height=(800*s)+'px'; aj.style.width=(1280*s)+'px';
+  });
+}
+addEventListener('resize',ajustar); ajustar();
+document.fonts&&document.fonts.ready.then(ajustar);
+</script>
+</body>
+</html>

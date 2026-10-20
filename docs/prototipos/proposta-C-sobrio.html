@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="claro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASSOCIAL — Proposta C · Sóbrio e produtivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pri:#0F766E; --pri-h:#115E59; --pri-fraca:#E6F4F2; --pri-txt:#0F766E;
+  --bg:#F1F5F9; --sup:#FFFFFF; --sup2:#F8FAFC; --borda:#CBD5E1; --borda-f:#E2E8F0;
+  --txt:#0F172A; --txt2:#475569; --txt3:#64748B;
+  --ok:#15803D; --ok-bg:#DCFCE7; --av:#A16207; --av-bg:#FEF3C7; --er:#B91C1C; --er-bg:#FEE2E2; --inf:#1D4ED8; --inf-bg:#DBEAFE;
+  --side:#0F172A; --side-txt:#CBD5E1; --side-ativo:#1E293B;
+  --r:6px; --fonte:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+[data-theme="escuro"]{
+  --pri:#14B8A6; --pri-h:#2DD4BF; --pri-fraca:#10302F; --pri-txt:#5EEAD4;
+  --bg:#0B1220; --sup:#111A2B; --sup2:#16213A; --borda:#334155; --borda-f:#243247;
+  --txt:#E2E8F0; --txt2:#A8B4C6; --txt3:#8EA0B8;
+  --ok:#4ADE80; --ok-bg:#12301F; --av:#FBBF24; --av-bg:#35290C; --er:#F87171; --er-bg:#3B1517; --inf:#93C5FD; --inf-bg:#14284A;
+  --side:#070C17; --side-txt:#A8B4C6; --side-ativo:#16213A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 var(--fonte);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+button{font:inherit}
+
+/* ---------- página de apresentação ---------- */
+.apres{max-width:1480px;margin:0 auto;padding:24px 16px 64px}
+.topo{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--borda);padding-bottom:20px;margin-bottom:24px}
+.topo h1{margin:0 0 6px;font-size:22px;font-weight:600}
+.topo p{margin:0;max-width:760px;color:var(--txt2)}
+.topo .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.amostra{display:inline-flex;align-items:center;gap:6px;font:500 12px 'IBM Plex Mono',monospace;color:var(--txt2);border:1px solid var(--borda);background:var(--sup);padding:3px 8px;border-radius:var(--r)}
+.amostra i{width:12px;height:12px;border-radius:3px;border:1px solid var(--borda);display:inline-block}
+.alterna{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid var(--borda);background:var(--sup);color:var(--txt);border-radius:var(--r);cursor:pointer;font-weight:500}
+.alterna:hover{border-color:var(--pri)}
+.alterna[aria-pressed=true] .lua{display:none}.alterna[aria-pressed=false] .sol{display:none}
+.nav-tela{display:flex;gap:8px;margin:0 0 20px;flex-wrap:wrap}
+.nav-tela a{padding:8px 12px;border:1px solid var(--borda);border-radius:var(--r);background:var(--sup);text-decoration:none;font-weight:500;min-height:44px;display:inline-flex;align-items:center}
+.nav-tela a:hover{border-color:var(--pri);color:var(--pri-txt)}
+.tela-bloco{margin-bottom:56px}
+.tela-bloco>h2{font-size:16px;margin:0 0 4px;font-weight:600}
+.tela-bloco>p{margin:0 0 16px;color:var(--txt2)}
+.molduras{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.rot{font:500 12px 'IBM Plex Mono',monospace;color:var(--txt3);margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
+
+/* moldura do celular */
+.cel{width:418px;max-width:100%;padding:14px;background:#0B0F19;border-radius:40px;border:1px solid #334155}
+.cel .tela{width:390px;height:844px;max-width:100%;background:var(--bg);border-radius:28px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.cel .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:110px;height:24px;background:#0B0F19;border-radius:14px;z-index:5}
+.status{height:40px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 24px 4px;font-size:12px;font-weight:600;background:var(--sup)}
+/* moldura desktop (escala reduzida) */
+.desk-ext{width:calc(1280px*.66);height:calc(800px*.66 + 30px);max-width:100%}
+.desk-ext.cheio{width:100%}
+.desk{width:1280px;height:800px;transform:scale(.66);transform-origin:top left;border:1px solid var(--borda);border-radius:8px;overflow:hidden;background:var(--bg)}
+.desk-barra{height:30px;background:var(--sup2);border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:6px;padding:0 12px;font:12px 'IBM Plex Mono',monospace;color:var(--txt3)}
+.desk-barra b{width:10px;height:10px;border-radius:50%;background:var(--borda);display:inline-block}
+.desk-ext{position:relative}
+.desk{position:absolute;top:0;left:0;height:830px}
+.desk-ext{height:calc(830px*.66)}
+@media (max-width:900px){
+  .desk-ext{width:100%;overflow-x:auto;height:auto}
+  .desk{position:relative;transform:none;width:1280px}
+}
+
+/* ---------- ASSOCIAL (app) ---------- */
+.app{display:flex;height:100%;min-height:0;font-size:14px}
+.desk .app{height:800px}
+.cel .app{flex-direction:column;flex:1;min-height:0}
+.marca{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.02em}
+.logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#F26A21,#7B3FE4);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;flex:none}
+.sidebar{width:216px;flex:none;background:var(--side);color:var(--side-txt);display:flex;flex-direction:column;padding:14px 10px}
+.sidebar .marca{color:#fff;padding:4px 8px 16px;font-size:15px}
+.sidebar .marca small{display:block;font-weight:400;font-size:11px;color:#94A3B8;letter-spacing:0}
+.sidebar .grupo{font:500 11px 'IBM Plex Mono',monospace;color:#64748B;text-transform:uppercase;letter-spacing:.06em;padding:12px 10px 6px}
+.item-menu{display:flex;align-items:center;gap:10px;padding:0 10px;min-height:38px;border-radius:var(--r);text-decoration:none;color:var(--side-txt);font-weight:500;border:1px solid transparent}
+.item-menu svg{width:18px;height:18px;flex:none}
+.item-menu:hover{background:var(--side-ativo);color:#fff}
+.item-menu.ativo{background:var(--side-ativo);color:#fff;border-color:#334155;box-shadow:inset 3px 0 0 #2DD4BF}
+.item-menu .n{margin-left:auto;font:500 11px 'IBM Plex Mono',monospace;background:#334155;color:#E2E8F0;border-radius:4px;padding:1px 6px}
+.side-usuario{margin-top:auto;border-top:1px solid #1E293B;padding:12px 8px 0;font-size:12px;color:#94A3B8}
+.side-usuario b{display:block;color:#E2E8F0;font-size:13px}
+.principal{flex:1;min-width:0;display:flex;flex-direction:column}
+.cab{display:flex;align-items:center;gap:12px;background:var(--sup);border-bottom:1px solid var(--borda);padding:0 20px;min-height:52px;flex:none}
+.cab h1{font-size:16px;margin:0;font-weight:600}
+.cab .mig{font-size:12px;color:var(--txt3)}
+.cab .dir{margin-left:auto;display:flex;align-items:center;gap:10px}
+.cel .cab{padding:0 14px;min-height:50px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--pri-fraca);color:var(--pri-txt);display:grid;place-items:center;font-weight:600;font-size:12px;border:1px solid var(--borda)}
+.conteudo{flex:1;min-height:0;overflow:auto;padding:20px}
+.cel .conteudo{padding:14px}
+.tabbar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:var(--sup);border-top:1px solid var(--borda);padding-bottom:6px}
+.tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;font-size:11px;font-weight:500;color:var(--txt3);text-decoration:none}
+.tabbar a svg{width:20px;height:20px}
+.tabbar a.ativo{color:var(--pri-txt);box-shadow:inset 0 2px 0 var(--pri)}
+.tabbar a:hover{color:var(--txt)}
+
+/* componentes */
+.card{background:var(--sup);border:1px solid var(--borda);border-radius:var(--r)}
+.card-t{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--borda-f);font-weight:600}
+.card-t small{font-weight:400;color:var(--txt3)}
+.card-c{padding:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:var(--r);border:1px solid var(--pri);background:var(--pri);color:#fff;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--pri-h);border-color:var(--pri-h)}
+[data-theme="escuro"] .btn{color:#042F2E}
+.btn.sec{background:var(--sup);color:var(--txt);border-color:var(--borda)}
+.btn.sec:hover{border-color:var(--pri);background:var(--sup2)}
+.btn.peq{min-height:34px;padding:0 12px;font-size:13px}
+.btn svg{width:18px;height:18px}
+.selo{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid;white-space:nowrap}
+.selo::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.selo.ok{color:var(--ok);background:var(--ok-bg);border-color:transparent}
+.selo.av{color:var(--av);background:var(--av-bg);border-color:transparent}
+.selo.er{color:var(--er);background:var(--er-bg);border-color:transparent}
+.selo.inf{color:var(--inf);background:var(--inf-bg);border-color:transparent}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.cel .kpis{grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{padding:12px 14px}
+.kpi span{display:block;font-size:12px;color:var(--txt2)}
+.kpi b{display:block;font-size:26px;line-height:1.15;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi small{font-size:11px;color:var(--txt3)}
+.cel .kpi b{font-size:22px}
+.cel .kpi:last-child{grid-column:span 2}
+.grade2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:16px}
+.cel .grade2{grid-template-columns:1fr;gap:12px;margin-top:12px}
+.pend{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--borda-f)}
+.pend:last-child{border:0}
+.pend .ic{width:30px;height:30px;border-radius:var(--r);display:grid;place-items:center;flex:none}
+.pend .ic svg{width:16px;height:16px}
+.pend p{margin:0;flex:1}.pend small{color:var(--txt3);display:block}
+.pend .ic.av{background:var(--av-bg);color:var(--av)}.pend .ic.er{background:var(--er-bg);color:var(--er)}.pend .ic.inf{background:var(--inf-bg);color:var(--inf)}
+.atalhos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.cel .atalhos{grid-template-columns:1fr;gap:8px;margin-top:12px}
+.atalho{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:64px;border:1px solid var(--borda);background:var(--sup);border-radius:var(--r);text-decoration:none;font-weight:600}
+.atalho:hover{border-color:var(--pri)}
+.atalho .ic{width:36px;height:36px;border-radius:var(--r);background:var(--pri);color:#fff;display:grid;place-items:center;flex:none}
+[data-theme="escuro"] .atalho .ic{color:#042F2E}
+.atalho .ic svg{width:20px;height:20px}
+.atalho small{display:block;font-weight:400;color:var(--txt3);font-size:12px}
+.sec-t{font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin:18px 0 8px}
+.mini-barras{display:flex;align-items:flex-end;gap:6px;height:92px;padding:10px 14px 0}
+.mini-barras div{flex:1;background:var(--pri-fraca);border:1px solid var(--pri);border-bottom:0;border-radius:3px 3px 0 0;position:relative}
+.mini-barras div.atual{background:var(--pri)}
+.mini-leg{display:flex;gap:6px;padding:4px 14px 10px;font-size:11px;color:var(--txt3)}
+.mini-leg span{flex:1;text-align:center}
+
+/* formulário */
+.form-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px 14px}
+.cel .form-grid{grid-template-columns:1fr}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.cel [class^=c]{grid-column:auto}
+.campo label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px}
+.campo label em{color:var(--er);font-style:normal}
+.input,.select,.area{width:100%;min-height:40px;border:1px solid var(--borda);border-radius:var(--r);background:var(--sup);color:var(--txt);padding:0 10px;font:inherit}
+.cel .input,.cel .select{min-height:46px}
+.area{padding:8px 10px;min-height:96px;resize:vertical}
+.input:hover,.select:hover,.area:hover{border-color:var(--txt3)}
+.input:focus-visible,.select:focus-visible,.area:focus-visible{outline:2px solid var(--pri);outline-offset:0;border-color:var(--pri)}
+.campo.erro .input{border-color:var(--er);background:var(--er-bg)}
+.msg-erro{display:flex;gap:6px;align-items:center;color:var(--er);font-size:12px;font-weight:500;margin-top:4px}
+.msg-erro svg{width:14px;height:14px;flex:none}
+.aviso{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:var(--r);font-size:13px;margin-top:6px;background:var(--ok-bg);color:var(--ok);border:1px solid transparent}
+.aviso svg{width:16px;height:16px;flex:none;margin-top:2px}
+.aviso b{font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid var(--borda);background:var(--sup);border-radius:var(--r);cursor:pointer;font-weight:500;color:var(--txt);user-select:none}
+.cel .chip{min-height:44px}
+.chip:hover{border-color:var(--txt3)}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip .ck{width:16px;height:16px;border:1.5px solid var(--txt3);border-radius:3px;display:grid;place-items:center;flex:none}
+.chip.radio .ck{border-radius:50%}
+.chip svg{width:12px;height:12px;opacity:0;color:#fff}
+.chip.on{border-color:var(--pri);background:var(--pri-fraca);color:var(--pri-txt)}
+.chip.on .ck{background:var(--pri);border-color:var(--pri)}
+.chip.on svg{opacity:1}
+[data-theme="escuro"] .chip.on svg{color:#042F2E}
+.chip:focus-within{outline:2px solid var(--pri);outline-offset:1px}
+.niveis .chip.n-a.on{border-color:var(--er);background:var(--er-bg);color:var(--er)}.niveis .chip.n-a.on .ck{background:var(--er);border-color:var(--er)}
+.rodape-fixo{flex:none;display:flex;gap:8px;padding:10px 14px;background:var(--sup);border-top:1px solid var(--borda)}
+.rodape-fixo .btn{flex:1}
+.desk .rodape-fixo{justify-content:flex-end;border:1px solid var(--borda);border-radius:var(--r);margin-top:16px}
+.desk .rodape-fixo .btn{flex:none}
+.fs{margin-bottom:14px}
+
+/* tabela / lista */
+.barra-filtros{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;align-items:center}
+.busca{position:relative;flex:1;min-width:200px}
+.busca svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--txt3)}
+.busca .input{padding-left:32px}
+.seg{display:inline-flex;border:1px solid var(--borda);border-radius:var(--r);overflow:hidden;background:var(--sup)}
+.seg button{min-height:40px;padding:0 12px;border:0;border-right:1px solid var(--borda);background:transparent;color:var(--txt2);cursor:pointer;font-weight:500}
+.seg button:last-child{border:0}
+.seg button:hover{background:var(--sup2)}
+.seg button.on{background:var(--pri-fraca);color:var(--pri-txt);font-weight:600}
+.cel .seg{overflow-x:auto;max-width:100%}.cel .seg button{min-height:44px;white-space:nowrap}
+table{width:100%;border-collapse:collapse}
+th{font:600 11px var(--fonte);text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);text-align:left;padding:8px 12px;background:var(--sup2);border-bottom:1px solid var(--borda)}
+td{padding:7px 12px;border-bottom:1px solid var(--borda-f);vertical-align:middle}
+tbody tr:hover{background:var(--pri-fraca)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td .nome{font-weight:600}td .sub{color:var(--txt3);font-size:12px}
+.tab-rod{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;color:var(--txt3);font-size:12px;border-top:1px solid var(--borda)}
+.cards-fam{display:grid;gap:8px}
+.fam{padding:12px 14px;display:grid;gap:8px}
+.fam .l1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.fam .l2{display:flex;gap:14px;font-size:12px;color:var(--txt2);flex-wrap:wrap}
+.fam:hover{border-color:var(--pri)}
+.rodape-apres{border-top:1px solid var(--borda);padding-top:16px;color:var(--txt3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="apres">
+  <header class="topo">
+    <div>
+      <h1>Proposta C — Sóbrio e produtivo</h1>
+      <p>Interface de sistema de gestão: densa, previsível e rápida de escanear. Neutros em slate com azul-petróleo como única cor de ação; sidebar escura no PC e barra inferior no celular. Cantos de 6&nbsp;px, bordas finas de 1&nbsp;px no lugar de sombras, tabelas compactas com números tabulares e selos de estado discretos. Tipografia IBM Plex Sans (rótulos técnicos em Plex Mono). Tema escuro funcional — use o botão ao lado.</p>
+      <div class="tags">
+        <span class="amostra"><i style="background:#0F766E"></i>#0F766E primária</span>
+        <span class="amostra"><i style="background:#0F172A"></i>#0F172A sidebar/texto</span>
+        <span class="amostra"><i style="background:#F1F5F9"></i>#F1F5F9 fundo</span>
+        <span class="amostra"><i style="background:#CBD5E1"></i>#CBD5E1 bordas</span>
+        <span class="amostra"><i style="background:#B91C1C"></i>#B91C1C erro</span>
+        <span class="amostra"><i style="background:linear-gradient(135deg,#F26A21,#7B3FE4)"></i>logo INTECS</span>
+      </div>
+    </div>
+    <button class="alterna" id="tema" aria-pressed="false" type="button">
+      <svg class="lua" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg class="sol" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span id="tema-rot">Tema escuro</span>
+    </button>
+  </header>
+  <nav class="nav-tela" aria-label="Telas">
+    <a href="#t1">1 · Início</a><a href="#t2">2 · Novo atendimento</a><a href="#t3">3 · Famílias acompanhadas</a>
+  </nav>
+
+  <section class="tela-bloco" id="t1"><h2>1 · Início da Assistente Social</h2><p>Resumo do mês em cartões compactos, pendências priorizadas e atalhos grandes para o trabalho de campo.</p><div class="molduras" id="m1"></div></section>
+  <section class="tela-bloco" id="t2"><h2>2 · Novo atendimento</h2><p>Formulário em seções, chips de múltipla escolha, aviso de cadastro existente e campo com erro de validação. No celular o botão Salvar fica fixo no rodapé.</p><div class="molduras" id="m2"></div></section>
+  <section class="tela-bloco" id="t3"><h2>3 · Famílias acompanhadas</h2><p>Tabela compacta no PC; cards no celular. Busca, filtros por situação do questionário final.</p><div class="molduras" id="m3"></div></section>
+  <p class="rodape-apres">Protótipo visual — dados fictícios. Não altera o aplicativo.</p>
+</div>
+
+<script>
+const I = {
+  inicio:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  atend:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+  acoes:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  fam:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
+  rel:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  relogio:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alerta:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  ok:'<path d="M20 6L9 17l-5-5"/>',
+  busca:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  sair:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
+};
+const ic = (n,s) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${s?` style="${s}"`:''}>${I[n]}</svg>`;
+const ck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+
+const MENU = [['inicio','Início','inicio'],['atend','Atendimentos','atend'],['acoes','Ações','acoes'],['fam','Famílias','fam'],['rel','Relatórios','rel']];
+
+function sidebar(ativo){
+  return `<aside class="sidebar"><div class="marca"><span class="logo">IN</span><span>ASSOCIAL<small>Serviço Social · INTECS</small></span></div>
+  <div class="grupo">Navegação</div>
+  ${MENU.map(([k,r,i])=>`<a href="#" class="item-menu${k===ativo?' ativo':''}">${ic(i)}${r}${k==='fam'?'<span class="n">2</span>':''}</a>`).join('')}
+  <div class="side-usuario"><b>Juliana Ribeiro</b>Assistente Social · BRA<br>CRESS 12345/9ª</div></aside>`;
+}
+function tabbar(ativo){
+  return `<nav class="tabbar" aria-label="Principal">${MENU.map(([k,r,i])=>`<a href="#" class="${k===ativo?'ativo':''}">${ic(i)}${r}</a>`).join('')}</nav>`;
+}
+function cab(titulo, mig){
+  return `<div class="cab"><div><h1>${titulo}</h1>${mig?`<div class="mig">${mig}</div>`:''}</div><div class="dir"><span class="selo inf">Brasilândia</span><span class="avatar">JR</span></div></div>`;
+}
+function cel(conteudo){
+  return `<div><p class="rot">Celular · 390×844</p><div class="cel"><div class="tela"><span class="notch"></span><div class="status"><span>09:41</span><span>5G ▮▮▮</span></div>${conteudo}</div></div></div>`;
+}
+function desk(conteudo, url){
+  return `<div class="desk-wrap"><p class="rot">Desktop · 1280px (escala 66%)</p><div class="desk-ext"><div class="desk"><div class="desk-barra"><b></b><b></b><b></b>&nbsp; ${url}</div>${conteudo}</div></div></div>`;
+}
+
+/* ---- Tela 1 ---- */
+function kpis(){
+  const d=[['Atendimentos','48','mês de out/2026'],['Encaminhamentos','31','65% dos atend.'],['Ações','3','realizadas'],['Participantes','95','nas ações'],['Famílias acompanhadas','4','em andamento']];
+  return `<div class="kpis">${d.map(([a,b,c])=>`<div class="card kpi"><span>${a}</span><b>${b}</b><small>${c}</small></div>`).join('')}</div>`;
+}
+function pendencias(){
+  return `<div class="card"><div class="card-t">Pendências <small>3 itens</small></div>
+  <div class="pend"><span class="ic av">${ic('relogio')}</span><p><b>Questionário final de Família Santos</b> vence em 5 dias<small>Limite 25/10/2026 · responsável Maria Santos</small></p><a class="btn sec peq" href="#">Abrir</a></div>
+  <div class="pend"><span class="ic er">${ic('alerta')}</span><p><b>Questionário final de Família Oliveira</b> vencido há 3 dias<small>Limite 17/10/2026</small></p><a class="btn sec peq" href="#">Abrir</a></div>
+  <div class="pend"><span class="ic inf">${ic('info')}</span><p><b>Ação “Roda de conversa — CRAS Freguesia”</b> sem atualização<small>Planejada para 15/10/2026</small></p><a class="btn sec peq" href="#">Atualizar</a></div></div>`;
+}
+function atalhos(){
+  return `<div class="atalhos"><a class="atalho" href="#"><span class="ic">${ic('plus')}</span><span>Novo atendimento<small>Registrar atendimento social</small></span></a>
+  <a class="atalho" href="#"><span class="ic">${ic('acoes')}</span><span>Nova ação<small>Visita ou ação na unidade</small></span></a>
+  <a class="atalho" href="#"><span class="ic">${ic('fam')}</span><span>Famílias<small>Acompanhamento e questionários</small></span></a></div>`;
+}
+function evolucao(){
+  const v=[52,61,44,58,70,48]; const m=['mai','jun','jul','ago','set','out'];
+  return `<div class="card"><div class="card-t">Atendimentos por mês <small>BRA</small></div><div class="mini-barras">${v.map((x,i)=>`<div class="${i===5?'atual':''}" style="height:${x}%" title="${m[i]}: ${x}"></div>`).join('')}</div><div class="mini-leg">${m.map(x=>`<span>${x}</span>`).join('')}</div></div>`;
+}
+const t1m = cel(`<div class="app">${cab('Olá, Juliana','Brasilândia · outubro de 2026')}<div class="conteudo">
+  <div class="sec-t" style="margin-top:0">Resumo do mês</div>${kpis()}<div class="sec-t">Atalhos</div>${atalhos().replace('class="atalhos"','class="atalhos" style="margin-top:0"')}
+  <div class="sec-t">Pendências</div>${pendencias().replace(/<a class="btn sec peq"[^>]*>[^<]*<\/a>/g,'')}</div>${tabbar('inicio')}</div>`);
+const t1d = desk(`<div class="app">${sidebar('inicio')}<div class="principal">${cab('Olá, Juliana','Brasilândia · outubro de 2026')}<div class="conteudo">
+  ${kpis()}${atalhos()}<div class="grade2">${pendencias()}${evolucao()}</div></div></div></div>`,'associal.intecs.org.br/index.html');
+
+/* ---- Tela 2 ---- */
+const chip = (t,on,tipo='')=>`<label class="chip ${tipo} ${on?'on':''}"><input type="${tipo==='radio'?'radio':'checkbox'}" ${on?'checked':''}><span class="ck">${ck}</span>${t}</label>`;
+function formulario(){
+  return `
+  <div class="card fs"><div class="card-t">1 · Dados pessoais <small>* obrigatório</small></div><div class="card-c"><div class="form-grid">
+    <div class="campo c4"><label>CPF <em>*</em></label><input class="input" value="123.456.789-09" inputmode="numeric"><div class="aviso">${ic('ok')}<span><b>Cadastro existente — dados preenchidos.</b> Última atualização em 12/08/2026.</span></div></div>
+    <div class="campo c8"><label>Nome completo <em>*</em></label><input class="input" value="Maria Aparecida dos Santos"></div>
+    <div class="campo c3"><label>Data de nascimento</label><input class="input" value="14/03/1981"></div>
+    <div class="campo c3 erro"><label>Telefone <em>*</em></label><input class="input" value="(11) 9876" inputmode="tel" aria-invalid="true"><div class="msg-erro">${ic('alerta')}Telefone incompleto. Use DDD + 9 dígitos.</div></div>
+    <div class="campo c6"><label>Nº CadÚnico (NIS)</label><input class="input" value="16012345678"></div>
+    <div class="campo c8"><label>Endereço</label><input class="input" value="Rua das Palmeiras, 220"></div>
+    <div class="campo c4"><label>CEP</label><input class="input" value="02730-000"></div>
+    <div class="campo c6"><label>Bairro</label><input class="input" value="Brasilândia"></div>
+    <div class="campo c6"><label>Trabalho atual</label><input class="input" value="Diarista"></div>
+  </div></div></div>
+  <div class="card fs"><div class="card-t">2 · Demanda <small>escolha uma ou mais</small></div><div class="card-c"><div class="chips">
+    ${chip('Atualização do CadÚnico',true)}${chip('Novo cadastro do CadÚnico')}${chip('Informações/Orientações',true)}${chip('Saúde')}${chip('Proteção Social Básica')}${chip('Proteção Social Especial')}${chip('Violação de direitos — Mulher')}${chip('Outra')}
+  </div></div></div>
+  <div class="card fs"><div class="card-t">3 · Vulnerabilidade</div><div class="card-c"><div class="chips niveis">
+    ${chip('Altíssima',false,'radio n-a')}${chip('Alta',true,'radio')}${chip('Média',false,'radio')}${chip('Baixa',false,'radio')}
+  </div></div></div>
+  <div class="card fs"><div class="card-t">4 · Encaminhamento</div><div class="card-c"><div class="chips">
+    ${chip('CRAS',true)}${chip('CREAS')}${chip('UBS')}${chip('CAPS Adulto')}${chip('Centro de Referência da Mulher')}${chip('Conselho Tutelar')}${chip('Unidade Descomplica',true)}${chip('Outra')}
+  </div></div></div>
+  <div class="card fs"><div class="card-t">5 · Resumo do atendimento</div><div class="card-c"><div class="campo"><label>Descrição</label><textarea class="area">Usuária procurou o serviço para atualizar o CadÚnico após mudança de endereço. Orientada quanto aos documentos; encaminhada ao CRAS e à Unidade Descomplica.</textarea></div></div></div>`;
+}
+const t2m = cel(`<div class="app">${cab('Novo atendimento','Passo único · rascunho salvo')}<div class="conteudo">${formulario()}</div>
+  <div class="rodape-fixo"><a class="btn sec" href="#">Cancelar</a><a class="btn" href="#">Salvar atendimento</a></div>${tabbar('atend')}</div>`);
+const t2d = desk(`<div class="app">${sidebar('atend')}<div class="principal">${cab('Novo atendimento','Atendimentos › Novo')}<div class="conteudo">${formulario()}
+  <div class="rodape-fixo"><a class="btn sec" href="#">Cancelar</a><a class="btn" href="#">Salvar atendimento</a></div></div></div></div>`,'associal.intecs.org.br/atendimentos.html#novo');
+
+/* ---- Tela 3 ---- */
+const FAM = [
+ ['Família Santos','Maria Santos',5,'02/06/2026','25/10/2026','av','Vence em 5 dias'],
+ ['Família Oliveira','Joana Oliveira',4,'15/05/2026','17/10/2026','er','Vencido'],
+ ['Família Almeida','Carla Almeida',3,'10/07/2026','08/11/2026','ok','Em dia'],
+ ['Família Rodrigues','Paulo Rodrigues',6,'20/03/2026','18/06/2026','inf','Concluído'],
+ ['Família Pereira','Lúcia Pereira',2,'01/09/2026','30/11/2026','ok','Em dia']];
+function filtros(){
+  return `<div class="barra-filtros"><div class="busca">${ic('busca')}<input class="input" placeholder="Buscar por responsável ou CPF" aria-label="Buscar"></div>
+  <div class="seg" role="group" aria-label="Filtrar situação"><button class="on">Todas</button><button>Em dia</button><button>Vence em breve</button><button>Vencido</button><button>Concluído</button></div></div>`;
+}
+const t3m = cel(`<div class="app">${cab('Famílias','5 acompanhadas')}<div class="conteudo">${filtros()}<div class="cards-fam">
+  ${FAM.map(f=>`<a class="card fam" href="#" style="text-decoration:none"><div class="l1"><div><div class="nome" style="font-weight:600">${f[0]}</div><div style="color:var(--txt3);font-size:12px">Resp.: ${f[1]}</div></div><span class="selo ${f[5]}">${f[6]}</span></div><div class="l2"><span>${f[2]} membros</span><span>Início ${f[3]}</span><span>Limite ${f[4]}</span></div></a>`).join('')}
+  </div></div>${tabbar('fam')}</div>`);
+const t3d = desk(`<div class="app">${sidebar('fam')}<div class="principal">${cab('Famílias acompanhadas','Brasilândia')}<div class="conteudo">${filtros()}
+  <div class="card"><table><thead><tr><th>Família</th><th>Responsável</th><th class="num">Membros</th><th>Início</th><th>Limite do questionário final</th><th>Situação</th><th></th></tr></thead><tbody>
+  ${FAM.map(f=>`<tr><td><span class="nome">${f[0]}</span></td><td>${f[1]}</td><td class="num">${f[2]}</td><td>${f[3]}</td><td>${f[4]}</td><td><span class="selo ${f[5]}">${f[6]}</span></td><td style="text-align:right"><a class="btn sec peq" href="#">Abrir</a></td></tr>`).join('')}
+  </tbody></table><div class="tab-rod"><span>5 de 5 famílias</span><span>Prazo padrão: 90 dias · aviso 15 dias antes</span></div></div>
+  <div style="margin-top:12px"><a class="btn" href="#">${ic('plus')}Nova família</a></div></div></div></div>`,'associal.intecs.org.br/familias.html');
+
+document.getElementById('m1').innerHTML = t1m + t1d;
+document.getElementById('m2').innerHTML = t2m + t2d;
+document.getElementById('m3').innerHTML = t3m + t3d;
+
+/* interações simples */
+document.addEventListener('change', e => { const c=e.target.closest('.chip'); if(!c) return; });
+document.addEventListener('click', e => {
+  const chipEl = e.target.closest('.chip');
+  if (chipEl) {
+    e.preventDefault();
+    const inp = chipEl.querySelector('input');
+    if (inp.type === 'radio') { chipEl.parentElement.querySelectorAll('.chip').forEach(x => { x.classList.remove('on'); x.querySelector('input').checked = false; }); inp.checked = true; chipEl.classList.add('on'); }
+    else { inp.checked = !inp.checked; chipEl.classList.toggle('on', inp.checked); }
+    return;
+  }
+  const b = e.target.closest('.seg button');
+  if (b) { b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); return; }
+  const a = e.target.closest('a[href="#"]'); if (a) e.preventDefault();
+});
+const btnTema = document.getElementById('tema');
+btnTema.addEventListener('click', () => {
+  const escuro = document.documentElement.dataset.theme !== 'escuro';
+  document.documentElement.dataset.theme = escuro ? 'escuro' : 'claro';
+  btnTema.setAttribute('aria-pressed', String(escuro));
+  document.getElementById('tema-rot').textContent = escuro ? 'Tema claro' : 'Tema escuro';
+});
+if (matchMedia('(prefers-color-scheme: dark)').matches) btnTema.click();
+</script>
+</body>
+</html>
