@@ -5,7 +5,7 @@ import {
   h, toast, carregando, mascarar, formatarCpf, formatarCep, cpfValido, apenasDigitos, hojeIso,
   mostrarErrosCampos, comEspera,
 } from '../ui.js';
-import { carregarApoio, cabecalhoPagina, campo, selectApoio, isoDia } from './util.js';
+import { carregarApoio, cabecalhoPagina, campo, selectApoio, isoDia, montar } from './util.js';
 
 function entrada(attrs) {
   return h('input', { class: 'input', ...attrs });
@@ -54,14 +54,14 @@ function criarCartaoMembro(apoio, membro = {}) {
 }
 
 export async function renderCadastro({ usuario, conteudo, navegar }, acompanhamentoId = null) {
-  conteudo.replaceChildren(carregando());
+  montar(conteudo, carregando());
   const edicao = acompanhamentoId !== null;
   const [apoio, atual] = await Promise.all([
     carregarApoio(),
     edicao ? api.get(`/api/familias/acompanhamentos/${acompanhamentoId}`) : null,
   ]);
   if (edicao && atual.status !== 'EM_ANDAMENTO') {
-    conteudo.replaceChildren(
+    montar(conteudo, 
       cabecalhoPagina('Editar família', { voltar: { href: `#/a/${acompanhamentoId}`, texto: 'Voltar' } }),
       h('div', { class: 'aviso aviso-aviso' }, 'Este acompanhamento já foi encerrado e não pode mais ser alterado.'));
     return;
@@ -254,7 +254,7 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
     });
   });
 
-  conteudo.replaceChildren(
+  montar(conteudo, 
     cabecalhoPagina(edicao ? 'Editar família' : 'Nova família', {
       voltar: { href: edicao ? `#/a/${acompanhamentoId}` : '#/', texto: edicao ? 'Voltar à família' : 'Lista de famílias' },
     }),

@@ -3,8 +3,8 @@
 .rel-abas { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-4); }
 .rel-aba {
   flex: 1 1 auto; min-height: var(--alvo-toque); padding: 0 var(--esp-4);
-  font: inherit; font-weight: 600; color: var(--cor-primaria);
-  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--cor-texto-primaria);
+  background: var(--cor-superficie); border: 2px solid var(--cor-borda); border-radius: var(--raio-pilula); cursor: pointer;
 }
 .rel-aba[aria-selected="true"] { color: var(--cor-texto-inverso); background: var(--cor-primaria); border-color: var(--cor-primaria); }
 

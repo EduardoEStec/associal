@@ -12,19 +12,19 @@ body {
   background: var(--cor-fundo);
 }
 
-h1, h2, h3 { line-height: 1.25; margin: 0 0 var(--esp-3); }
+h1, h2, h3 { line-height: 1.25; margin: 0 0 var(--esp-3); font-weight: 800; }
 h1 { font-size: var(--texto-2xl); }
 h2 { font-size: var(--texto-xl); }
 h3 { font-size: var(--texto-lg); }
 p { margin: 0 0 var(--esp-3); }
 
-a { color: var(--cor-primaria); }
+a { color: var(--cor-texto-primaria); }
 a:hover { color: var(--cor-primaria-escura); }
 
 img, svg { max-width: 100%; }
 
 :focus-visible {
-  outline: 3px solid var(--cor-destaque);
+  outline: 3px solid var(--cor-foco);
   outline-offset: 2px;
 }
 

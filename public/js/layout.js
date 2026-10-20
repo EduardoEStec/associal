@@ -46,21 +46,32 @@ export const ITENS_MENU = [
 const ROTULO_PERFIL = { ASSISTENTE: 'Assistente Social', COORDENADOR: 'Coordenador', ADMIN: 'Administrador' };
 const MAX_ITENS_CELULAR = 5;
 
+function iniciais(nome) {
+  const partes = String(nome || '?').trim().split(/\s+/);
+  return ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
+
 function montarCabecalho(usuario) {
   const unidades = usuario.unidades.length === 1 ? usuario.unidades[0].nome : '';
   return h(
     'header', { class: 'app-cabecalho' },
-    h('a', { class: 'app-marca', href: '/index.html' }, 'ASSOCIAL', h('small', {}, 'Serviço Social · INTECS')),
+    h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
+      h('img', { class: 'app-logo', src: '/img/intecs-logo-laranja.png', alt: 'INTECS', width: 113, height: 30 })),
     h(
       'div', { class: 'app-usuario' },
       h('div', { class: 'nome' }, usuario.nome, h('small', {}, [ROTULO_PERFIL[usuario.perfil], unidades].filter(Boolean).join(' · '))),
+      h('span', { class: 'app-avatar', 'aria-hidden': 'true' }, iniciais(usuario.nome)),
       h('button', { type: 'button', class: 'btn btn-texto btn-pequeno', onclick: sair }, 'Sair'),
     ),
   );
 }
 
 function montarMenu(chaveAtual, itens) {
-  const nav = h('nav', { class: 'app-menu', 'aria-label': 'Menu principal' });
+  const nav = h('nav', { class: 'app-menu', 'aria-label': 'Menu principal' },
+    // Logo no topo do menu lateral (visível só no desktop)
+    h('a', { class: 'app-menu-marca', href: '/index.html' },
+      h('img', { src: '/img/intecs-logo-laranja.png', alt: 'INTECS', width: 145, height: 38 }),
+      'ASSOCIAL · Serviço Social'));
   const excesso = itens.length > MAX_ITENS_CELULAR;
   const visiveisNoCelular = excesso ? MAX_ITENS_CELULAR - 1 : itens.length;
 

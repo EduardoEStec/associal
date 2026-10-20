@@ -7,7 +7,7 @@
 .kpis { margin-bottom: var(--esp-4); }
 .kpi { display: flex; flex-direction: column; gap: var(--esp-1); }
 .kpi-rotulo { font-size: var(--texto-sm); color: var(--cor-texto-suave); }
-.kpi-valor { font-size: var(--texto-2xl); color: var(--cor-primaria); line-height: 1.1; }
+.kpi-valor { font-size: var(--texto-2xl); font-weight: 800; color: var(--cor-texto-primaria); line-height: 1.1; }
 .kpi-ajuda { font-size: var(--texto-xs); color: var(--cor-texto-suave); }
 
 .tabela td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -28,24 +28,24 @@ main > .grade, main > .card, main > section { margin-bottom: var(--esp-4); }
 .g-rotulo { fill: var(--cor-texto-suave); font-size: 12px; font-family: var(--fonte); }
 .g-rotulo-forte { fill: var(--cor-texto); font-size: 13px; }
 .g-valor { fill: var(--cor-texto); font-size: 11px; font-family: var(--fonte); }
-.g-s0 { fill: var(--cor-primaria); }
-.g-s1 { fill: var(--cor-destaque); }
-.g-s2 { fill: var(--cor-info); }
-.g-s3 { fill: var(--cor-aviso); }
+.g-s0 { fill: var(--cor-titulo); }
+.g-s1 { fill: var(--cor-roxo); }
+.g-s2 { fill: var(--cor-azul); }
+.g-s3 { fill: var(--cor-verde); }
 .g-linha { stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.g-l0 { stroke: var(--cor-primaria); }
-.g-l1 { stroke: var(--cor-destaque); }
-.g-l2 { stroke: var(--cor-info); }
-.g-l3 { stroke: var(--cor-aviso); }
+.g-l0 { stroke: var(--cor-titulo); }
+.g-l1 { stroke: var(--cor-roxo); }
+.g-l2 { stroke: var(--cor-azul); }
+.g-l3 { stroke: var(--cor-verde); }
 .g-ponto { stroke: var(--cor-superficie); stroke-width: 1.5; }
 
 .grafico-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-3); list-style: none; margin: var(--esp-2) 0 0; padding: 0; font-size: var(--texto-sm); }
 .grafico-legenda li { display: inline-flex; align-items: center; gap: var(--esp-2); }
 .grafico-marca { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.grafico-marca.s0 { background: var(--cor-primaria); }
-.grafico-marca.s1 { background: var(--cor-destaque); }
-.grafico-marca.s2 { background: var(--cor-info); }
-.grafico-marca.s3 { background: var(--cor-aviso); }
+.grafico-marca.s0 { background: var(--cor-titulo); }
+.grafico-marca.s1 { background: var(--cor-roxo); }
+.grafico-marca.s2 { background: var(--cor-azul); }
+.grafico-marca.s3 { background: var(--cor-verde); }
 
 .lista-alertas { list-style: none; margin: 0 0 var(--esp-4); padding: 0; display: grid; gap: var(--esp-2); }
 .lista-alertas li { padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }

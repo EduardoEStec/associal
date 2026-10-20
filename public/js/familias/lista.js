@@ -1,7 +1,7 @@
 // Lista de famílias acompanhadas, com filtros e selo do questionário final.
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, formatarCpf } from '../ui.js';
-import { cabecalhoPagina, podeEscrever, seloStatus, seloFinal, campo } from './util.js';
+import { cabecalhoPagina, podeEscrever, seloStatus, seloFinal, campo, montar } from './util.js';
 
 const TAMANHO = 20;
 
@@ -52,7 +52,7 @@ export async function renderLista({ usuario, conteudo }) {
   const novo = podeEscrever(usuario)
     ? [h('a', { class: 'btn', href: '#/nova' }, '+ Nova família')]
     : null;
-  conteudo.replaceChildren(
+  montar(conteudo, 
     cabecalhoPagina('Acompanhamento Familiar', { acoes: novo }),
     form,
     area,

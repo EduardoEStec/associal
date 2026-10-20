@@ -1,32 +1,41 @@
-// Início: saudação + atalhos para os módulos disponíveis ao perfil.
+// Início: herói de boas-vindas, resumo do mês, atalhos para os módulos do perfil e pendências.
 import { iniciarPagina, icone } from '../layout.js';
-import { h } from '../ui.js';
+import { h, formatarNumero, formatarData } from '../ui.js';
+import { api } from '../api.js';
 
 const { usuario, itens } = await iniciarPagina('inicio');
 
 const DESCRICOES = {
-  atendimentos: 'Registrar e consultar atendimentos sociais',
+  atendimentos: 'Registrar e consultar atendimentos',
   acoes: 'Visitas institucionais e ações, com fotos',
   familias: 'Famílias acompanhadas e questionários',
   relatorios: 'Gerar relatórios em Word (.docx)',
   painel: 'Indicadores por unidade e período',
   admin: 'Usuários, unidades e configurações',
 };
+const CORES_ATALHO = ['laranja', 'roxo', 'azul'];
 
+// ---- Herói ----
+const hora = new Date().getHours();
+const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 const primeiroNome = usuario.nome.split(' ')[0];
-document.getElementById('saudacao').textContent = `Olá, ${primeiroNome}!`;
+document.getElementById('saudacao').textContent = `${saudacao}, ${primeiroNome}! 👋`;
+const dataExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+const unidade = usuario.unidades.length === 1 ? `${usuario.unidades[0].nome} · ` : '';
+document.getElementById('data-hoje').textContent = `📍 ${unidade}${dataExtenso}`;
 document.getElementById('carregando').remove();
 
+// ---- Atalhos (blocos sólidos) ----
 const atalhos = document.getElementById('atalhos');
-for (const item of itens.filter((i) => i.chave !== 'inicio')) {
+itens.filter((i) => i.chave !== 'inicio').forEach((item, n) => {
   atalhos.append(
-    h('a', { class: 'card card-atalho', href: item.href },
-      icone(item.chave),
-      h('strong', {}, item.rotulo),
-      h('span', { class: 'texto-suave texto-pequeno' }, DESCRICOES[item.chave] || ''),
+    h('a', { class: `atalho atalho-${CORES_ATALHO[n % CORES_ATALHO.length]}`, href: item.href },
+      h('span', { class: 'atalho-ic' }, icone(item.chave)),
+      h('span', { class: 'atalho-texto' }, h('strong', {}, item.rotulo), h('small', {}, DESCRICOES[item.chave] || '')),
+      h('span', { class: 'atalho-seta', 'aria-hidden': 'true' }, '›'),
     ),
   );
-}
+});
 
 if (usuario.unidades.length === 0 && usuario.perfil === 'ASSISTENTE') {
   document.getElementById('conteudo').prepend(
@@ -36,37 +45,48 @@ if (usuario.unidades.length === 0 && usuario.perfil === 'ASSISTENTE') {
 
 // ---- Resumo do mês (T6): ASSISTENTE vê as suas unidades; COORDENADOR/ADMIN veem o total geral ----
 try {
-  const { api } = await import('../api.js');
-  const { formatarNumero, formatarData } = await import('../ui.js');
   const r = await api.get('/api/painel/resumo-inicio');
   const t = r.total;
   const pct = t.pctEncaminhamentos === null || t.pctEncaminhamentos === undefined
     ? '—' : `${(t.pctEncaminhamentos * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-  const quadro = (rotulo, valor) => h('div', { class: 'card' },
-    h('span', { class: 'texto-suave texto-pequeno' }, rotulo), h('br'), h('strong', {}, valor));
+  const tile = (cor, icone_, rotulo, valor) => h('div', { class: `tile tile-${cor}` },
+    h('span', { class: 'tile-ic' }, icone(icone_)), h('strong', {}, valor), h('span', { class: 'tile-rotulo' }, rotulo));
   const [ano, mes] = r.periodo.inicio.split('-');
   const escopo = usuario.perfil === 'ASSISTENTE'
     ? (usuario.unidades.length === 1 ? usuario.unidades[0].nome : 'suas unidades')
     : 'todas as unidades';
-  const bloco = h('section', { class: 'resumo-inicio' },
-    h('h2', {}, `Resumo de ${mes}/${ano}`),
-    h('p', { class: 'texto-suave texto-pequeno' }, `Dados de ${escopo}.`),
-    h('div', { class: 'grade grade-4' },
-      quadro('Atendimentos', formatarNumero(t.atendimentos)),
-      quadro('Ações realizadas', formatarNumero(t.acoes)),
-      quadro('Participantes', formatarNumero(t.participantes)),
-      quadro('Famílias acompanhadas', formatarNumero(t.familiasAcompanhadas)),
-      quadro('Total de atendimento', formatarNumero(t.totalAtendimento)),
-      quadro('% encaminhamentos', pct)));
+  document.getElementById('resumo').append(
+    h('section', { class: 'card resumo-inicio', 'aria-labelledby': 'resumo-titulo' },
+      h('h2', { id: 'resumo-titulo' }, `Seu mês — ${mes}/${ano} 🌱`),
+      h('p', { class: 'texto-suave texto-pequeno' }, `Dados de ${escopo}.`),
+      h('div', { class: 'tiles' },
+        tile('laranja', 'atendimentos', 'Atendimentos', formatarNumero(t.atendimentos)),
+        tile('azul', 'acoes', 'Ações realizadas', formatarNumero(t.acoes)),
+        tile('verde', 'atendimentos', 'Participantes', formatarNumero(t.participantes)),
+        tile('roxo', 'familias', 'Famílias acompanhadas', formatarNumero(t.familiasAcompanhadas)),
+        tile('laranja', 'relatorios', 'Total de atendimento', formatarNumero(t.totalAtendimento)),
+        tile('roxo', 'painel', '% encaminhamentos', pct))));
 
-  const { vencidos, aVencer, itens } = r.pendentes;
-  if (vencidos + aVencer > 0) {
-    bloco.append(
-      h('div', { class: `aviso ${vencidos ? 'aviso-perigo' : 'aviso-aviso'}` },
-        h('strong', {}, 'Questionários finais pendentes: '),
-        `${vencidos} vencido(s) e ${aVencer} a vencer.`,
-        h('ul', {}, itens.map((i) => h('li', {}, `${i.responsavelNome} (${i.unidadeSigla}) — limite ${formatarData(i.dataLimite)}`))),
-        h('a', { href: '/familias.html' }, 'Abrir famílias')));
+  // ---- Pra ficar de olho: questionários finais pendentes ----
+  const pend = r.pendentes;
+  if (pend.vencidos + pend.aVencer > 0) {
+    const linhas = pend.itens.map((i) => {
+      const vencido = i.situacao === 'VENCIDO';
+      const dias = Math.abs(i.diasRestantes);
+      const quando = vencido
+        ? `venceu há ${dias} ${dias === 1 ? 'dia' : 'dias'}`
+        : (i.diasRestantes === 0 ? 'vence hoje' : `vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`);
+      return h('div', { class: `pendencia ${vencido ? 'pendencia-vencida' : ''}` },
+        h('span', { class: 'pendencia-ic' }, icone('familias')),
+        h('div', { class: 'pendencia-texto' },
+          h('p', {}, `Questionário final da família de ${i.responsavelNome} ${quando}`),
+          h('small', {}, `${i.unidadeSigla} · prazo ${formatarData(i.dataLimite)}`),
+          h('a', { class: `btn btn-pequeno ${vencido ? 'btn-secundario' : ''}`, href: `/familias.html#/a/${i.acompanhamentoId}` }, vencido ? 'Ver família' : 'Aplicar agora')));
+    });
+    document.getElementById('pendencias').append(
+      h('section', { class: 'card', 'aria-labelledby': 'pendencias-titulo' },
+        h('h2', { id: 'pendencias-titulo' }, 'Pra ficar de olho ⏰'),
+        h('p', { class: 'texto-suave texto-pequeno' }, `${pend.vencidos} vencido(s) e ${pend.aVencer} a vencer.`),
+        h('div', { class: 'pendencias' }, linhas)));
   }
-  atalhos.before(bloco);
 } catch { /* o resumo é opcional: a tela inicial funciona sem ele */ }

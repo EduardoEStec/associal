@@ -16,4 +16,9 @@
 .atend-historico { list-style: none; margin: 0; padding: 0; }
 .atend-historico li { padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }
 .atend-linha-clicavel { cursor: pointer; }
-.atend-barra-fixa { position: sticky; bottom: 0; background: var(--cor-fundo); padding: var(--esp-3) 0; }
+.atend-barra-fixa {
+  position: sticky; z-index: 5; padding: var(--esp-3) 0; background: var(--cor-fundo);
+  bottom: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom)); /* acima da barra inferior do celular */
+}
+@media (min-width: 900px) { .atend-barra-fixa { bottom: 0; } }
+.atend-barra-fixa .btn { flex: 1 1 auto; padding: 0 var(--esp-4); }

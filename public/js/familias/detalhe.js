@@ -3,7 +3,7 @@ import { api, ErroApi } from '../api.js';
 import { formatarTelefone } from '../telefone.js';
 import { h, toast, carregando, abrirModal, formatarData, formatarCpf, mostrarErrosCampos, hojeIso } from '../ui.js';
 import {
-  carregarApoio, cabecalhoPagina, podeEscrever, seloStatus, seloFinal, rotuloSimNao, textoOuTraco, campo,
+  carregarApoio, cabecalhoPagina, podeEscrever, seloStatus, seloFinal, rotuloSimNao, textoOuTraco, campo, montar,
 } from './util.js';
 
 function dado(rotulo, valor) {
@@ -28,7 +28,7 @@ function cartaoQuestionario({ titulo, tipo, resumo, acId, escrita, bloqueado, te
 }
 
 export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
-  conteudo.replaceChildren(carregando());
+  montar(conteudo, carregando());
   const [d, apoio] = await Promise.all([api.get(`/api/familias/acompanhamentos/${id}`), carregarApoio()]);
   const escrita = podeEscrever(usuario);
   const encerrado = d.status !== 'EM_ANDAMENTO';
@@ -61,7 +61,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
   const qF = d.questionarios.final;
   const finalBloqueado = !qI.concluido && !qF.existe;
 
-  conteudo.replaceChildren(
+  montar(conteudo, 
     cabecalhoPagina(r.nome, { voltar: { href: '#/', texto: 'Lista de famílias' }, acoes }),
     h('div', { class: 'linha fam-resumo' },
       seloStatus(d.status),

@@ -1,32 +1,65 @@
-/* Design tokens do ASSOCIAL. Use SEMPRE estas variáveis nos estilos (nada de cores/medidas soltas). */
+/* Design tokens do ASSOCIAL — identidade "B1 · Laranja INTECS" (alinhada ao site intecsbr.org).
+   Use SEMPRE estas variáveis nos estilos (nada de cores/medidas soltas).
+
+   ESCOLHAS DE COR E CONTRASTE (WCAG 2.1 AA: texto normal ≥ 4,5:1; texto grande ≥ 3:1)
+   O laranja vivo da marca (#FF7507) com texto branco dá só 2,7:1 — NÃO atinge AA em texto normal.
+   Por isso há dois laranjas, cada um para um uso:
+   • --cor-marca     #FF7507  laranja VIVO da marca. Só em superfícies grandes com texto grande/negrito
+                              (herói, tiles, faixas), ícones, detalhes e gráficos. Nunca para texto pequeno.
+   • --cor-primaria  #C94A0A  laranja PROFUNDO para fundo de botões, chips selecionados, item ativo do menu:
+                              texto branco = 4,7:1 (AA). Hover #A33A05 (6,6:1).
+   • --cor-texto-primaria #B8400A  texto/links laranja pequenos sobre branco (5,6:1), creme (5,2:1) ou laranja claro (4,7:1).
+   • --cor-titulo    #E5600A  títulos grandes (≥ 22px, negrito) laranja: 3,5:1 sobre branco e 3,3:1 sobre creme (AA texto grande).
+   • Roxo #5C3EEB e azul #1739FF (texto branco sobre eles: 6,3:1 e 6,9:1). O foco visível é AZUL (--cor-foco),
+     para aparecer também sobre botões laranja.
+   • Verde #32A64E é decorativo; para TEXTO/ícone de sucesso usa-se #1E7A36 (5,4:1 sobre branco, 4,7:1 sobre o verde claro).
+   Assinatura gráfica: --grad-marca (laranja → roxo → azul) em faixas e no sublinhado dos títulos de seção. */
 :root {
-  /* Cores da marca */
-  --cor-primaria: #1b6b4a;
-  --cor-primaria-escura: #124c34;
-  --cor-primaria-clara: #e3f2ea;
-  --cor-destaque: #e8892b;
-  --cor-destaque-clara: #fdf0e0;
+  /* Marca */
+  --cor-marca: #ff7507;
+  --cor-primaria: #c94a0a;
+  --cor-primaria-escura: #a33a05;
+  --cor-primaria-clara: #ffe9d6;
+  --cor-texto-primaria: #b8400a;
+  --cor-titulo: #e5600a;
+  --cor-destaque: #ff7507;
+  --cor-destaque-clara: #fff1e3;
+  --cor-foco: #1739ff;
+
+  /* Demais cores do site */
+  --cor-roxo: #5c3eeb;
+  --cor-roxo-escuro: #4527c9;
+  --cor-roxo-clara: #ece8fd;
+  --cor-azul: #1739ff;
+  --cor-azul-escuro: #1230c4;
+  --cor-azul-clara: #e4e9ff;
+  --cor-verde: #32a64e;
 
   /* Neutros */
-  --cor-fundo: #f5f7f6;
+  --cor-fundo: #fdf6e9;
   --cor-superficie: #ffffff;
-  --cor-borda: #d9e0dc;
-  --cor-texto: #1d2b24;
-  --cor-texto-suave: #5b6b63;
+  --cor-borda: #e9dfcb;
+  --cor-texto: #1d1d1f;
+  --cor-texto-suave: #5a5a60;
   --cor-texto-inverso: #ffffff;
+  --cor-cinza-claro: #f1f1f1;
+  --cor-cinza: #ececec;
 
-  /* Estados */
-  --cor-sucesso: #1f8a4c;
-  --cor-sucesso-clara: #e1f4e8;
-  --cor-aviso: #b7791f;
-  --cor-aviso-clara: #fdf3dc;
+  /* Estados (texto/ícone em tons escuros para AA sobre o fundo claro correspondente) */
+  --cor-sucesso: #1e7a36;
+  --cor-sucesso-clara: #e1f4e6;
+  --cor-aviso: #9a3412;
+  --cor-aviso-clara: #ffebd2;
   --cor-perigo: #c0392b;
-  --cor-perigo-clara: #fbe6e3;
-  --cor-info: #2b6cb0;
-  --cor-info-clara: #e3eefa;
+  --cor-perigo-clara: #fde7e3;
+  --cor-info: #1230c4;
+  --cor-info-clara: #e4e9ff;
+
+  /* Gradiente da marca: laranja → roxo → azul */
+  --grad-marca: linear-gradient(90deg, #ff7507 0%, #5c3eeb 55%, #1739ff 100%);
 
   /* Tipografia */
-  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --fonte: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --texto-xs: 0.75rem;
   --texto-sm: 0.875rem;
   --texto-base: 1rem;
@@ -43,15 +76,18 @@
   --esp-6: 2rem;
 
   /* Forma e elevação */
-  --raio: 10px;
-  --raio-pequeno: 6px;
-  --sombra: 0 1px 3px rgba(20, 40, 30, 0.1), 0 1px 2px rgba(20, 40, 30, 0.06);
-  --sombra-forte: 0 8px 28px rgba(20, 40, 30, 0.22);
+  --raio: 22px;            /* cards, modais, seções */
+  --raio-medio: 18px;
+  --raio-pequeno: 16px;    /* campos, opções, avisos */
+  --raio-pilula: 999px;    /* botões, chips, selos */
+  --sombra: 0 6px 18px rgba(60, 40, 10, 0.09);
+  --sombra-forte: 0 12px 32px rgba(60, 40, 10, 0.24);
+  --sombra-laranja: 0 6px 14px rgba(201, 74, 10, 0.32);
 
   /* Layout */
-  --altura-cabecalho: 56px;
-  --altura-menu-inferior: 62px;
-  --largura-menu-lateral: 232px;
+  --altura-cabecalho: 64px;
+  --altura-menu-inferior: 72px;
+  --largura-menu-lateral: 260px;
   --largura-maxima: 1100px;
-  --alvo-toque: 44px; /* tamanho mínimo de botões/campos no celular */
+  --alvo-toque: 48px; /* tamanho mínimo de botões/campos (≥ 44px) */
 }

@@ -83,3 +83,9 @@ export function selectApoio({ id, name, lista, valor, vazio = 'Selecione' }) {
 }
 
 export const isoDia = (v) => (v ? String(v).slice(0, 10) : '');
+
+// Substitui o conteúdo de `el` ignorando null/false e achatando listas
+// (replaceChildren converteria null e arrays em texto: "null", "[object HTMLDivElement]").
+export function montar(el, ...itens) {
+  el.replaceChildren(...itens.flat(Infinity).filter((n) => n !== null && n !== undefined && n !== false));
+}

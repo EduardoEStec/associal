@@ -3,18 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1b6b4a">
+  <meta name="theme-color" content="#ff7507">
   <title>Início — ASSOCIAL</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/inicio.css">
 </head>
 <body>
   <main id="conteudo">
-    <div class="pagina-titulo"><h1 id="saudacao">Início</h1></div>
+    <section class="heroi" aria-labelledby="saudacao">
+      <span class="heroi-data" id="data-hoje"></span>
+      <h1 id="saudacao">Olá!</h1>
+      <p>Cada atendimento é uma porta que se abre. Vamos cuidar de quem precisa hoje?</p>
+    </section>
     <div class="carregando" id="carregando" role="status" aria-label="Carregando"></div>
-    <div class="grade grade-3" id="atalhos"></div>
+    <div id="resumo"></div>
+    <h2>O que vamos fazer?</h2>
+    <nav class="atalhos" id="atalhos" aria-label="Atalhos"></nav>
+    <div id="pendencias"></div>
   </main>
   <script type="module" src="/js/paginas/inicio.js"></script>
 </body>

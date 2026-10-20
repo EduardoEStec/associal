@@ -7,7 +7,7 @@
 //   #/a/<id>/comparacao      comparação inicial × final
 import { iniciarPagina } from '../layout.js';
 import { h, toast } from '../ui.js';
-import { podeEscrever } from '../familias/util.js';
+import { podeEscrever, montar } from '../familias/util.js';
 import { renderLista } from '../familias/lista.js';
 import { renderCadastro } from '../familias/cadastro.js';
 import { renderDetalhe } from '../familias/detalhe.js';
@@ -59,7 +59,7 @@ async function rotear() {
 }
 
 function erroRota(mensagem) {
-  conteudo.replaceChildren(
+  montar(conteudo, 
     h('div', { class: 'pagina-titulo' }, h('h1', {}, 'Acompanhamento Familiar')),
     h('div', { class: 'aviso aviso-aviso' }, mensagem),
     h('a', { class: 'btn', href: '#/' }, 'Voltar à lista'));

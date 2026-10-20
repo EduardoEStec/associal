@@ -1,7 +1,7 @@
 // Comparação inicial × final de uma família: lado a lado, com seta + texto + cor (nunca só cor).
 import { api } from '../api.js';
 import { h, carregando, formatarData, formatarMoeda, formatarNumero } from '../ui.js';
-import { cabecalhoPagina, formatarValor } from './util.js';
+import { cabecalhoPagina, formatarValor, montar } from './util.js';
 
 const TENDENCIA = {
   melhorou: { classe: 'cmp-melhorou', simbolo: '▲', texto: 'Melhorou' },
@@ -52,12 +52,12 @@ function variacao(item) {
 }
 
 export async function renderComparacao({ conteudo }, acId) {
-  conteudo.replaceChildren(carregando());
+  montar(conteudo, carregando());
   const c = await api.get(`/api/familias/acompanhamentos/${acId}/comparacao`);
   const voltar = { href: `#/a/${acId}`, texto: c.responsavel.nome || 'Família' };
 
   if (!c.completo) {
-    conteudo.replaceChildren(
+    montar(conteudo, 
       cabecalhoPagina('Comparação inicial × final', { voltar }),
       h('div', { class: 'aviso aviso-aviso' }, c.motivo),
       h('a', { class: 'btn', href: `#/a/${acId}` }, 'Voltar à família'));
@@ -101,7 +101,7 @@ export async function renderComparacao({ conteudo }, acId) {
             h('td', { 'data-rotulo': 'Resultado' }, seloTendencia(i.tendencia, i), variacao(i))))))));
   }
 
-  conteudo.replaceChildren(
+  montar(conteudo, 
     cabecalhoPagina(`Comparação — ${c.responsavel.nome}`, {
       voltar,
       acoes: [h('button', { type: 'button', class: 'btn btn-secundario cmp-imprimir', onclick: () => window.print() }, 'Imprimir')],

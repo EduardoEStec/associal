@@ -2,7 +2,7 @@
 // Rascunho salvo automaticamente no servidor; o mesmo roteiro serve para INICIAL e FINAL ("hoje").
 import { api, ErroApi } from '../api.js';
 import { h, toast, carregando, confirmar, mostrarErrosCampos } from '../ui.js';
-import { carregarApoio, cabecalhoPagina, podeEscrever, isoDia } from './util.js';
+import { carregarApoio, cabecalhoPagina, podeEscrever, isoDia, montar } from './util.js';
 
 const AUTOSAVE_MS = 1500;
 const LIMITES_FAIXA = {
@@ -16,7 +16,7 @@ const numeroBr = (v) => Number(String(v).replace(',', '.'));
 export async function renderQuestionario(ctx, acId, tipoUrl) {
   const { usuario, conteudo, navegar } = ctx;
   const tipo = String(tipoUrl).toUpperCase() === 'FINAL' ? 'FINAL' : 'INICIAL';
-  conteudo.replaceChildren(carregando());
+  montar(conteudo, carregando());
 
   const [modelo, dados, apoio, ficha] = await Promise.all([
     api.get('/api/familias/questionario/modelo', { tipo }),
@@ -309,7 +309,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     ? h('div', { class: 'aviso aviso-aviso' }, dados.bloqueio || 'Você pode consultar este questionário, mas não alterá-lo.')
     : null;
 
-  conteudo.replaceChildren(
+  montar(conteudo, 
     cabecalhoPagina(`Questionário ${tipo === 'INICIAL' ? 'inicial' : 'final'}`, { voltar: { href: `#/a/${acId}`, texto: nomeFamilia } }),
     aviso,
     tipo === 'FINAL' && editavel
