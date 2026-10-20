@@ -221,7 +221,7 @@ function gerarImpacto({ inicial, final, destinosFinal }) {
     eco.push(`A renda mensal média informada ao final foi de ${moeda(rf)}.`);
   }
   if (final.economiaMensalFaixa || final.economiaMensalValor !== null && final.economiaMensalValor !== undefined) {
-    const faixa = final.economiaMensalFaixa ? minuscula(rotulo('economiaMensalFaixa', final.economiaMensalFaixa)) : '';
+    const faixa = final.economiaMensalFaixa ? rotulo('economiaMensalFaixa', final.economiaMensalFaixa) : '';
     const valor = final.economiaMensalValor !== null && final.economiaMensalValor !== undefined ? moeda(final.economiaMensalValor) : '';
     eco.push(`A economia mensal proporcionada pelo Armazém Solidário foi estimada em ${[valor, faixa && `(faixa: ${faixa})`].filter(Boolean).join(' ')}.`);
   }

@@ -114,9 +114,9 @@ function corpoIndividual() {
 function corpoSemestral() {
   const visitas = [
     { titulo: 'Data', largura: 1, campo: 'data' },
-    { titulo: 'Instituição / Comunidade', largura: 3.2, campo: 'local' },
-    { titulo: 'Temas', largura: 2.4, campo: 'temas' },
-    { titulo: 'Participantes', largura: 1.1, campo: 'participantes', jc: 'right' },
+    { titulo: 'Instituição / Comunidade', largura: 3, campo: 'local' },
+    { titulo: 'Temas', largura: 2.2, campo: 'temas' },
+    { titulo: 'Participantes', largura: 1.5, campo: 'participantes', jc: 'right' },
   ];
   return [
     vazio(), vazio(),
@@ -168,7 +168,7 @@ function corpoSemestral() {
       { titulo: 'Unidade', largura: 0.9, campo: 'sigla' },
       { titulo: 'Tipo', largura: 1.5, campo: 'tipo' },
       { titulo: 'Local', largura: 2.4, campo: 'local' },
-      { titulo: 'Participantes', largura: 1.1, campo: 'participantes', jc: 'right' },
+      { titulo: 'Participantes', largura: 1.5, campo: 'participantes', jc: 'right' },
     ]),
     espaco(),
     fecha('temOutrasAcoes'),
