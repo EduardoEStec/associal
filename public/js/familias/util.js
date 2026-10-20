@@ -1,6 +1,7 @@
 // Utilidades do módulo Famílias: rótulos, selos de situação e cache de listas de apoio.
 import { api } from '../api.js';
 import { h, formatarMoeda } from '../ui.js';
+import { icone } from '../layout.js';
 
 let cacheApoio = null;
 export async function carregarApoio() {
@@ -19,18 +20,18 @@ export function seloStatus(status) {
 
 const pluralDias = (n) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
 
-// Selo do questionário final — o texto (e o símbolo) carregam o significado, não só a cor.
+// Selo do questionário final — o texto (e o ícone) carregam o significado, não só a cor.
 export function seloFinal(item) {
   const { finalSituacao: s, diasParaFinal: d } = item;
   if (!s) return h('span', { class: 'texto-suave' }, '—');
   const mapa = {
-    CONCLUIDO: ['badge-sucesso', '✔ Final concluído'],
-    EM_DIA: ['badge-info', d === null ? '● Em dia' : `● Em dia · vence em ${pluralDias(d)}`],
-    VENCENDO: ['badge-aviso', d === 0 ? '▲ Vence hoje' : `▲ Vence em ${pluralDias(d)}`],
-    VENCIDO: ['badge-perigo', `✖ Vencido há ${pluralDias(Math.abs(d))}`],
+    CONCLUIDO: ['badge-sucesso', 'check', 'Final concluído'],
+    EM_DIA: ['badge-info', 'relogio', d === null ? 'Em dia' : `Em dia · vence em ${pluralDias(d)}`],
+    VENCENDO: ['badge-aviso', 'alerta', d === 0 ? 'Vence hoje' : `Vence em ${pluralDias(d)}`],
+    VENCIDO: ['badge-perigo', 'x', `Vencido há ${pluralDias(Math.abs(d))}`],
   };
-  const [classe, texto] = mapa[s] || ['badge', s];
-  return h('span', { class: `badge ${classe}` }, texto);
+  const [classe, simbolo, texto] = mapa[s] || ['badge', null, s];
+  return h('span', { class: `badge ${classe}` }, simbolo ? icone(simbolo) : null, texto);
 }
 
 export function rotuloSimNao(v) {

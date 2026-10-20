@@ -17,6 +17,7 @@
 .heroi::before { width: 150px; height: 150px; right: -40px; top: -50px; background: rgba(255, 255, 255, 0.16); }
 .heroi::after { width: 72px; height: 72px; right: -8px; bottom: -36px; background: rgba(92, 62, 235, 0.85); }
 .heroi h1 { position: relative; margin: 0; font-size: 1.75rem; color: inherit; background: none; padding: 0; width: auto; }
+.heroi-data .icone { width: 16px; height: 16px; margin-right: var(--esp-1); color: var(--cor-marca); }
 .heroi-data {
   position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 5px var(--esp-3);
   font-size: var(--texto-sm); font-weight: 800; color: var(--cor-texto-primaria);

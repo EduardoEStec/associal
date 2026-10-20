@@ -36,9 +36,10 @@
   --cor-verde: #32a64e;
 
   /* Neutros */
-  --cor-fundo: #fdf6e9;
+  --cor-fundo: #ffffff;
+  --cor-fundo-suave: #f7f7f8;   /* faixas sutis sobre branco: cabeçalho de tabela, áreas tracejadas, miniaturas */
   --cor-superficie: #ffffff;
-  --cor-borda: #e9dfcb;
+  --cor-borda: #e2e2e6;
   --cor-texto: #1d1d1f;
   --cor-texto-suave: #5a5a60;
   --cor-texto-inverso: #ffffff;
@@ -80,7 +81,7 @@
   --raio-medio: 18px;
   --raio-pequeno: 16px;    /* campos, opções, avisos */
   --raio-pilula: 999px;    /* botões, chips, selos */
-  --sombra: 0 6px 18px rgba(60, 40, 10, 0.09);
+  --sombra: 0 2px 10px rgba(20, 20, 40, 0.06);
   --sombra-forte: 0 12px 32px rgba(60, 40, 10, 0.24);
   --sombra-laranja: 0 6px 14px rgba(201, 74, 10, 0.32);
 

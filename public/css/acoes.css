@@ -59,7 +59,7 @@ main > .acoes-filtros, main > .acoes-visoes { margin-bottom: var(--esp-4); }
 .acoes-galeria { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); margin-bottom: var(--esp-3); }
 @media (min-width: 640px) { .acoes-galeria { grid-template-columns: repeat(3, 1fr); } }
 .acoes-miniatura { margin: 0; display: flex; flex-direction: column; gap: var(--esp-1); }
-.acoes-miniatura-botao { padding: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); background: var(--cor-fundo); cursor: zoom-in; overflow: hidden; }
+.acoes-miniatura-botao { padding: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); background: var(--cor-fundo-suave); cursor: zoom-in; overflow: hidden; }
 .acoes-miniatura-botao img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .acoes-miniatura figcaption { font-size: var(--texto-sm); color: var(--cor-texto-suave); overflow-wrap: anywhere; }
 .acoes-miniatura-acoes { display: flex; gap: var(--esp-1); }

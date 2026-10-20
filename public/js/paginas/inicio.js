@@ -18,10 +18,10 @@ const DESCRICOES = {
 const hora = new Date().getHours();
 const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 const primeiroNome = usuario.nome.split(' ')[0];
-document.getElementById('saudacao').textContent = `${saudacao}, ${primeiroNome}! 👋`;
+document.getElementById('saudacao').textContent = `${saudacao}, ${primeiroNome}!`;
 const dataExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 const unidade = usuario.unidades.length === 1 ? `${usuario.unidades[0].nome} · ` : '';
-document.getElementById('data-hoje').textContent = `📍 ${unidade}${dataExtenso}`;
+document.getElementById('data-hoje').replaceChildren(icone('acoes'), `${unidade}${dataExtenso}`);
 document.getElementById('carregando').remove();
 
 // ---- Atalhos (blocos sólidos) ----
@@ -56,7 +56,7 @@ try {
     : 'todas as unidades';
   document.getElementById('resumo').append(
     h('section', { class: 'card resumo-inicio', 'aria-labelledby': 'resumo-titulo' },
-      h('h2', { id: 'resumo-titulo' }, `Seu mês — ${mes}/${ano} 🌱`),
+      h('h2', { id: 'resumo-titulo' }, `Seu mês — ${mes}/${ano}`),
       h('p', { class: 'texto-suave texto-pequeno' }, `Dados de ${escopo}.`),
       h('div', { class: 'tiles' },
         tile('atendimentos', 'Atendimentos', formatarNumero(t.atendimentos)),
@@ -84,7 +84,7 @@ try {
     });
     document.getElementById('pendencias').append(
       h('section', { class: 'card', 'aria-labelledby': 'pendencias-titulo' },
-        h('h2', { id: 'pendencias-titulo' }, 'Pra ficar de olho ⏰'),
+        h('h2', { id: 'pendencias-titulo' }, 'Pra ficar de olho'),
         h('p', { class: 'texto-suave texto-pequeno' }, `${pend.vencidos} vencido(s) e ${pend.aVencer} a vencer.`),
         h('div', { class: 'pendencias' }, linhas)));
   }

@@ -232,7 +232,7 @@ function renderAlertas(a) {
     blocos.push(h('h3', {}, 'Ações planejadas sem atualização'),
       lista(a.acoesDesatualizadas, (x) => `${x.unidadeSigla} — ${x.instituicaoLocal || 'sem local'} (${formatarData(x.dataAcao)})`, 'badge-aviso', (x) => `${x.diasAtraso} d`));
   }
-  if (!blocos.length) blocos.push(h('p', { class: 'texto-suave' }, 'Nenhum alerta no momento. 🎉'));
+  if (!blocos.length) blocos.push(h('p', { class: 'texto-suave' }, 'Nenhum alerta no momento.'));
   secAlertas.replaceChildren(...blocos);
 }
 

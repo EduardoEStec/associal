@@ -1,6 +1,7 @@
 // Relatório Individual Familiar: escolher a família → editar os textos → gerar .docx.
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, comEspera } from '../ui.js';
+import { icone } from '../layout.js';
 import { baixarArquivo, campoLinha, campoTexto, mensagemErro } from './comum.js';
 
 const SECOES = [
@@ -69,9 +70,9 @@ export function montarIndividual(raiz, opcoes) {
           h('td', { 'data-rotulo': 'Início' }, formatarData(i.dataInicio)),
           h('td', { 'data-rotulo': 'Situação' }, STATUS[i.status] || i.status),
           h('td', { 'data-rotulo': 'Questionários' },
-            h('span', { class: `badge ${i.temInicial ? 'badge-sucesso' : 'badge-aviso'}` }, i.temInicial ? 'Inicial ✓' : 'Inicial pendente'),
+            h('span', { class: `badge ${i.temInicial ? 'badge-sucesso' : 'badge-aviso'}` }, i.temInicial ? [icone('check'), 'Inicial'] : 'Inicial pendente'),
             ' ',
-            h('span', { class: `badge ${i.temFinal ? 'badge-sucesso' : 'badge-aviso'}` }, i.temFinal ? 'Final ✓' : 'Final pendente')),
+            h('span', { class: `badge ${i.temFinal ? 'badge-sucesso' : 'badge-aviso'}` }, i.temFinal ? [icone('check'), 'Final'] : 'Final pendente')),
           h('td', { 'data-rotulo': 'Ação' },
             h('button', { type: 'button', class: 'btn btn-pequeno', onclick: () => abrirPrevia(i.id) }, 'Preparar relatório')))))));
   }

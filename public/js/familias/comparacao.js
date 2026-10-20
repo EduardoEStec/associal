@@ -7,7 +7,7 @@ const TENDENCIA = {
   melhorou: { classe: 'cmp-melhorou', simbolo: '▲', texto: 'Melhorou' },
   igual: { classe: 'cmp-igual', simbolo: '＝', texto: 'Igual' },
   piorou: { classe: 'cmp-piorou', simbolo: '▼', texto: 'Piorou' },
-  neutro: { classe: 'cmp-neutro', simbolo: '↔', texto: 'Mudou' },
+  neutro: { classe: 'cmp-neutro', simbolo: '≠', texto: 'Mudou' },
   sem_dados: { classe: 'cmp-neutro', simbolo: '—', texto: 'Sem dados' },
 };
 

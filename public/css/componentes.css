@@ -32,7 +32,7 @@
 
 /* ---------- Cards ---------- */
 .card {
-  background: var(--cor-superficie); border: 1px solid color-mix(in srgb, var(--cor-borda) 55%, transparent);
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda);
   border-radius: var(--raio); box-shadow: var(--sombra); padding: var(--esp-4);
 }
 .card > h2:first-child, .card > h3:first-child { margin-top: 0; }
@@ -82,7 +82,7 @@
 .opcao:has(input:focus-visible) { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
 
 fieldset.secao {
-  background: var(--cor-superficie); border: 1px solid color-mix(in srgb, var(--cor-borda) 55%, transparent);
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda);
   border-radius: var(--raio); box-shadow: var(--sombra); padding: var(--esp-4); margin: 0 0 var(--esp-4);
 }
 /* A legenda vira o título do cartão (dentro da caixa, com o sublinhado em gradiente) */
@@ -101,6 +101,7 @@ fieldset.secao > legend + * { clear: both; }
   font-size: var(--texto-sm); font-weight: 700; line-height: 1.2;
   border-radius: var(--raio-pilula); background: var(--cor-primaria-clara); color: var(--cor-primaria-escura);
 }
+.badge .icone { width: 16px; height: 16px; stroke-width: 2.5; }
 .badge-sucesso { background: var(--cor-sucesso-clara); color: var(--cor-sucesso); }
 .badge-aviso { background: var(--cor-aviso-clara); color: var(--cor-aviso); box-shadow: inset 0 0 0 2px #ffd2a8; }
 .badge-perigo { background: var(--cor-perigo-clara); color: var(--cor-perigo); box-shadow: inset 0 0 0 2px #f4b8b0; }
@@ -118,18 +119,19 @@ fieldset.secao > legend + * { clear: both; }
 /* ---------- Tabela responsiva ----------
    Desktop: tabela normal. Celular (<640px): cada linha vira um cartão.
    Marque cada <td> com data-rotulo="Nome da coluna". */
-.tabela-wrap { overflow-x: auto; border-radius: var(--raio-pequeno); }
+.tabela-wrap { overflow-x: auto; border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); }
 .tabela { width: 100%; border-collapse: collapse; background: var(--cor-superficie); }
 .tabela th, .tabela td { text-align: left; padding: var(--esp-3); border-bottom: 1px solid var(--cor-borda); vertical-align: top; }
-.tabela th { font-size: var(--texto-sm); font-weight: 700; color: var(--cor-texto-suave); background: var(--cor-fundo); white-space: nowrap; }
+.tabela th { font-size: var(--texto-sm); font-weight: 700; color: var(--cor-texto-suave); background: var(--cor-fundo-suave); white-space: nowrap; }
 .tabela tbody tr:hover { background: var(--cor-primaria-clara); }
 
 @media (max-width: 639px) {
+  .tabela-wrap:has(.tabela-responsiva) { border: 0; }
   .tabela-responsiva thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .tabela-responsiva, .tabela-responsiva tbody, .tabela-responsiva tr, .tabela-responsiva td { display: block; width: 100%; }
   .tabela-responsiva tr {
     margin-bottom: var(--esp-3); background: var(--cor-superficie);
-    border: 1px solid color-mix(in srgb, var(--cor-borda) 55%, transparent); border-radius: var(--raio); box-shadow: var(--sombra); padding: var(--esp-2);
+    border: 1px solid var(--cor-borda); border-radius: var(--raio); box-shadow: var(--sombra); padding: var(--esp-2);
   }
   .tabela-responsiva td {
     display: flex; justify-content: space-between; gap: var(--esp-3);

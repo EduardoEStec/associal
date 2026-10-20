@@ -1,5 +1,6 @@
 // Ficha da família acompanhada: dados, questionários, comparação e encerramento.
 import { api, ErroApi } from '../api.js';
+import { icone } from '../layout.js';
 import { formatarTelefone } from '../telefone.js';
 import { h, toast, carregando, abrirModal, formatarData, formatarCpf, mostrarErrosCampos, hojeIso } from '../ui.js';
 import {
@@ -12,8 +13,8 @@ function dado(rotulo, valor) {
 
 function cartaoQuestionario({ titulo, tipo, resumo, acId, escrita, bloqueado, textoBloqueio, encerrado }) {
   let situacao;
-  if (resumo.concluido) situacao = h('span', { class: 'badge badge-sucesso' }, `✔ Concluído em ${formatarData(resumo.dataAplicacao)}`);
-  else if (resumo.existe) situacao = h('span', { class: 'badge badge-aviso' }, '✎ Rascunho salvo');
+  if (resumo.concluido) situacao = h('span', { class: 'badge badge-sucesso' }, icone('check'), `Concluído em ${formatarData(resumo.dataAplicacao)}`);
+  else if (resumo.existe) situacao = h('span', { class: 'badge badge-aviso' }, icone('editar'), 'Rascunho salvo');
   else situacao = h('span', { class: 'badge' }, 'Não iniciado');
 
   let acao;
@@ -43,8 +44,8 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
 
   // Alerta do prazo
   let alerta = null;
-  if (d.finalSituacao === 'VENCIDO') alerta = h('div', { class: 'aviso aviso-perigo', role: 'alert' }, `✖ O prazo do questionário final venceu em ${formatarData(d.dataPrevistaFinal)}. Agende a aplicação.`);
-  else if (d.finalSituacao === 'VENCENDO') alerta = h('div', { class: 'aviso aviso-aviso' }, `▲ O questionário final vence em ${formatarData(d.dataPrevistaFinal)}.`);
+  if (d.finalSituacao === 'VENCIDO') alerta = h('div', { class: 'aviso aviso-perigo', role: 'alert' }, `O prazo do questionário final venceu em ${formatarData(d.dataPrevistaFinal)}. Agende a aplicação.`);
+  else if (d.finalSituacao === 'VENCENDO') alerta = h('div', { class: 'aviso aviso-aviso' }, `O questionário final vence em ${formatarData(d.dataPrevistaFinal)}.`);
 
   const membros = d.membros.length === 0
     ? h('p', { class: 'texto-pequeno texto-suave' }, 'Nenhum outro membro cadastrado.')

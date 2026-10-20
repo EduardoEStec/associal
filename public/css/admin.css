@@ -12,7 +12,7 @@
 .admin-inativo { opacity: .65; }
 .senha-provisoria {
   font-family: ui-monospace, Consolas, monospace; font-size: var(--texto-xl); letter-spacing: .05em;
-  padding: var(--esp-3); background: var(--cor-fundo); border: 1px dashed var(--cor-borda); border-radius: var(--raio);
+  padding: var(--esp-3); background: var(--cor-fundo-suave); border: 1px dashed var(--cor-borda); border-radius: var(--raio);
   text-align: center; user-select: all; word-break: break-all;
 }
 .admin-paginacao { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-top: var(--esp-4); flex-wrap: wrap; }

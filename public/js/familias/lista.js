@@ -1,6 +1,7 @@
 // Lista de famílias acompanhadas, com filtros e selo do questionário final.
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, formatarCpf } from '../ui.js';
+import { icone } from '../layout.js';
 import { cabecalhoPagina, podeEscrever, seloStatus, seloFinal, campo, montar } from './util.js';
 
 const TAMANHO = 20;
@@ -89,7 +90,7 @@ export async function renderLista({ usuario, conteudo }) {
       h('td', { 'data-rotulo': 'Acompanhamento' }, seloStatus(i.status)),
       h('td', { 'data-rotulo': 'Questionários' },
         h('span', { class: 'fam-passos' },
-          h('span', { class: `badge ${i.inicialConcluido ? 'badge-sucesso' : ''}` }, i.inicialConcluido ? '✔ Inicial' : 'Inicial pendente'))),
+          h('span', { class: `badge ${i.inicialConcluido ? 'badge-sucesso' : ''}` }, i.inicialConcluido ? [icone('check'), 'Inicial'] : 'Inicial pendente'))),
       h('td', { 'data-rotulo': 'Final' }, seloFinal(i), i.dataPrevistaFinal && i.status === 'EM_ANDAMENTO'
         ? h('div', { class: 'texto-pequeno texto-suave' }, `prazo ${formatarData(i.dataPrevistaFinal)}`) : null),
     ));
