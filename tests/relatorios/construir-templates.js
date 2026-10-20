@@ -46,9 +46,10 @@ const secao = (t) => par(t, { b: true, antes: 240, depois: 120, manter: true });
 const subsecao = (t) => par(t, { b: true, antes: 120, depois: 60, manter: true });
 const corpo = (t) => par(t, { jc: 'both', texto_corrido: true });
 // Parágrafo repetido para cada linha de um texto editável (lista de strings).
-const textoLista = (nome) => par(`{#${nome}}{.}{/${nome}}`, { jc: 'both', texto_corrido: true });
+// (abertura e fechamento do loop ficam em parágrafos próprios: são removidos e o do meio se repete — paragraphLoop)
 const abre = (nome) => par(`{#${nome}}`);
 const fecha = (nome) => par(`{/${nome}}`);
+const textoLista = (nome) => abre(nome) + par('{.}', { jc: 'both', texto_corrido: true }) + fecha(nome);
 
 function celula(texto, largura, { b = false, jc = 'left', fundo } = {}) {
   return `<w:tc><w:tcPr><w:tcW w:w="${largura}" w:type="dxa"/>${fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${fundo}"/>` : ''}</w:tcPr>`
@@ -198,7 +199,9 @@ function corpoSemestral() {
     fecha('temComparacao'),
     abre('temRelatos'),
     subsecao('Relatos das famílias'),
-    par('{#relatos}“{texto}” ({sigla}){/relatos}', { jc: 'both', texto_corrido: true }),
+    abre('relatos'),
+    par('“{texto}” ({sigla})', { jc: 'both', texto_corrido: true }),
+    fecha('relatos'),
     fecha('temRelatos'),
 
     secao('4. Considerações finais'), textoLista('consideracoes'),

@@ -368,7 +368,7 @@ async function main() {
     });
     assert.equal(r.status, 200);
     const { texto, zip } = textoDocx(Buffer.from(await r.arrayBuffer()));
-    assert.ok(!/Palestra <saúde>/.test(texto) && !/Economia/.test(texto));
+    assert.ok(!/Palestra <saúde>/.test(texto) && !/\(TIR\)/.test(texto));
     assert.equal(Object.keys(zip.files).filter((n) => n.startsWith('word/media/foto_anexo_')).length, 1);
     const sem = await chamar('/semestral', { metodo: 'POST', corpo: { unidadeIds: [2] } });
     assert.equal(sem.status, 403);

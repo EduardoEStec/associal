@@ -1,0 +1,77 @@
+/* Módulo Famílias — estilos específicos (carregado só em familias.html). Use sempre os tokens. */
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fam-voltar { display: inline-block; margin-bottom: var(--esp-1); font-size: var(--texto-sm); }
+
+/* Lista */
+.fam-filtros { margin-bottom: var(--esp-4); }
+.fam-filtros .grade { align-items: end; }
+.fam-nome { font-weight: 700; }
+.fam-paginacao { margin-top: var(--esp-4); }
+.fam-resumo { margin-bottom: var(--esp-4); }
+
+/* Ficha */
+.fam-dados { display: grid; gap: var(--esp-3); grid-template-columns: 1fr; margin: 0; }
+.fam-dado dt { font-size: var(--texto-xs); text-transform: uppercase; color: var(--cor-texto-suave); }
+.fam-dado dd { margin: 0; overflow-wrap: anywhere; }
+@media (min-width: 640px) { .fam-dados { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px) { .fam-dados { grid-template-columns: repeat(3, 1fr); } }
+.fam-q-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--esp-2); }
+.fam-q-card h3 { margin: 0; }
+.fam-q-grade { margin-bottom: var(--esp-4); }
+
+/* Cadastro */
+.fam-membro { margin-bottom: var(--esp-3); }
+.fam-membro-titulo { font-size: var(--texto-lg); }
+
+/* Questionário em etapas */
+.q-cabecalho { position: sticky; top: var(--altura-cabecalho); z-index: 10; margin-bottom: var(--esp-4); }
+.q-titulo-passo { margin: 0 0 var(--esp-2); font-size: var(--texto-lg); outline: none; }
+.q-barra { height: 10px; background: var(--cor-borda); border-radius: 999px; overflow: hidden; }
+.q-barra-cheia { height: 100%; background: var(--cor-primaria); transition: width 0.25s ease; }
+.q-pontos { display: flex; gap: var(--esp-2); list-style: none; padding: 0; margin: var(--esp-3) 0 0; justify-content: center; }
+.q-ponto {
+  width: var(--alvo-toque); height: var(--alvo-toque); border-radius: 50%; font: inherit; font-weight: 700;
+  color: var(--cor-primaria); background: var(--cor-superficie); border: 2px solid var(--cor-primaria); cursor: pointer;
+}
+.q-ponto-atual { color: var(--cor-texto-inverso); background: var(--cor-primaria); }
+.q-conjunto { border: 0; padding: 0; margin: 0; min-width: 0; }
+.q-pergunta { padding: var(--esp-4); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio); }
+.q-texto { font-size: var(--texto-lg); font-weight: 600; line-height: 1.35; }
+.q-codigo { color: var(--cor-primaria); font-weight: 800; }
+.q-input { min-height: 52px; font-size: var(--texto-lg); }
+.q-opcao { min-height: 56px; font-size: var(--texto-lg); }
+.q-opcao input { width: 26px; height: 26px; }
+.q-sim-nao { flex-direction: row; }
+.q-sim-nao .q-opcao { flex: 1; justify-content: center; }
+.q-detalhe { margin-top: var(--esp-3); padding-top: var(--esp-3); border-top: 1px dashed var(--cor-borda); }
+.q-detalhe[hidden], .campo[hidden] { display: none; }
+.q-nav {
+  position: sticky; bottom: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom)); z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-3);
+  margin-top: var(--esp-4); padding: var(--esp-3); background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda); border-radius: var(--raio); box-shadow: var(--sombra-forte);
+}
+.q-nav-botoes { display: flex; gap: var(--esp-3); margin-left: auto; }
+.q-botao { min-height: 52px; min-width: 130px; font-size: var(--texto-lg); }
+.q-botao[hidden] { display: none; }
+.q-status { font-size: var(--texto-sm); color: var(--cor-texto-suave); }
+.q-status-erro { color: var(--cor-perigo); font-weight: 600; }
+@media (min-width: 900px) { .q-nav { bottom: var(--esp-3); } }
+
+/* Comparação */
+.cmp-totais { margin-bottom: var(--esp-3); }
+.cmp-total { display: flex; flex-direction: column; align-items: center; text-align: center; border-left-width: 6px; border-left-style: solid; }
+.cmp-total strong { font-size: var(--texto-2xl); }
+.cmp-melhorou { color: var(--cor-sucesso); border-color: var(--cor-sucesso); }
+.cmp-igual { color: var(--cor-texto-suave); border-color: var(--cor-borda); }
+.cmp-piorou { color: var(--cor-perigo); border-color: var(--cor-perigo); }
+.cmp-neutro { color: var(--cor-info); border-color: var(--cor-info); }
+.cmp-selo { display: inline-block; font-weight: 700; }
+.cmp-grande { font-size: var(--texto-xl); font-weight: 700; margin: 0; }
+.cmp-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmp-tabela td { vertical-align: top; }
+
+@media print {
+  .q-nav, .cmp-imprimir, .fam-voltar { display: none; }
+}
