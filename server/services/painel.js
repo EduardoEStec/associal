@@ -126,9 +126,11 @@ async function indicadoresPorUnidade(req, { inicio, fim }, unidadeId = null) {
   const atendimentos = await consultar(
     `SELECT a.unidade_id,
             COUNT(*) AS atendimentos,
-            SUM(CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
-                     THEN 1 ELSE 0 END) AS atendimentos_com_encaminhamento
+            SUM(enc.tem) AS atendimentos_com_encaminhamento
        FROM atendimento a
+      -- SQL Server não aceita subconsulta dentro de SUM(): calcula o indicador por linha antes
+      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
+                               THEN 1 ELSE 0 END AS tem) enc
       WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${whereAt}
       GROUP BY a.unidade_id`,
     pAt,
@@ -195,9 +197,10 @@ async function evolucaoMensal(req, { inicio, fim }, unidadeId = null) {
   const whereAt = filtroUnidade(req, 'a.unidade_id', pAt, unidadeId);
   const atendimentos = await consultar(
     `SELECT YEAR(a.data_atendimento) AS ano, MONTH(a.data_atendimento) AS mes, COUNT(*) AS atendimentos,
-            SUM(CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
-                     THEN 1 ELSE 0 END) AS atendimentos_com_encaminhamento
+            SUM(enc.tem) AS atendimentos_com_encaminhamento
        FROM atendimento a
+      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
+                               THEN 1 ELSE 0 END AS tem) enc
       WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${whereAt}
       GROUP BY YEAR(a.data_atendimento), MONTH(a.data_atendimento)`,
     pAt,
