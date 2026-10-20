@@ -9,11 +9,11 @@ Formato de erro padrão (ver CONVENCOES §4). Escritas exigem `X-Requested-With:
 
 ```json
 { "id": 12, "cpf": "12345678909", "nome": "Maria da Silva", "dataNascimento": "1980-05-02T00:00:00.000Z",
-  "nis": "12345678901", "endereco": "Rua A, 10", "cep": "01001000", "bairro": "Centro",
+  "nis": "12345678901", "telefone": "11912345678", "telefone2": null, "endereco": "Rua A, 10", "cep": "01001000", "bairro": "Centro",
   "trabalhoAtual": "Diarista", "generoId": 1, "escolaridadeId": 2, "racaId": 3 }
 ```
 
-CPF/CEP/NIS: só dígitos. `dataNascimento` chega como `Date` UTC (use `formatarData()` no front).
+CPF/CEP/NIS/telefone: só dígitos. `telefone` e `telefone2` (recado) têm DDD + número (10 ou 11 dígitos; `400` se inválido); a máscara `(11) 91234-5678` é só de exibição (`public/js/telefone.js`, `formatarTelefone` em `server/services/pessoas.js`). `dataNascimento` chega como `Date` UTC (use `formatarData()` no front).
 
 ## `GET /api/pessoas/buscar?cpf=<11 dígitos>`
 
@@ -44,4 +44,6 @@ caso contrário `404`. CPF de outra pessoa → `409`. Resposta: `{ "id": 13 }`.
 
 Fluxo recomendado ao cadastrar o responsável: `GET buscar?cpf=` → se `encontrada`, use `pessoa.id`; senão `POST /api/pessoas`.
 Para criar/atualizar pessoa dentro de uma transação própria, reutilize `server/services/pessoas.js`
-(`validarDadosPessoa`, `criarPessoa`, `atualizarPessoa`, `buscarPorCpf`, `pessoaNoEscopo`).
+(`normalizarTelefone`, `formatarTelefone`, `validarDadosPessoa`, `criarPessoa`, `atualizarPessoa`, `buscarPorCpf`, `pessoaNoEscopo`).
+
+No módulo Famílias o telefone omitido **não apaga** o existente (COALESCE); no `PUT /api/pessoas/:id` e na edição de atendimento, omitido vira `null`.

@@ -1,5 +1,6 @@
 // Atendimentos — formulário de novo atendimento / edição (18 campos da especificação).
 import { api, ErroApi } from '../api.js';
+import { formatarTelefone } from '../telefone.js';
 import {
   h, toast, carregando, mostrarErrosCampos, comEspera, hojeIso, formatarCpf, formatarCep, mascarar,
   cpfValido, apenasDigitos,
@@ -15,7 +16,7 @@ const rascunho = {
 };
 
 const CAMPOS_TEXTO = [
-  'dataAtendimento', 'unidadeId', 'cpf', 'nome', 'dataNascimento', 'nis', 'endereco', 'cep', 'bairro',
+  'dataAtendimento', 'unidadeId', 'cpf', 'nome', 'dataNascimento', 'nis', 'telefone', 'telefone2', 'endereco', 'cep', 'bairro',
   'trabalhoAtual', 'faixaEtariaId', 'demandaOutra', 'vulnerabilidadeOutra', 'encaminhamentoOutro', 'resumo',
 ];
 const CAMPOS_RADIO = ['generoId', 'nivelVulnerabilidadeId'];
@@ -94,6 +95,8 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
     nome: h('input', { class: 'input', name: 'nome', id: 'nome', maxlength: 150, autocomplete: 'off' }),
     dataNascimento: h('input', { class: 'input', type: 'date', name: 'dataNascimento', id: 'dataNascimento', max: hojeIso() }),
     nis: h('input', { class: 'input', name: 'nis', id: 'nis', inputmode: 'numeric', maxlength: 11 }),
+    telefone: h('input', { class: 'input', type: 'tel', name: 'telefone', id: 'telefone', inputmode: 'tel', maxlength: 15, placeholder: '(11) 91234-5678', autocomplete: 'off' }),
+    telefone2: h('input', { class: 'input', type: 'tel', name: 'telefone2', id: 'telefone2', inputmode: 'tel', maxlength: 15, placeholder: '(11) 91234-5678', autocomplete: 'off' }),
     endereco: h('input', { class: 'input', name: 'endereco', id: 'endereco', maxlength: 200 }),
     cep: h('input', { class: 'input', name: 'cep', id: 'cep', inputmode: 'numeric', maxlength: 9, placeholder: '00000-000' }),
     bairro: h('input', { class: 'input', name: 'bairro', id: 'bairro', maxlength: 100 }),
@@ -102,6 +105,8 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
   };
   mascarar(entrada.cpf, formatarCpf);
   mascarar(entrada.cep, formatarCep);
+  mascarar(entrada.telefone, formatarTelefone);
+  mascarar(entrada.telefone2, formatarTelefone);
   entrada.nis.addEventListener('input', () => { entrada.nis.value = apenasDigitos(entrada.nis.value).slice(0, 11); });
 
   const outras = {
@@ -130,6 +135,9 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       h('div', { class: 'grade grade-2' },
         campo('Data de nascimento', entrada.dataNascimento, { id: 'dataNascimento' }),
         campo('Nº CadÚnico (NIS)', entrada.nis, { id: 'nis' })),
+      h('div', { class: 'grade grade-2' },
+        campo('Telefone', entrada.telefone, { id: 'telefone' }),
+        campo('Telefone de recado (opcional)', entrada.telefone2, { id: 'telefone2' })),
       campo('Endereço (rua e número)', entrada.endereco, { id: 'endereco' }),
       h('div', { class: 'grade grade-2' },
         campo('CEP', entrada.cep, { id: 'cep' }),
@@ -205,7 +213,8 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
   function dadosParaPessoa(p) {
     return {
       cpf: p.cpf ? formatarCpf(p.cpf) : '', nome: p.nome, dataNascimento: (p.dataNascimento || '').slice(0, 10),
-      nis: p.nis || '', endereco: p.endereco || '', cep: p.cep ? formatarCep(p.cep) : '', bairro: p.bairro || '',
+      nis: p.nis || '', telefone: p.telefone ? formatarTelefone(p.telefone) : '', telefone2: p.telefone2 ? formatarTelefone(p.telefone2) : '',
+      endereco: p.endereco || '', cep: p.cep ? formatarCep(p.cep) : '', bairro: p.bairro || '',
       trabalhoAtual: p.trabalhoAtual || '', generoId: p.generoId ?? '', escolaridadeId: p.escolaridadeId ?? '', racaId: p.racaId ?? '',
     };
   }
@@ -283,6 +292,8 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       faixaEtariaId: v.faixaEtariaId || null,
       cpf: apenasDigitos(v.cpf) || null,
       nis: v.nis || null,
+      telefone: apenasDigitos(v.telefone) || null,
+      telefone2: apenasDigitos(v.telefone2) || null,
       cep: apenasDigitos(v.cep) || null,
     };
     try {

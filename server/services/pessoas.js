@@ -10,7 +10,22 @@ const {
 } = require('../lib/validacao');
 
 const COLUNAS_PESSOA = `p.id, p.cpf, p.nome, p.data_nascimento, p.nis, p.endereco, p.cep, p.bairro,
-  p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id`;
+  p.telefone, p.telefone2, p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id`;
+
+// Telefone: só dígitos, DDD + número (10 ou 11). Devolve { valor, erro }; vazio => valor null.
+function normalizarTelefone(entrada) {
+  const d = apenasDigitos(entrada);
+  if (d === '') return { valor: null };
+  if (!/^[1-9]\d{9,10}$/.test(d)) return { valor: null, erro: 'Telefone inválido. Informe DDD + número (10 ou 11 dígitos).' };
+  return { valor: d };
+}
+
+function formatarTelefone(valor) {
+  const d = apenasDigitos(valor);
+  if (d.length === 11) return d.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+  if (d.length === 10) return d.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+  return d;
+}
 
 // Valida/normaliza os dados pessoais do corpo da requisição. Devolve { dados, problemas }.
 function validarDadosPessoa(corpo) {
@@ -32,6 +47,12 @@ function validarDadosPessoa(corpo) {
   const nis = apenasDigitos(corpo.nis);
   dados.nis = nis === '' ? null : nis;
   if (dados.nis && dados.nis.length > 11) problemas.nis = 'O Nº CadÚnico (NIS) deve ter até 11 dígitos.';
+
+  for (const campo of ['telefone', 'telefone2']) {
+    const { valor, erro } = normalizarTelefone(corpo[campo]);
+    dados[campo] = valor;
+    if (erro) problemas[campo] = erro;
+  }
 
   dados.endereco = texto(corpo.endereco, 200);
   dados.cep = normalizarCep(corpo.cep);
@@ -64,6 +85,8 @@ function paramsPessoa(d) {
     nome: d.nome,
     dataNascimento: [tipos.Date, d.dataNascimento],
     nis: d.nis,
+    telefone: d.telefone,
+    telefone2: d.telefone2,
     endereco: d.endereco,
     cep: d.cep,
     bairro: d.bairro,
@@ -76,10 +99,10 @@ function paramsPessoa(d) {
 
 async function criarPessoa(tx, dados, usuarioId) {
   const [nova] = await tx.consultar(
-    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, endereco, cep, bairro, trabalho_atual,
+    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
                          genero_id, escolaridade_id, raca_id, criado_por)
      OUTPUT INSERTED.id
-     VALUES (@cpf, @nome, @dataNascimento, @nis, @endereco, @cep, @bairro, @trabalhoAtual,
+     VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
              @generoId, @escolaridadeId, @racaId, @usuarioId)`,
     { ...paramsPessoa(dados), usuarioId },
   );
@@ -88,7 +111,7 @@ async function criarPessoa(tx, dados, usuarioId) {
 
 async function atualizarPessoa(tx, id, dados, usuarioId) {
   await tx.consultar(
-    `UPDATE pessoa SET cpf = @cpf, nome = @nome, data_nascimento = @dataNascimento, nis = @nis,
+    `UPDATE pessoa SET cpf = @cpf, nome = @nome, data_nascimento = @dataNascimento, nis = @nis, telefone = @telefone, telefone2 = @telefone2,
             endereco = @endereco, cep = @cep, bairro = @bairro, trabalho_atual = @trabalhoAtual,
             genero_id = @generoId, escolaridade_id = @escolaridadeId, raca_id = @racaId,
             alterado_por = @usuarioId, alterado_em = SYSUTCDATETIME()
@@ -126,6 +149,8 @@ function lembrarLocalizada(req, pessoaId) {
 const foiLocalizada = (req, pessoaId) => !!req.session?.pessoasLocalizadas?.includes(pessoaId);
 
 module.exports = {
+  normalizarTelefone,
+  formatarTelefone,
   COLUNAS_PESSOA,
   validarDadosPessoa,
   validarApoioPessoa,

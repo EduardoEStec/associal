@@ -1,5 +1,6 @@
 // Ficha da família acompanhada: dados, questionários, comparação e encerramento.
 import { api, ErroApi } from '../api.js';
+import { formatarTelefone } from '../telefone.js';
 import { h, toast, carregando, abrirModal, formatarData, formatarCpf, mostrarErrosCampos, hojeIso } from '../ui.js';
 import {
   carregarApoio, cabecalhoPagina, podeEscrever, seloStatus, seloFinal, rotuloSimNao, textoOuTraco, campo,
@@ -85,6 +86,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
     h('h2', {}, 'Responsável'),
     h('div', { class: 'card' }, h('dl', { class: 'fam-dados' },
       dado('CPF', r.cpf ? formatarCpf(r.cpf) : null), dado('Nascimento', r.dataNascimento ? formatarData(r.dataNascimento) : null),
+      dado('Telefone', [r.telefone && formatarTelefone(r.telefone), r.telefone2 && `${formatarTelefone(r.telefone2)} (recado)`].filter(Boolean).join(' · ')),
       dado('NIS (CadÚnico)', r.nis), dado('Endereço', [r.endereco, r.bairro].filter(Boolean).join(' — ')),
       dado('Trabalho atual', r.trabalhoAtual), dado('Gênero', nomeApoio(apoio.genero, r.generoId)),
       dado('Escolaridade', nomeApoio(apoio.escolaridade, r.escolaridadeId)), dado('Raça/etnia', nomeApoio(apoio.raca, r.racaId)))),

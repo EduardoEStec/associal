@@ -94,7 +94,7 @@ async function carregarIndividual(req, acompanhamentoId) {
   if (!acompanhamento) throw erros.naoEncontrado();
 
   const responsavel = await consultarUm(
-    `SELECT p.nome, p.cpf, p.nis, p.endereco, p.cep, p.bairro, p.trabalho_atual
+    `SELECT p.nome, p.cpf, p.nis, p.telefone, p.telefone2, p.endereco, p.cep, p.bairro, p.trabalho_atual
        FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id
       WHERE f.id = @familiaId`,
     { familiaId: acompanhamento.familiaId },

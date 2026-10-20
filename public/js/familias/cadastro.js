@@ -1,5 +1,6 @@
 // Cadastro (e edição) da família: responsável + membros dinâmicos + dados do acompanhamento.
 import { api, ErroApi } from '../api.js';
+import { formatarTelefone } from '../telefone.js';
 import {
   h, toast, carregando, mascarar, formatarCpf, formatarCep, cpfValido, apenasDigitos, hojeIso,
   mostrarErrosCampos, comEspera,
@@ -97,6 +98,10 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
   const nome = entrada({ type: 'text', id: 'nome', name: 'responsavel.nome', maxlength: 150, autocomplete: 'off', value: r.nome || '' });
   const nasc = entrada({ type: 'date', id: 'nasc', name: 'responsavel.dataNascimento', max: hojeIso(), value: isoDia(r.dataNascimento) });
   const nis = entrada({ type: 'text', id: 'nis', name: 'responsavel.nis', inputmode: 'numeric', maxlength: 11, value: r.nis || '' });
+  const telefone = entrada({ type: 'tel', id: 'telefone', name: 'responsavel.telefone', inputmode: 'tel', maxlength: 15, placeholder: '(11) 91234-5678', autocomplete: 'off', value: r.telefone ? formatarTelefone(r.telefone) : '' });
+  const telefone2 = entrada({ type: 'tel', id: 'telefone2', name: 'responsavel.telefone2', inputmode: 'tel', maxlength: 15, placeholder: '(11) 91234-5678', autocomplete: 'off', value: r.telefone2 ? formatarTelefone(r.telefone2) : '' });
+  mascarar(telefone, formatarTelefone);
+  mascarar(telefone2, formatarTelefone);
   const endereco = entrada({ type: 'text', id: 'endereco', name: 'responsavel.endereco', maxlength: 200, value: r.endereco || '' });
   const cep = entrada({ type: 'text', id: 'cep', name: 'responsavel.cep', inputmode: 'numeric', maxlength: 9, value: r.cep ? formatarCep(r.cep) : '' });
   mascarar(cep, formatarCep);
@@ -117,6 +122,8 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
     h('div', { class: 'grade grade-2' },
       campo({ id: 'nasc', rotulo: 'Data de nascimento', controle: nasc }),
       campo({ id: 'nis', rotulo: 'Nº CadÚnico (NIS)', controle: nis }),
+      campo({ id: 'telefone', rotulo: 'Telefone', controle: telefone }),
+      campo({ id: 'telefone2', rotulo: 'Telefone de recado (opcional)', controle: telefone2 }),
       campo({ id: 'endereco', rotulo: 'Endereço (rua e número)', controle: endereco }),
       campo({ id: 'cep', rotulo: 'CEP', controle: cep }),
       campo({ id: 'bairro', rotulo: 'Bairro', controle: bairro }),
@@ -138,6 +145,7 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
       if (res.encontrada) {
         const p = res.pessoa;
         nome.value = p.nome || ''; nasc.value = isoDia(p.dataNascimento); nis.value = p.nis || '';
+        telefone.value = p.telefone ? formatarTelefone(p.telefone) : ''; telefone2.value = p.telefone2 ? formatarTelefone(p.telefone2) : '';
         endereco.value = p.endereco || ''; cep.value = p.cep ? formatarCep(p.cep) : ''; bairro.value = p.bairro || '';
         trabalho.value = p.trabalhoAtual || ''; genero.value = p.generoId ? String(p.generoId) : '';
         escolaridade.value = p.escolaridadeId ? String(p.escolaridadeId) : ''; raca.value = p.racaId ? String(p.racaId) : '';
@@ -206,7 +214,7 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
       observacoes: observacoes.value.trim() || null,
       responsavel: {
         cpf: apenasDigitos(cpf.value), nome: nome.value.trim(), dataNascimento: nasc.value || null,
-        nis: nis.value.trim() || null, endereco: endereco.value.trim() || null, cep: apenasDigitos(cep.value) || null,
+        nis: nis.value.trim() || null, telefone: apenasDigitos(telefone.value) || null, telefone2: apenasDigitos(telefone2.value) || null, endereco: endereco.value.trim() || null, cep: apenasDigitos(cep.value) || null,
         bairro: bairro.value.trim() || null, trabalhoAtual: trabalho.value.trim() || null,
         generoId: genero.value ? Number(genero.value) : null, escolaridadeId: escolaridade.value ? Number(escolaridade.value) : null,
         racaId: raca.value ? Number(raca.value) : null,

@@ -100,6 +100,15 @@ async function teste(nome, fn) {
     assert.deepEqual(Object.keys(svc.validarCorpo(corpoValido()).problemas), []);
   });
 
+  await teste('telefone: normaliza dígitos, aceita 10/11 e rejeita inválidos', () => {
+    const ok = svc.validarCorpo({ ...corpoValido(), telefone: '(11) 91234-5678', telefone2: '1123456789' });
+    assert.equal(ok.dados.pessoa.telefone, '11912345678');
+    assert.equal(ok.dados.pessoa.telefone2, '1123456789');
+    assert.equal(svc.validarCorpo({ ...corpoValido(), telefone: '' }).dados.pessoa.telefone, null);
+    assert.ok(svc.validarCorpo({ ...corpoValido(), telefone: '12345' }).problemas.telefone);
+    assert.ok(svc.validarCorpo({ ...corpoValido(), telefone2: '0123456789' }).problemas.telefone2);
+  });
+
   await teste('POST valida no back-end (400 com detalhes)', async () => {
     const r = await chamar('POST', '/api/atendimentos', { nome: '' });
     assert.equal(r.status, 400);

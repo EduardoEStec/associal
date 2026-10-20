@@ -1,5 +1,6 @@
 // Atendimentos — detalhe (somente leitura) com histórico da pessoa nas unidades permitidas.
 import { api } from '../api.js';
+import { formatarTelefone } from '../telefone.js';
 import { h, toast, confirmar, carregando, formatarData, formatarCpf, formatarCep } from '../ui.js';
 
 const nomeDe = (lista, id) => lista.find((o) => o.id === id)?.nome || '';
@@ -41,6 +42,7 @@ export async function renderDetalhe({ conteudo, apoio }, id) {
         ...par('Unidade', `${a.unidadeSigla} — ${a.unidadeNome}`),
         ...par('Atendido por', a.atendente),
         ...par('CPF', p.cpf ? formatarCpf(p.cpf) : ''),
+        ...par('Telefone', [p.telefone && formatarTelefone(p.telefone), p.telefone2 && `${formatarTelefone(p.telefone2)} (recado)`].filter(Boolean).join(' · ')),
         ...par('Data de nascimento', formatarData(p.dataNascimento)),
         ...par('Nº CadÚnico (NIS)', p.nis),
         ...par('Endereço', [p.endereco, p.bairro, p.cep ? formatarCep(p.cep) : ''].filter(Boolean).join(' · ')),

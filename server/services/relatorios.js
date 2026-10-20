@@ -76,6 +76,12 @@ function mesclarTextos(editados, padroes, chaves) {
   return saida;
 }
 
+const formatarTelefone = (tel) => {
+  const d = String(tel ?? '').replace(/\D/g, '');
+  if (d.length === 11) return d.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+  if (d.length === 10) return d.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+  return '';
+};
 const formatarCpf = (cpf) => {
   const d = apenasDigitos(cpf);
   return d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : (cpf || '');
@@ -123,7 +129,7 @@ function identificacaoPadrao(d) {
     responsavel: responsavel.nome || '',
     cpf: formatarCpf(responsavel.cpf),
     nis: responsavel.nis || '',
-    contato: '',
+    contato: [formatarTelefone(responsavel.telefone), formatarTelefone(responsavel.telefone2) && `${formatarTelefone(responsavel.telefone2)} (recado)`].filter(Boolean).join(' / '),
     endereco,
     unidade: acompanhamento.unidadeNome,
   };

@@ -8,6 +8,7 @@ const { consultar, consultarUm, transacao, tipos } = require('../db');
 const { clausulaUnidades, unidadesPermitidas, exigirUnidade, resolverUnidade } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
 const { registrarAuditoria } = require('../lib/auditoria');
+const { normalizarTelefone } = require('./pessoas');
 const {
   normalizarCpf, cpfValido, normalizarCep, cepValido, normalizarData, texto, inteiroPositivo,
   lancarSeErros, apenasDigitos,
@@ -205,7 +206,7 @@ async function detalhar(req, id) {
   const ac = await carregarAcompanhamento(req, id);
   const [familia, membros, questionarios, unidade, assistente] = await Promise.all([
     consultarUm(
-      `SELECT f.id, p.id AS pessoa_id, p.cpf, p.nome, p.data_nascimento, p.nis, p.endereco, p.cep, p.bairro,
+      `SELECT f.id, p.id AS pessoa_id, p.cpf, p.nome, p.data_nascimento, p.nis, p.telefone, p.telefone2, p.endereco, p.cep, p.bairro,
               p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id
          FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id
         WHERE f.id = @familia`, { familia: ac.familiaId }),
@@ -244,7 +245,7 @@ async function detalhar(req, id) {
     assistente,
     responsavel: familia && {
       pessoaId: familia.pessoaId, cpf: familia.cpf, nome: familia.nome, dataNascimento: familia.dataNascimento,
-      nis: familia.nis, endereco: familia.endereco, cep: familia.cep, bairro: familia.bairro,
+      nis: familia.nis, telefone: familia.telefone, telefone2: familia.telefone2, endereco: familia.endereco, cep: familia.cep, bairro: familia.bairro,
       trabalhoAtual: familia.trabalhoAtual, generoId: familia.generoId, escolaridadeId: familia.escolaridadeId,
       racaId: familia.racaId,
     },
@@ -316,6 +317,12 @@ function validarResponsavel(entrada, hoje, { exigirCpf }) {
   if (nis && nis.length > 11) problemas[chave('nis')] = 'O NIS deve ter no máximo 11 dígitos.';
   const cep = normalizarCep(r.cep);
   if (cep && !cepValido(cep)) problemas[chave('cep')] = 'CEP inválido.';
+  const tel = {};
+  for (const campo of ['telefone', 'telefone2']) {
+    const { valor, erro } = normalizarTelefone(r[campo]);
+    tel[campo] = valor;
+    if (erro) problemas[chave(campo)] = erro;
+  }
 
   const ids = {};
   for (const campo of ['generoId', 'escolaridadeId', 'racaId']) {
@@ -330,7 +337,7 @@ function validarResponsavel(entrada, hoje, { exigirCpf }) {
   return {
     problemas,
     pessoa: {
-      cpf, nome, dataNascimento, nis, cep,
+      cpf, nome, dataNascimento, nis, cep, ...tel,
       endereco: texto(r.endereco, 200), bairro: texto(r.bairro, 100), trabalhoAtual: texto(r.trabalhoAtual, 200),
       ...ids,
     },
@@ -365,7 +372,7 @@ async function gravarPessoa(tx, req, p) {
   const existente = await tx.consultarUm(
     'SELECT id FROM pessoa WITH (UPDLOCK, HOLDLOCK) WHERE cpf = @cpf', { cpf: [tipos.Char(11), p.cpf] });
   const params = {
-    nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, endereco: p.endereco, cep: p.cep,
+    nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone, telefone2: p.telefone2, endereco: p.endereco, cep: p.cep,
     bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId, escolaridadeId: p.escolaridadeId,
     racaId: p.racaId, usuario: req.usuario.id,
   };
@@ -373,6 +380,7 @@ async function gravarPessoa(tx, req, p) {
     await tx.consultar(
       `UPDATE pessoa SET nome = @nome,
               data_nascimento = COALESCE(@dataNascimento, data_nascimento), nis = COALESCE(@nis, nis),
+              telefone = COALESCE(@telefone, telefone), telefone2 = COALESCE(@telefone2, telefone2),
               endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
               trabalho_atual = COALESCE(@trabalhoAtual, trabalho_atual), genero_id = COALESCE(@generoId, genero_id),
               escolaridade_id = COALESCE(@escolaridadeId, escolaridade_id), raca_id = COALESCE(@racaId, raca_id),
@@ -382,10 +390,10 @@ async function gravarPessoa(tx, req, p) {
     return { id: existente.id, criada: false };
   }
   const [nova] = await tx.consultar(
-    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, endereco, cep, bairro, trabalho_atual,
+    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
                          genero_id, escolaridade_id, raca_id, criado_por)
      OUTPUT INSERTED.id
-     VALUES (@cpf, @nome, @dataNascimento, @nis, @endereco, @cep, @bairro, @trabalhoAtual,
+     VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
              @generoId, @escolaridadeId, @racaId, @usuario)`,
     { ...params, cpf: [tipos.Char(11), p.cpf] });
   return { id: nova.id, criada: true };
@@ -396,13 +404,15 @@ async function atualizarPessoaPorId(tx, req, pessoaId, p) {
   await tx.consultar(
     `UPDATE pessoa SET nome = COALESCE(@nome, nome),
             data_nascimento = COALESCE(@dataNascimento, data_nascimento), nis = COALESCE(@nis, nis),
+            telefone = COALESCE(@telefone, telefone), telefone2 = COALESCE(@telefone2, telefone2),
             endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
             trabalho_atual = COALESCE(@trabalhoAtual, trabalho_atual), genero_id = COALESCE(@generoId, genero_id),
             escolaridade_id = COALESCE(@escolaridadeId, escolaridade_id), raca_id = COALESCE(@racaId, raca_id),
             alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
       WHERE id = @id`,
     {
-      id: pessoaId, nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, endereco: p.endereco,
+      id: pessoaId, nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone,
+      telefone2: p.telefone2, endereco: p.endereco,
       cep: p.cep, bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId,
       escolaridadeId: p.escolaridadeId, racaId: p.racaId, usuario: req.usuario.id,
     });
