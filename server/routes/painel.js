@@ -1,18 +1,52 @@
 'use strict';
 
-// MÓDULO 5 — Painel do Coordenador. ESQUELETO: implemente aqui as rotas do módulo.
-// Montado automaticamente em /api/painel (já exige sessão). Veja docs/CONVENCOES.md.
+// MÓDULO 5 — Painel do Coordenador. Montado em /api/painel (já exige sessão).
+// Agregações em server/services/painel.js. Tudo filtrado por unidade (clausulaUnidades).
 
 const express = require('express');
-const { requirePerfil, unidadesPermitidas } = require('../middlewares/auth');
+const { requirePerfil } = require('../middlewares/auth');
 const { PERFIS } = require('../lib/dominios');
+const servico = require('../services/painel');
 
 const router = express.Router();
 
+// Resumo da tela inicial: todos os perfis (cada um vê só as suas unidades).
+router.get('/resumo-inicio', async (req, res) => {
+  res.json(await servico.resumoInicio(req));
+});
+
 router.use(requirePerfil(PERFIS.COORDENADOR, PERFIS.ADMIN));
 
-router.get('/_status', (req, res) => {
-  res.json({ modulo: 'painel', implementado: false, unidades: unidadesPermitidas(req) });
+// GET /api/painel/mensal?ano=2026&mes=3  |  ?inicio=2026-01-01&fim=2026-06-30  [&unidadeId=]
+router.get('/mensal', async (req, res) => {
+  const periodo = servico.lerPeriodo(req.query);
+  res.json(await servico.indicadoresPorUnidade(req, periodo, servico.lerUnidadeFiltro(req)));
+});
+
+// GET /api/painel/evolucao?inicio=&fim=[&unidadeId=]  (padrão: últimos 6 meses até o mês corrente)
+router.get('/evolucao', async (req, res) => {
+  let periodo;
+  if (req.query.inicio || req.query.fim || req.query.ano || req.query.mes) {
+    periodo = servico.lerPeriodo(req.query);
+  } else {
+    const hoje = servico.hojeBrasil();
+    let ano = Number(hoje.slice(0, 4));
+    let mes = Number(hoje.slice(5, 7)) - 5;
+    if (mes < 1) { mes += 12; ano -= 1; }
+    periodo = { inicio: servico.limitesDoMes(ano, mes).inicio, fim: servico.limitesDoMes(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7))).fim };
+  }
+  res.json(await servico.evolucaoMensal(req, periodo, servico.lerUnidadeFiltro(req)));
+});
+
+// GET /api/painel/perfil?inicio=&fim=[&unidadeId=]
+router.get('/perfil', async (req, res) => {
+  const periodo = servico.lerPeriodo(req.query);
+  res.json(await servico.perfilPublico(req, periodo, servico.lerUnidadeFiltro(req)));
+});
+
+// GET /api/painel/alertas[?unidadeId=]
+router.get('/alertas', async (req, res) => {
+  res.json(await servico.alertas(req, servico.lerUnidadeFiltro(req)));
 });
 
 module.exports = router;

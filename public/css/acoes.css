@@ -1,0 +1,66 @@
+/* Visitas e Ações — estilos específicos do módulo (linkado só em acoes.html) */
+
+main > .acoes-filtros, main > .acoes-visoes { margin-bottom: var(--esp-4); }
+.acoes-filtros summary { cursor: pointer; font-weight: 600; min-height: var(--alvo-toque); display: flex; align-items: center; }
+.acoes-filtros .grade { align-items: end; }
+
+.acoes-visoes { display: flex; gap: var(--esp-2); }
+.acoes-visoes .btn[aria-pressed='true'] { background: var(--cor-primaria); color: var(--cor-texto-inverso); }
+
+.acoes-resumo { color: var(--cor-texto-suave); font-size: var(--texto-sm); margin: 0 0 var(--esp-3); }
+
+/* Agenda por mês */
+.acoes-mes { margin-bottom: var(--esp-5); }
+.acoes-mes h2 { font-size: var(--texto-lg); margin: 0 0 var(--esp-2); position: sticky; top: var(--altura-cabecalho); background: var(--cor-fundo); padding: var(--esp-2) 0; z-index: 1; }
+.acoes-mes h2 small { color: var(--cor-texto-suave); font-weight: 400; }
+.acoes-itens { display: grid; gap: var(--esp-2); }
+@media (min-width: 900px) { .acoes-itens { grid-template-columns: repeat(2, 1fr); } }
+
+.acoes-item {
+  display: flex; gap: var(--esp-3); align-items: flex-start; width: 100%; min-height: var(--alvo-toque);
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio);
+  padding: var(--esp-3); box-shadow: var(--sombra);
+}
+.acoes-item:hover, .acoes-item:focus-visible { border-color: var(--cor-primaria); }
+.acoes-item-data {
+  flex: none; display: flex; flex-direction: column; align-items: center; min-width: 48px;
+  background: var(--cor-primaria-clara); color: var(--cor-primaria-escura); border-radius: var(--raio-pequeno); padding: var(--esp-1) var(--esp-2);
+}
+.acoes-item-data strong { font-size: var(--texto-xl); line-height: 1.1; }
+.acoes-item-data small { text-transform: uppercase; font-size: var(--texto-xs); }
+.acoes-item-corpo { display: flex; flex-direction: column; gap: var(--esp-1); min-width: 0; }
+.acoes-item-corpo > small { color: var(--cor-texto-suave); }
+.acoes-item-meta { display: flex; flex-wrap: wrap; gap: var(--esp-1); }
+
+/* Lista */
+.acoes-linha { cursor: pointer; }
+
+/* Formulário */
+.modal.modal-larga { width: min(720px, 100%); }
+.acoes-temas { display: grid; gap: var(--esp-2); }
+@media (min-width: 640px) { .acoes-temas { grid-template-columns: repeat(2, 1fr); } }
+.acoes-form .barra-acoes { margin-top: var(--esp-4); }
+
+/* Seleção de fotos */
+.acoes-barra-fotos { margin-bottom: var(--esp-3); }
+.acoes-pre-fotos { display: grid; gap: var(--esp-3); }
+.acoes-pre-foto { display: grid; grid-template-columns: 72px 1fr auto; gap: var(--esp-2); align-items: center; }
+.acoes-pre-foto img { width: 72px; height: 72px; object-fit: cover; border-radius: var(--raio-pequeno); }
+
+/* Detalhe */
+.acoes-detalhe-topo { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-3); }
+.acoes-infos { margin: 0 0 var(--esp-3); display: grid; gap: var(--esp-2); }
+.acoes-info { display: grid; gap: 0; }
+.acoes-info dt { font-size: var(--texto-xs); color: var(--cor-texto-suave); text-transform: uppercase; }
+.acoes-info dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.acoes-barra-status { margin-bottom: var(--esp-3); }
+
+.acoes-galeria { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); margin-bottom: var(--esp-3); }
+@media (min-width: 640px) { .acoes-galeria { grid-template-columns: repeat(3, 1fr); } }
+.acoes-miniatura { margin: 0; display: flex; flex-direction: column; gap: var(--esp-1); }
+.acoes-miniatura-botao { padding: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); background: var(--cor-fundo); cursor: zoom-in; overflow: hidden; }
+.acoes-miniatura-botao img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.acoes-miniatura figcaption { font-size: var(--texto-sm); color: var(--cor-texto-suave); overflow-wrap: anywhere; }
+.acoes-miniatura-acoes { display: flex; gap: var(--esp-1); }
+.acoes-foto-grande { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: var(--raio-pequeno); }

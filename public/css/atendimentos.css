@@ -1,0 +1,19 @@
+/* Módulo Atendimentos — estilos específicos (usa as variáveis de tokens.css) */
+.atend-filtros { margin-bottom: var(--esp-4); }
+.atend-filtros .grade { align-items: end; }
+.atend-filtros .campo { margin-bottom: 0; }
+.atend-paginacao { display: flex; align-items: center; justify-content: center; gap: var(--esp-3); margin-top: var(--esp-4); }
+.atend-resumo { color: var(--cor-texto-suave); font-size: var(--texto-sm); margin: 0 0 var(--esp-3); }
+.atend-opcoes-grade { display: grid; gap: var(--esp-2); grid-template-columns: 1fr; }
+@media (min-width: 640px) { .atend-opcoes-grade { grid-template-columns: repeat(2, 1fr); } }
+.atend-cadastro-existente { margin-bottom: var(--esp-4); }
+.atend-faixa { font-weight: 600; }
+.atend-rascunho { margin-bottom: var(--esp-4); }
+.atend-detalhe dl { display: grid; grid-template-columns: 1fr; gap: var(--esp-2) var(--esp-4); margin: 0; }
+@media (min-width: 640px) { .atend-detalhe dl { grid-template-columns: 220px 1fr; } }
+.atend-detalhe dt { font-weight: 600; color: var(--cor-texto-suave); }
+.atend-detalhe dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.atend-historico { list-style: none; margin: 0; padding: 0; }
+.atend-historico li { padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }
+.atend-linha-clicavel { cursor: pointer; }
+.atend-barra-fixa { position: sticky; bottom: 0; background: var(--cor-fundo); padding: var(--esp-3) 0; }

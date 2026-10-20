@@ -1,0 +1,19 @@
+/* Administração — estilos específicos da página (linkado só em admin.html) */
+.abas { display: flex; gap: var(--esp-1); overflow-x: auto; border-bottom: 1px solid var(--cor-borda); margin-bottom: var(--esp-4); -webkit-overflow-scrolling: touch; }
+.aba {
+  flex: none; min-height: var(--alvo-toque); padding: 0 var(--esp-4); border: 0; border-bottom: 3px solid transparent;
+  background: none; font: inherit; color: var(--cor-texto-suave); cursor: pointer; white-space: nowrap;
+}
+.aba[aria-selected="true"] { color: var(--cor-primaria-escura); border-bottom-color: var(--cor-primaria); font-weight: 600; }
+.admin-barra { display: flex; flex-wrap: wrap; gap: var(--esp-3); align-items: flex-end; margin-bottom: var(--esp-4); }
+.admin-barra .campo { margin: 0; flex: 1 1 180px; }
+.admin-barra .btn { flex: none; }
+.admin-acoes { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+.admin-inativo { opacity: .65; }
+.senha-provisoria {
+  font-family: ui-monospace, Consolas, monospace; font-size: var(--texto-xl); letter-spacing: .05em;
+  padding: var(--esp-3); background: var(--cor-fundo); border: 1px dashed var(--cor-borda); border-radius: var(--raio);
+  text-align: center; user-select: all; word-break: break-all;
+}
+.admin-paginacao { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-top: var(--esp-4); flex-wrap: wrap; }
+.auditoria-detalhes { font-family: ui-monospace, Consolas, monospace; font-size: var(--texto-xs); word-break: break-all; }

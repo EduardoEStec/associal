@@ -39,7 +39,8 @@ export const ITENS_MENU = [
   { chave: 'familias', rotulo: 'Famílias', href: '/familias.html', perfis: TODOS },
   { chave: 'relatorios', rotulo: 'Relatórios', href: '/relatorios.html', perfis: TODOS },
   { chave: 'painel', rotulo: 'Painel', href: '/painel.html', perfis: ['COORDENADOR', 'ADMIN'] },
-  { chave: 'admin', rotulo: 'Administração', href: '/admin.html', perfis: ['ADMIN'] },
+  // COORDENADOR só enxerga a aba Configurações (prazo do questionário final); a página e a API restringem o resto.
+  { chave: 'admin', rotulo: 'Administração', href: '/admin.html', perfis: ['ADMIN', 'COORDENADOR'] },
 ];
 
 const ROTULO_PERFIL = { ASSISTENTE: 'Assistente Social', COORDENADOR: 'Coordenador', ADMIN: 'Administrador' };
