@@ -5,6 +5,8 @@
 // Aplicado sozinho a todos os <select> da página (inclusive os criados depois). Exceções: <select multiple>, com
 // size > 1 ou com o atributo data-nativo ficam nativos. Carregado por js/layout.js.
 
+import { abrirExclusivo, liberar } from './painel-unico.js';
+
 const CHECK = '<svg class="icone sb-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
 const SETA = '<svg class="icone sb-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 const MAIS_QUE_ISSO_TEM_BUSCA = 8;
@@ -13,7 +15,6 @@ const ALTURA_MINIMA = 120;
 const FOLGA = 8;
 
 let contador = 0;
-let aberto = null; // { fechar } do único painel aberto
 let iniciado = false;
 
 const semAcento = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -190,7 +191,7 @@ function aprimorar(select) {
 
   function abrir() {
     if (painel || select.disabled) return;
-    aberto?.fechar(false);
+    abrirExclusivo(fechar);
     const r = gatilho.getBoundingClientRect();
     if (innerHeight - r.bottom < 200 && r.top < 200) gatilho.scrollIntoView({ block: 'center' });
 
@@ -213,7 +214,6 @@ function aprimorar(select) {
     document.addEventListener('pointerdown', aoClicarFora, true);
     addEventListener('scroll', aoRolar, true);
     addEventListener('resize', aoRedimensionar);
-    aberto = { fechar };
     if (busca && matchMedia('(pointer: fine)').matches) busca.focus({ preventScroll: true }); // no celular não abre o teclado sozinho
   }
 
@@ -228,7 +228,7 @@ function aprimorar(select) {
     ativa = -1;
     gatilho.setAttribute('aria-expanded', 'false');
     gatilho.removeAttribute('aria-activedescendant');
-    if (aberto?.fechar === fechar) aberto = null;
+    liberar(fechar);
     if (devolverFoco) gatilho.focus({ preventScroll: true });
   }
 

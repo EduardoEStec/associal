@@ -122,6 +122,74 @@
   .sb-painel { transform: none; }
 }
 
+/* ---------- Calendário (js/data-bonita.js): campo digitável dd/mm/aaaa + painel igual ao da lista suspensa ---------- */
+.db { position: relative; width: 100%; }
+.db .db-nativo { position: absolute; left: 0; bottom: 0; width: 1px; min-height: 0; height: 1px; margin: 0; padding: 0; border: 0; opacity: 0; pointer-events: none; overflow: hidden; }
+.db .db-texto { padding-right: 56px; }
+.db-texto[aria-invalid="true"] { border-color: var(--cor-perigo); background: var(--cor-perigo-clara); }
+.db-botao {
+  position: absolute; right: 4px; top: 4px; display: grid; place-items: center; width: 40px; height: 40px;
+  color: var(--cor-texto-suave); background: none; border: 0; border-radius: 12px; cursor: pointer;
+}
+.db-botao:hover { color: var(--cor-primaria); background: var(--cor-fundo-suave); }
+.db-botao:focus-visible, .db-botao[aria-expanded="true"] { outline: none; color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(23, 57, 255, 0.28); }
+.db-botao:disabled { opacity: 0.5; cursor: not-allowed; }
+.db-erro { margin-top: var(--esp-1); font-size: var(--texto-sm); font-weight: 700; color: var(--cor-perigo); }
+
+.db-painel {
+  position: fixed; z-index: 1200; max-height: var(--db-altura, none); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno);
+  box-shadow: 0 12px 32px rgba(20, 20, 40, 0.16); padding: var(--esp-2);
+  opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.db-painel.cima { transform: translateY(6px) scale(0.98); transform-origin: bottom center; }
+.db-painel.aberto { opacity: 1; transform: none; }
+.db-cab { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-1); margin-bottom: var(--esp-1); }
+.db-titulo { display: flex; flex: 1; align-items: center; justify-content: center; gap: var(--esp-1); min-width: 0; }
+.db-titulo-botao {
+  min-height: 40px; padding: 0 var(--esp-3); font: inherit; font-weight: 800; color: var(--cor-texto);
+  background: none; border: 0; border-radius: var(--raio-pilula); cursor: pointer;
+}
+.db-titulo-botao:hover, .db-titulo-botao:focus-visible { background: var(--cor-fundo-suave); outline: none; }
+.db-nav {
+  display: grid; place-items: center; flex: none; width: 40px; height: 40px; color: var(--cor-texto);
+  background: none; border: 0; border-radius: 12px; cursor: pointer;
+}
+.db-nav:hover:not(:disabled), .db-nav:focus-visible { background: var(--cor-fundo-suave); outline: none; }
+.db-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+.db-linha { display: grid; grid-template-columns: repeat(7, 1fr); }
+.db-meses .db-linha, .db-anos .db-linha { gap: var(--esp-1); margin-bottom: var(--esp-1); }
+.db-meses .db-linha { grid-template-columns: repeat(3, 1fr); }
+.db-anos .db-linha { grid-template-columns: repeat(4, 1fr); }
+.db-semana { display: grid; place-items: center; min-height: 32px; font-size: var(--texto-xs); font-weight: 800; color: var(--cor-texto-suave); }
+.db-cel {
+  display: grid; place-items: center; min-height: 38px; margin: 1px; padding: 0; font: inherit; font-size: var(--texto-sm); font-weight: 600;
+  color: var(--cor-texto); background: none; border: 2px solid transparent; border-radius: 12px; cursor: pointer;
+}
+.db-cel-grande { min-height: 48px; margin: 0; font-size: var(--texto-base); }
+.db-cel:hover:not([aria-disabled="true"]) { background: var(--cor-fundo-suave); }
+.db-cel:focus-visible { outline: none; border-color: var(--cor-foco); }
+.db-outro { color: var(--cor-texto-suave); opacity: 0.6; }
+.db-hoje { border-color: var(--cor-marca); }
+.db-sel, .db-sel:hover:not([aria-disabled="true"]) { color: var(--cor-texto-inverso); font-weight: 800; background: var(--cor-primaria); opacity: 1; }
+.db-sel.db-hoje { border-color: var(--cor-primaria); }
+.db-sel:focus-visible { border-color: var(--cor-foco); }
+.db-fora { opacity: 0.3; cursor: not-allowed; }
+.db-rodape { display: flex; justify-content: space-between; gap: var(--esp-2); margin-top: var(--esp-1); padding-top: var(--esp-2); border-top: 1px solid var(--cor-borda); }
+.db-acao { min-height: 40px; padding: 0 var(--esp-3); font: inherit; font-size: var(--texto-sm); font-weight: 800; color: var(--cor-texto-primaria); background: none; border: 0; border-radius: var(--raio-pilula); cursor: pointer; }
+.db-acao:hover:not(:disabled), .db-acao:focus-visible { background: var(--cor-fundo-suave); outline: none; }
+.db-acao:disabled { opacity: 0.4; cursor: not-allowed; }
+.db-acao-limpar { margin-left: auto; color: var(--cor-texto-suave); }
+@media (max-width: 639px), (pointer: coarse) {
+  .db-cel { min-height: 42px; }
+  .db-nav, .db-titulo-botao, .db-acao { min-height: 44px; }
+  .db-nav { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .db-painel { transition: none; transform: none; }
+}
+
 /* Opções grandes (checkbox/radio): "chips" — selecionada em laranja */
 .opcoes { display: flex; flex-direction: column; gap: var(--esp-2); }
 .opcao {
