@@ -13,7 +13,6 @@ const DESCRICOES = {
   painel: 'Indicadores por unidade e período',
   admin: 'Usuários, unidades e configurações',
 };
-const CORES_ATALHO = ['laranja', 'roxo', 'azul'];
 
 // ---- Herói ----
 const hora = new Date().getHours();
@@ -27,9 +26,9 @@ document.getElementById('carregando').remove();
 
 // ---- Atalhos (blocos sólidos) ----
 const atalhos = document.getElementById('atalhos');
-itens.filter((i) => i.chave !== 'inicio').forEach((item, n) => {
+itens.filter((i) => i.chave !== 'inicio').forEach((item) => {
   atalhos.append(
-    h('a', { class: `atalho atalho-${CORES_ATALHO[n % CORES_ATALHO.length]}`, href: item.href },
+    h('a', { class: 'atalho', href: item.href },
       h('span', { class: 'atalho-ic' }, icone(item.chave)),
       h('span', { class: 'atalho-texto' }, h('strong', {}, item.rotulo), h('small', {}, DESCRICOES[item.chave] || '')),
       h('span', { class: 'atalho-seta', 'aria-hidden': 'true' }, '›'),
@@ -49,7 +48,7 @@ try {
   const t = r.total;
   const pct = t.pctEncaminhamentos === null || t.pctEncaminhamentos === undefined
     ? '—' : `${(t.pctEncaminhamentos * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-  const tile = (cor, icone_, rotulo, valor) => h('div', { class: `tile tile-${cor}` },
+  const tile = (icone_, rotulo, valor) => h('div', { class: 'tile' },
     h('span', { class: 'tile-ic' }, icone(icone_)), h('strong', {}, valor), h('span', { class: 'tile-rotulo' }, rotulo));
   const [ano, mes] = r.periodo.inicio.split('-');
   const escopo = usuario.perfil === 'ASSISTENTE'
@@ -60,12 +59,12 @@ try {
       h('h2', { id: 'resumo-titulo' }, `Seu mês — ${mes}/${ano} 🌱`),
       h('p', { class: 'texto-suave texto-pequeno' }, `Dados de ${escopo}.`),
       h('div', { class: 'tiles' },
-        tile('laranja', 'atendimentos', 'Atendimentos', formatarNumero(t.atendimentos)),
-        tile('azul', 'acoes', 'Ações realizadas', formatarNumero(t.acoes)),
-        tile('verde', 'atendimentos', 'Participantes', formatarNumero(t.participantes)),
-        tile('roxo', 'familias', 'Famílias acompanhadas', formatarNumero(t.familiasAcompanhadas)),
-        tile('laranja', 'relatorios', 'Total de atendimento', formatarNumero(t.totalAtendimento)),
-        tile('roxo', 'painel', '% encaminhamentos', pct))));
+        tile('atendimentos', 'Atendimentos', formatarNumero(t.atendimentos)),
+        tile('acoes', 'Ações realizadas', formatarNumero(t.acoes)),
+        tile('atendimentos', 'Participantes', formatarNumero(t.participantes)),
+        tile('familias', 'Famílias acompanhadas', formatarNumero(t.familiasAcompanhadas)),
+        tile('relatorios', 'Total de atendimento', formatarNumero(t.totalAtendimento)),
+        tile('painel', '% encaminhamentos', pct))));
 
   // ---- Pra ficar de olho: questionários finais pendentes ----
   const pend = r.pendentes;

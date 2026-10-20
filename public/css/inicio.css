@@ -6,7 +6,7 @@
 
 /* Herói: laranja vivo (superfície grande, texto grande e negrito) + faixa gradiente na base */
 .heroi {
-  position: relative; overflow: hidden; padding: var(--esp-5) var(--esp-4) var(--esp-6);
+  position: relative; overflow: hidden; padding: var(--esp-4) var(--esp-4) var(--esp-5);
   color: var(--cor-texto-inverso); border-radius: var(--raio);
   background:
     var(--grad-marca) left bottom / 100% 6px no-repeat,
@@ -15,53 +15,45 @@
 }
 .heroi::before, .heroi::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
 .heroi::before { width: 150px; height: 150px; right: -40px; top: -50px; background: rgba(255, 255, 255, 0.16); }
-.heroi::after { width: 96px; height: 96px; right: 44px; bottom: -44px; background: rgba(92, 62, 235, 0.85); }
-.heroi h1 { position: relative; margin: 0 0 var(--esp-2); font-size: 1.75rem; color: inherit; background: none; padding: 0; width: auto; }
-.heroi p { position: relative; max-width: 28ch; margin: 0; font-size: var(--texto-lg); font-weight: 700; line-height: 1.35; }
+.heroi::after { width: 72px; height: 72px; right: -8px; bottom: -36px; background: rgba(92, 62, 235, 0.85); }
+.heroi h1 { position: relative; margin: 0; font-size: 1.75rem; color: inherit; background: none; padding: 0; width: auto; }
 .heroi-data {
   position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 5px var(--esp-3);
   font-size: var(--texto-sm); font-weight: 800; color: var(--cor-texto-primaria);
   background: var(--cor-superficie); border-radius: var(--raio-pilula);
 }
 
-/* Resumo do mês: tiles em tons suaves das cores do site */
+/* Resumo do mês: cards neutros (fundo branco, borda sutil, texto escuro); cor só no ícone */
 .resumo-inicio > p { margin-top: calc(var(--esp-2) * -1); }
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); }
-.tile { display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3); border-radius: var(--raio-medio); min-height: 116px; }
-.tile-ic { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--esp-1); background: rgba(255, 255, 255, 0.85); border-radius: 14px; }
+.tile {
+  display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3); min-height: 116px;
+  color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-medio);
+}
+.tile-ic { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--esp-1); color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 14px; }
 .tile strong { font-size: 2rem; font-weight: 800; line-height: 1; }
-.tile-rotulo { font-size: var(--texto-sm); font-weight: 700; line-height: 1.2; }
-.tile-laranja { background: var(--cor-primaria-clara); color: #9a3412; }
-.tile-laranja .tile-ic { color: var(--cor-marca); }
-.tile-roxo { background: var(--cor-roxo-clara); color: var(--cor-roxo-escuro); }
-.tile-roxo .tile-ic { color: var(--cor-roxo); }
-.tile-azul { background: var(--cor-azul-clara); color: var(--cor-azul-escuro); }
-.tile-azul .tile-ic { color: var(--cor-azul); }
-.tile-verde { background: var(--cor-sucesso-clara); color: var(--cor-sucesso); }
-.tile-verde .tile-ic { color: var(--cor-verde); }
+.tile-rotulo { font-size: var(--texto-sm); font-weight: 600; line-height: 1.2; color: var(--cor-texto-suave); }
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(6, 1fr); } }
 
-/* Atalhos: blocos de cor sólida, como os cards do site */
+/* Atalhos: cards neutros (fundo branco, borda sutil); cor só no ícone */
 .atalhos { display: grid; gap: var(--esp-3); grid-template-columns: 1fr; }
 @media (min-width: 640px) { .atalhos { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .atalhos { grid-template-columns: repeat(3, 1fr); } }
 .atalho {
   display: flex; align-items: center; gap: var(--esp-4); min-height: 84px; padding: var(--esp-3) var(--esp-4);
-  color: var(--cor-texto-inverso); text-decoration: none; border-radius: var(--raio);
-  box-shadow: 0 8px 18px rgba(30, 20, 60, 0.16); transition: transform 0.1s;
+  color: var(--cor-texto); text-decoration: none; background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda); border-radius: var(--raio);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.atalho:hover { color: var(--cor-texto-inverso); transform: translateY(-2px); }
-.atalho:active { transform: translateY(1px); }
-.atalho-laranja { background: var(--cor-primaria); }
-.atalho-roxo { background: var(--cor-roxo); }
-.atalho-azul { background: var(--cor-azul); }
-.atalho-ic { display: grid; place-items: center; flex: none; width: 56px; height: 56px; background: rgba(255, 255, 255, 0.24); border-radius: 18px; }
+.atalho:hover { color: var(--cor-texto); border-color: var(--cor-marca); box-shadow: 0 4px 14px rgba(255, 117, 7, 0.18); }
+.atalho:active { background: var(--cor-cinza-claro); }
+.atalho-ic { display: grid; place-items: center; flex: none; width: 56px; height: 56px; color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 18px; }
 .atalho-ic .icone { width: 30px; height: 30px; }
 .atalho-texto { display: flex; flex-direction: column; min-width: 0; }
 .atalho-texto strong { font-size: var(--texto-lg); font-weight: 800; }
-.atalho-texto small { font-size: var(--texto-sm); font-weight: 600; line-height: 1.3; }
-.atalho-seta { margin-left: auto; font-size: 1.75rem; line-height: 1; opacity: 0.9; }
+.atalho-texto small { font-size: var(--texto-sm); font-weight: 500; line-height: 1.3; color: var(--cor-texto-suave); }
+.atalho-seta { margin-left: auto; font-size: 1.75rem; line-height: 1; color: var(--cor-texto-suave); }
 
 /* Pra ficar de olho */
 .pendencias { display: grid; gap: var(--esp-3); }
@@ -77,7 +69,6 @@
 .pendencia-texto small { display: block; margin-bottom: var(--esp-2); color: var(--cor-texto-suave); }
 
 @media (min-width: 900px) {
-  .heroi { padding: var(--esp-6) var(--esp-6) calc(var(--esp-6) + 4px); }
+  .heroi { padding: var(--esp-5) var(--esp-6) calc(var(--esp-5) + 4px); }
   .heroi h1 { font-size: 2.125rem; }
-  .heroi p { max-width: 44ch; font-size: var(--texto-xl); }
 }
