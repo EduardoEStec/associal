@@ -67,6 +67,61 @@
 .campo.invalido .input, .campo.invalido .select, .campo.invalido .textarea { border-color: var(--cor-perigo); background: var(--cor-perigo-clara); }
 .campo.invalido .input:focus, .campo.invalido .select:focus, .campo.invalido .textarea:focus { box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.2); }
 
+/* ---------- Lista suspensa (js/select-bonito.js): gatilho igual aos campos + painel logo abaixo ---------- */
+.sb { position: relative; width: 100%; }
+.sb .sb-nativo { position: absolute; left: 0; bottom: 0; width: 1px; min-height: 0; height: 1px; margin: 0; padding: 0; border: 0; opacity: 0; pointer-events: none; overflow: hidden; }
+.sb-gatilho {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--esp-2); width: 100%; min-height: var(--alvo-toque);
+  padding: var(--esp-2) var(--esp-4); font: inherit; font-weight: 500; text-align: left; color: var(--cor-texto);
+  background: var(--cor-superficie); border: 2px solid var(--cor-borda); border-radius: var(--raio-pequeno); cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sb-gatilho:hover { border-color: var(--cor-texto-suave); }
+.sb-gatilho:focus-visible, .sb-gatilho[aria-expanded="true"] { outline: none; border-color: var(--cor-foco); box-shadow: 0 0 0 4px rgba(23, 57, 255, 0.18); }
+.sb-gatilho:disabled { color: var(--cor-texto-suave); background: var(--cor-cinza-claro); cursor: not-allowed; }
+.sb-gatilho:disabled:hover { border-color: var(--cor-borda); }
+.sb-valor { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-gatilho.sb-vazio .sb-valor { color: var(--cor-texto-suave); }
+.sb-seta { flex: none; width: 20px; height: 20px; color: var(--cor-texto-suave); transition: transform 0.15s; }
+.sb-gatilho[aria-expanded="true"] .sb-seta { transform: rotate(180deg); }
+.campo.invalido .sb-gatilho { border-color: var(--cor-perigo); background: var(--cor-perigo-clara); }
+
+.sb-painel {
+  position: fixed; z-index: 1200; display: flex; flex-direction: column; max-height: var(--sb-altura, 340px); overflow: hidden;
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno);
+  box-shadow: 0 12px 32px rgba(20, 20, 40, 0.16);
+  opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.sb-painel.cima { transform: translateY(6px) scale(0.98); transform-origin: bottom center; }
+.sb-painel.aberto { opacity: 1; transform: none; }
+.sb-busca-caixa { flex: none; padding: var(--esp-2); border-bottom: 1px solid var(--cor-borda); }
+.sb-busca {
+  width: 100%; min-height: 40px; padding: 0 var(--esp-3); font: inherit; color: var(--cor-texto); background: var(--cor-fundo-suave);
+  border: 2px solid var(--cor-borda); border-radius: var(--raio-pilula);
+}
+.sb-busca:focus { outline: none; border-color: var(--cor-foco); background: var(--cor-superficie); }
+.sb-lista { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--esp-1); }
+.sb-lista:focus { outline: none; }
+.sb-opcao {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--esp-3); min-height: 40px;
+  padding: var(--esp-2) var(--esp-3); border-radius: 12px; cursor: pointer; overflow-wrap: anywhere;
+}
+.sb-opcao.ativa { background: var(--cor-fundo-suave); }
+.sb-opcao[aria-selected="true"] { font-weight: 700; }
+.sb-opcao[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.sb-check { flex: none; width: 20px; height: 20px; color: var(--cor-marca); stroke-width: 2.5; }
+.sb-grupo-titulo { padding: var(--esp-2) var(--esp-3) var(--esp-1); font-size: var(--texto-xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cor-texto-suave); }
+.sb-vazio-msg { padding: var(--esp-3); text-align: center; font-size: var(--texto-sm); color: var(--cor-texto-suave); }
+@media (max-width: 639px), (pointer: coarse) {
+  .sb-opcao { min-height: 44px; }
+  .sb-busca { min-height: 44px; font-size: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-painel, .sb-gatilho, .sb-seta { transition: none; }
+  .sb-painel { transform: none; }
+}
+
 /* Opções grandes (checkbox/radio): "chips" — selecionada em laranja */
 .opcoes { display: flex; flex-direction: column; gap: var(--esp-2); }
 .opcao {

@@ -11,6 +11,7 @@
 import { api, ErroApi } from './api.js';
 import { h, toast, abrirModal, mostrarErrosCampos } from './ui.js';
 import { registrarServiceWorker } from './pwa.js';
+import './select-bonito.js'; // troca os <select> por listas suspensas no visual do app
 
 const SVG = {
   inicio: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',

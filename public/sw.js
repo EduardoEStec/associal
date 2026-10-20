@@ -1,14 +1,14 @@
 // Service worker mínimo (instalação PWA + abertura rápida do "casco" do app).
 // NUNCA guarda respostas de /api (dados sensíveis, LGPD) — só arquivos estáticos.
 // Ao alterar CSS/JS de forma que precise invalidar o cache, incremente VERSAO.
-const VERSAO = 'associal-v8';
+const VERSAO = 'associal-v9';
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(VERSAO).then((cache) =>
       cache.addAll([
         '/login.html', '/css/app.css', '/css/fontes.css', '/css/tokens.css', '/css/base.css', '/css/componentes.css', '/css/layout.css',
-        '/fonts/inter-latin.woff2', '/fonts/inter-latin-ext.woff2', '/img/logo-associal.png', '/icons/icon-192.png',
+        '/fonts/inter-latin.woff2', '/fonts/inter-latin-ext.woff2', '/img/logo-associal.png', '/icons/icon-192.png', '/js/select-bonito.js',
       ]),
     ),
   );
