@@ -1,0 +1,30 @@
+{
+  "name": "associal",
+  "version": "0.1.0",
+  "description": "ASSOCIAL — Sistema do Serviço Social da INTECS nos Armazéns Solidários",
+  "private": true,
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "db:migrate": "node database/migrate.js",
+    "admin:senha": "node database/admin-senha.js",
+    "icones": "node scripts/gerar-icones.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "docxtemplater": "^3.0.0",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.0.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.0.0",
+    "mssql": "^12.7.10",
+    "multer": "^2.0.0",
+    "pizzip": "^3.0.0"
+  }
+}

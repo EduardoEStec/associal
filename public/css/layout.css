@@ -1,0 +1,82 @@
+/* Estrutura da página: cabeçalho + menu (inferior no celular, lateral no desktop) + conteúdo.
+   O HTML das páginas só declara <main class="conteudo" id="conteudo">; js/layout.js injeta o resto. */
+
+.app-cabecalho {
+  position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between;
+  gap: var(--esp-3); height: var(--altura-cabecalho); padding: 0 var(--esp-4);
+  color: var(--cor-texto-inverso); background: var(--cor-primaria);
+}
+.app-marca { display: flex; align-items: center; gap: var(--esp-2); color: inherit; text-decoration: none; font-weight: 800; font-size: var(--texto-lg); }
+.app-marca:hover { color: inherit; }
+.app-marca small { font-weight: 400; opacity: 0.85; font-size: var(--texto-xs); display: none; }
+.app-usuario { display: flex; align-items: center; gap: var(--esp-3); font-size: var(--texto-sm); }
+.app-usuario .nome { display: none; text-align: right; line-height: 1.2; }
+.app-usuario .nome small { display: block; opacity: 0.85; }
+.app-usuario .btn-texto { color: var(--cor-texto-inverso); min-height: 36px; }
+.app-usuario .btn-texto:hover { background: rgba(255, 255, 255, 0.15); color: var(--cor-texto-inverso); }
+
+/* Conteúdo */
+.conteudo {
+  max-width: var(--largura-maxima); margin: 0 auto;
+  padding: var(--esp-4) var(--esp-4) calc(var(--altura-menu-inferior) + var(--esp-5) + env(safe-area-inset-bottom));
+}
+.pagina-titulo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-bottom: var(--esp-4); }
+.pagina-titulo h1 { margin: 0; }
+
+/* Menu — celular: barra inferior */
+.app-menu {
+  position: fixed; z-index: 60; left: 0; right: 0; bottom: 0; display: flex;
+  height: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+  background: var(--cor-superficie); border-top: 1px solid var(--cor-borda);
+}
+.app-menu a, .app-menu button {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-width: 0; padding: var(--esp-1); font: inherit; font-size: var(--texto-xs); font-weight: 600;
+  color: var(--cor-texto-suave); background: none; border: 0; text-decoration: none; cursor: pointer;
+}
+.app-menu .icone { width: 24px; height: 24px; }
+.app-menu a[aria-current='page'] { color: var(--cor-primaria); }
+.app-menu a[aria-current='page'] .icone { background: var(--cor-primaria-clara); border-radius: 8px; padding: 2px; width: 32px; height: 28px; }
+
+/* Celular: itens além dos 4 primeiros vão para o botão "Mais" (só quando há mais de 5 itens) */
+@media (max-width: 899px) {
+  .app-menu .menu-extra { display: none; }
+}
+
+/* Lista do "Mais" (modal) */
+.menu-mais { display: flex; flex-direction: column; gap: var(--esp-2); }
+.menu-mais a { display: flex; align-items: center; gap: var(--esp-3); min-height: var(--alvo-toque); padding: var(--esp-2) var(--esp-3); border-radius: var(--raio-pequeno); color: var(--cor-texto); text-decoration: none; border: 1px solid var(--cor-borda); }
+
+.icone { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Desktop: menu lateral fixo */
+@media (min-width: 900px) {
+  .app-marca small { display: inline; }
+  .app-usuario .nome { display: block; }
+  .app-menu {
+    top: var(--altura-cabecalho); right: auto; bottom: 0; width: var(--largura-menu-lateral);
+    height: auto; flex-direction: column; justify-content: flex-start; gap: var(--esp-1);
+    padding: var(--esp-3); border-top: 0; border-right: 1px solid var(--cor-borda);
+  }
+  .app-menu a, .app-menu button {
+    flex: none; flex-direction: row; justify-content: flex-start; gap: var(--esp-3);
+    min-height: var(--alvo-toque); padding: 0 var(--esp-3); font-size: var(--texto-base); border-radius: var(--raio-pequeno);
+  }
+  .app-menu a:hover { background: var(--cor-primaria-clara); color: var(--cor-primaria-escura); }
+  .app-menu a[aria-current='page'] { background: var(--cor-primaria-clara); }
+  .app-menu a[aria-current='page'] .icone { background: none; padding: 0; width: 24px; height: 24px; }
+  .app-menu .menu-mais-botao { display: none; }
+  .conteudo { margin-left: var(--largura-menu-lateral); max-width: none; padding: var(--esp-5); padding-bottom: var(--esp-5); }
+  .conteudo > * { max-width: var(--largura-maxima); }
+}
+
+/* Tela de login */
+.login-tela { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--esp-4); background: linear-gradient(160deg, var(--cor-primaria-clara), var(--cor-fundo)); }
+.login-card { width: min(100%, 400px); }
+.login-marca { text-align: center; margin-bottom: var(--esp-4); }
+.login-marca h1 { margin: var(--esp-2) 0 0; color: var(--cor-primaria); }
+
+@media print {
+  .app-cabecalho, .app-menu, .toasts { display: none !important; }
+  .conteudo { margin: 0; padding: 0; max-width: none; }
+}

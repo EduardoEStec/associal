@@ -1,0 +1,41 @@
+# SQL Server 2022 LOCAL, só para teste/desenvolvimento. Use junto com o compose principal:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app npm run db:migrate
+#
+# Também serve para rodar o app direto no Node (npm run dev) apontando para o banco do container:
+# no .env use DB_SERVER=localhost, DB_PORT=1433, DB_USER=sa, DB_PASSWORD=<DEV_SA_PASSWORD>.
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DEV_SA_PASSWORD:-Associal#Dev2026}   # mínimo: 8 caracteres, maiúscula, minúscula, número e símbolo
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-dev:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  app:
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_SERVER: db
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: ${DEV_SA_PASSWORD:-Associal#Dev2026}
+      DB_NAME: ASSOCIAL
+      DB_ENCRYPT: "false"
+      DB_TRUST_SERVER_CERTIFICATE: "true"
+
+volumes:
+  mssql-dev:

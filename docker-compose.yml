@@ -1,0 +1,25 @@
+# ASSOCIAL — aplicação. O SQL Server é EXTERNO: configure DB_* no arquivo .env
+# (copie .env.example para .env). Para testar com um SQL Server local, veja docker-compose.dev.yml.
+#
+#   docker compose up -d --build
+#   docker compose exec app npm run db:migrate     # cria banco/tabelas/seed (1ª vez e a cada atualização)
+services:
+  app:
+    build: .
+    image: associal:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/uploads
+    extra_hosts:
+      # permite usar DB_SERVER=host.docker.internal para um SQL Server instalado na própria máquina
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  uploads:
