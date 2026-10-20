@@ -363,7 +363,7 @@ const paramData = (v) => [tipos.Date, v ?? null];
 // Insere/atualiza a pessoa (responsável) por CPF. Campos não informados NÃO apagam os existentes.
 async function gravarPessoa(tx, req, p) {
   const existente = await tx.consultarUm(
-    'SELECT id FROM pessoa WITH (UPDLOCK, HOLDLOCK) WHERE cpf = @cpf', { cpf: p.cpf });
+    'SELECT id FROM pessoa WITH (UPDLOCK, HOLDLOCK) WHERE cpf = @cpf', { cpf: [tipos.Char(11), p.cpf] });
   const params = {
     nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, endereco: p.endereco, cep: p.cep,
     bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId, escolaridadeId: p.escolaridadeId,
@@ -387,7 +387,7 @@ async function gravarPessoa(tx, req, p) {
      OUTPUT INSERTED.id
      VALUES (@cpf, @nome, @dataNascimento, @nis, @endereco, @cep, @bairro, @trabalhoAtual,
              @generoId, @escolaridadeId, @racaId, @usuario)`,
-    { ...params, cpf: p.cpf });
+    { ...params, cpf: [tipos.Char(11), p.cpf] });
   return { id: nova.id, criada: true };
 }
 

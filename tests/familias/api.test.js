@@ -234,7 +234,7 @@ test('criar: sucesso — pessoa nova, família nova, prazo = início + 90 dias, 
     assert.equal(ins.params.unidade, 1);
     assert.equal(ins.params.usuario, 10);
     const pessoa = chamadas.find((c) => /INSERT INTO pessoa/.test(c.sql));
-    assert.equal(pessoa.params.cpf, '52998224725');
+    assert.equal(pessoa.params.cpf[1], '52998224725');
     assert.equal(pessoa.params.nome, 'Maria da Silva');
   } finally { await srv.fechar(); }
 });
