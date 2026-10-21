@@ -10,6 +10,7 @@ const familias = require('../services/familias');
 const questionarioDados = require('../services/questionario-dados');
 const { montarModelo } = require('../services/questionario');
 const registros = require('../services/acompanhamento-registros');
+const pesquisa = require('../services/pesquisa');
 
 const router = express.Router();
 
@@ -74,6 +75,34 @@ router.put('/acompanhamentos/:id/registros/:registroId', escrita, async (req, re
 router.post('/acompanhamentos/:id/registros/:registroId/anular', escrita, async (req, res) => {
   await registros.anularRegistro(req, req.params.id, req.params.registroId, req.body || {});
   res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+// ----- pesquisa de satisfação identificada (F3) -----
+
+router.get('/acompanhamentos/:id/pesquisas', async (req, res) => {
+  res.json(await pesquisa.listar(req, req.params.id));
+});
+
+router.post('/acompanhamentos/:id/pesquisas', escrita, async (req, res) => {
+  res.status(201).json(await pesquisa.salvar(req, req.params.id, null, req.body || {}));
+});
+
+router.get('/acompanhamentos/:id/pesquisas/:pesquisaId', async (req, res) => {
+  res.json(await pesquisa.obter(req, req.params.id, req.params.pesquisaId));
+});
+
+router.put('/acompanhamentos/:id/pesquisas/:pesquisaId', escrita, async (req, res) => {
+  res.json(await pesquisa.salvar(req, req.params.id, req.params.pesquisaId, req.body || {}));
+});
+
+router.post('/acompanhamentos/:id/pesquisas/:pesquisaId/anular', escrita, async (req, res) => {
+  await pesquisa.anular(req, req.params.id, req.params.pesquisaId, req.body || {});
+  res.json(await pesquisa.listar(req, req.params.id));
+});
+
+router.put('/acompanhamentos/:id/pesquisas/:pesquisaId/comentario-oculto', requirePerfil('COORDENADOR'), async (req, res) => {
+  await pesquisa.definirComentarioOculto(req, req.params.id, req.params.pesquisaId, req.body?.oculto);
+  res.json(await pesquisa.listar(req, req.params.id));
 });
 
 router.get('/acompanhamentos/:id/linha-do-tempo', async (req, res) => {

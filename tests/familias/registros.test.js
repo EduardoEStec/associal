@@ -324,6 +324,7 @@ test('linha do tempo: filtra atendimentos pelas unidades permitidas e valida o f
     { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [] },
     { teste: /FROM atendimento a\s+JOIN unidade/, resp: () => [] },
     { teste: /FROM questionario q LEFT JOIN usuario/, resp: () => [] },
+    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
     { teste: /^SELECT nome FROM usuario/, resp: () => [{ nome: 'Ana' }] },
   ];
   chamadas.length = 0;

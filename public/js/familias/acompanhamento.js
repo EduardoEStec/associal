@@ -3,6 +3,7 @@ import { api, ErroApi } from '../api.js';
 import { icone } from '../layout.js';
 import { h, toast, abrirModal, formatarData, mostrarErrosCampos, hojeIso } from '../ui.js';
 import { campo, textoOuTraco } from './util.js';
+import { ROTULO_MOMENTO, ROTULO_LIKERT, ROTULO_MODO } from './pesquisa.js';
 
 export const ROTULO_SITUACAO = { MELHORANDO: 'Melhorando', IGUAL: 'Igual', PIORANDO: 'Piorando', NAO_SEI: 'Sem avaliação' };
 const CLASSE_SITUACAO = { MELHORANDO: 'badge-sucesso', IGUAL: 'badge-info', PIORANDO: 'badge-perigo', NAO_SEI: 'badge' };
@@ -205,16 +206,117 @@ function abrirAnulacao({ id, registro, aoSalvar }) {
   });
 }
 
-export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo }) {
-  const r = await api.get(`/api/familias/acompanhamentos/${id}/registros`);
+// ---- pesquisa de satisfação (cartão da aba) ----
+
+const CLASSE_NPS = { PROMOTORA: 'badge-sucesso', NEUTRA: 'badge-info', DETRATORA: 'badge-perigo' };
+const ROTULO_NPS = { PROMOTORA: 'Promotora', NEUTRA: 'Neutra', DETRATORA: 'Detratora' };
+const ROTULO_PESQ_MOMENTO = { FINAL: 'ao encerrar', SEMESTRAL: 'semestral', AVULSA: 'avulsa' };
+
+async function abrirRespostas({ id, pesquisa, usuario, aoMudar }) {
+  let p;
+  try { p = await api.get(`/api/familias/acompanhamentos/${id}/pesquisas/${pesquisa.id}`); } catch (e) { toast.erro(e.message); return; }
+  const linhas = p.modelo.perguntas.map((q) => {
+    const it = p.itens.find((i) => i.codigo === q.codigo);
+    let valor;
+    if (!it) valor = '—';
+    else if (it.preferNaoResponder) valor = 'Prefere não responder';
+    else if (q.tipo === 'NPS') valor = `${it.valorNum} de 10`;
+    else if (q.tipo === 'LIKERT') valor = ROTULO_LIKERT[it.valorNum] || '—';
+    else valor = it.valorTexto || '(sem comentário)';
+    return h('li', { class: 'pesq-rev-item' }, h('span', { class: 'pesq-rev-pergunta' }, q.texto), h('strong', { class: 'pesq-rev-valor' }, valor));
+  });
+  const r = p.resumo;
+  const conteudo = h('div', {},
+    h('p', { class: 'texto-pequeno texto-suave' }, `${formatarData(p.dataAplicacao)} · pesquisa ${ROTULO_PESQ_MOMENTO[p.momento]} · aplicada por ${p.autor.nome} · ${ROTULO_MODO[p.modo] || ''}`),
+    r ? h('p', {}, h('strong', {}, `Nota geral ${r.nps ?? '—'} de 10`), ` · concordância ${r.concordancia ?? '—'}% · satisfação ${r.indice ?? '—'}%`) : null,
+    h('ul', { class: 'pesq-rev' }, linhas),
+    usuario.perfil === 'COORDENADOR'
+      ? h('label', { class: 'opcao pesq-oculto' },
+        h('input', {
+          type: 'checkbox', checked: p.comentarioOculto,
+          onchange: async (e) => {
+            try { await api.put(`/api/familias/acompanhamentos/${id}/pesquisas/${p.id}/comentario-oculto`, { oculto: e.target.checked }); toast.sucesso(e.target.checked ? 'Comentário ocultado dos relatórios.' : 'Comentário volta a poder aparecer nos relatórios.'); } catch (err) { e.target.checked = !e.target.checked; toast.erro(err.message); }
+          },
+        }), h('span', {}, 'Ocultar o comentário desta pesquisa nos relatórios'))
+      : null);
+  abrirModal({ titulo: 'Respostas da pesquisa', conteudo, botoes: [{ texto: 'Fechar', classe: 'btn btn-secundario' }] });
+}
+
+function abrirAnularPesquisa({ id, pesquisa, aoMudar, rotulo = 'Anular pesquisa' }) {
+  const motivo = h('textarea', { class: 'textarea', id: 'ap-motivo', name: 'motivo', maxlength: 200, rows: 3 });
+  const form = h('form', { novalidate: true },
+    h('p', {}, 'A pesquisa deixa de aparecer na ficha e nos números. A anulação fica registrada na auditoria.'),
+    campo({ id: 'ap-motivo', rotulo: 'Motivo', obrigatorio: true, controle: motivo }));
+  form.addEventListener('submit', (e) => e.preventDefault());
+  abrirModal({
+    titulo: rotulo, conteudo: form,
+    botoes: [
+      { texto: 'Cancelar', classe: 'btn btn-secundario' },
+      {
+        texto: rotulo, classe: 'btn btn-perigo',
+        acao: async () => {
+          try {
+            await api.post(`/api/familias/acompanhamentos/${id}/pesquisas/${pesquisa.id}/anular`, { motivo: motivo.value.trim() });
+            toast.sucesso('Pesquisa anulada.'); aoMudar(); return true;
+          } catch (e) {
+            if (e instanceof ErroApi && e.status === 400) mostrarErrosCampos(form, e.detalhes); else toast.erro(e.message);
+            return false;
+          }
+        },
+      },
+    ],
+  });
+}
+
+function cartaoPesquisa({ id, p, escrita, usuario, aoMudar }) {
+  if (p.textoRestrito) return h('div', { class: 'aviso' }, 'As respostas da pesquisa de satisfação não são exibidas para o seu perfil.');
+  const pend = p.pendencia;
+  const rascunho = p.pesquisas.find((x) => x.situacao === 'RASCUNHO');
+  const momentoBotao = rascunho ? rascunho.momento : (pend ? pend.momento : 'AVULSA');
+  const textoBotao = rascunho ? 'Continuar pesquisa' : (pend ? `Aplicar pesquisa ${pend.momento === 'FINAL' ? 'final' : 'semestral'}` : 'Aplicar pesquisa avulsa');
+  const feitas = p.pesquisas.filter((x) => x.situacao !== 'RASCUNHO');
+
+  const historico = feitas.map((x) => {
+    const r = x.resumo;
+    return h('li', { class: 'pesq-hist' },
+      h('div', { class: 'fam-registro-topo' },
+        h('strong', {}, formatarData(x.dataAplicacao)),
+        h('span', { class: 'badge' }, `Pesquisa ${ROTULO_PESQ_MOMENTO[x.momento]}`),
+        x.situacao === 'RECUSADA'
+          ? h('span', { class: 'badge badge-aviso' }, 'A família preferiu não responder')
+          : [r?.nps !== null && r?.nps !== undefined ? h('span', { class: `badge ${CLASSE_NPS[r.categoriaNps] || ''}` }, `Nota ${r.nps} · ${ROTULO_NPS[r.categoriaNps]}`) : null,
+            r?.indice !== null && r?.indice !== undefined ? h('span', { class: 'badge badge-info' }, `Satisfação ${r.indice}%`) : null]),
+      h('div', { class: 'fam-registro-acoes' },
+        x.situacao === 'CONCLUIDA' ? h('button', { type: 'button', class: 'btn btn-texto btn-pequeno', onclick: () => abrirRespostas({ id, pesquisa: x, usuario, aoMudar }) }, 'Ver respostas') : null,
+        escrita && x.podeAlterar ? h('button', { type: 'button', class: 'btn btn-texto btn-pequeno', onclick: () => abrirAnularPesquisa({ id, pesquisa: x, aoMudar }) }, icone('x'), 'Anular') : null));
+  });
+
+  return h('div', { class: 'card pesq-card' },
+    h('div', { class: 'linha-entre' },
+      h('h3', {}, 'Pesquisa de satisfação'),
+      pend ? h('span', { class: 'badge badge-aviso' }, icone('relogio'), pend.momento === 'FINAL' ? 'Pendente: final' : 'Pendente: semestral') : h('span', { class: 'badge badge-sucesso' }, icone('check'), 'Em dia')),
+    h('p', { class: 'texto-pequeno texto-suave' }, 'A assistente aplica pessoalmente: lê as perguntas à família e registra as respostas. Pedida ao concluir o acompanhamento e a cada ' + p.intervaloDias + ' dias.'),
+    rascunho ? h('p', {}, h('span', { class: 'badge badge-aviso' }, icone('editar'), `Rascunho de ${formatarData(rascunho.dataAplicacao)} em andamento`)) : null,
+    escrita
+      ? h('div', { class: 'barra-acoes pesq-barra' },
+        rascunho ? h('button', { type: 'button', class: 'btn btn-texto', onclick: () => abrirAnularPesquisa({ id, pesquisa: rascunho, aoMudar, rotulo: 'Descartar rascunho' }) }, 'Descartar rascunho') : null,
+        h('a', { class: `btn ${pend || rascunho ? '' : 'btn-secundario'}`, href: `#/a/${id}/pesquisa/${momentoBotao}` }, textoBotao))
+      : null,
+    historico.length ? h('ul', { class: 'pesq-historico' }, historico) : null);
+}
+
+export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo, usuario }) {
+  const [r, pesq] = await Promise.all([
+    api.get(`/api/familias/acompanhamentos/${id}/registros`),
+    api.get(`/api/familias/acompanhamentos/${id}/pesquisas`),
+  ]);
   const encerrado = d.status !== 'EM_ANDAMENTO';
   const recarregar = () => navegar(`#/a/${id}/acompanhamento`, true);
   const dados = { dataInicio: d.dataInicio, tiposContato: r.tiposContato, semContatoDias: r.semContatoDias };
   const novo = () => abrirFormulario({ id, dados, aoSalvar: recarregar });
 
-  const topo = h('div', { class: 'linha-entre fam-aba-topo' },
-    h('h2', {}, 'Contatos e visitas'),
-    escrita && !encerrado ? h('button', { type: 'button', class: 'btn', onclick: novo }, 'Registrar contato') : null);
+  // o botão "Registrar contato" fica só no cabeçalho da ficha (detalhe.js), para não repetir
+  const topo = h('div', { class: 'fam-aba-topo' }, h('h2', {}, 'Contatos e visitas'));
 
   const lista = r.registros.length === 0
     ? h('div', { class: 'card card-vazio' },
@@ -235,6 +337,7 @@ export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNo
 
   return [
     cartaoResumo(r, encerrado),
+    h('div', { class: 'fam-secao-pesquisa' }, cartaoPesquisa({ id, p: pesq, escrita, usuario, aoMudar: recarregar })),
     r.textoRestrito ? h('div', { class: 'aviso' }, 'Os textos dos registros não são exibidos para o seu perfil.') : null,
     topo,
     lista,

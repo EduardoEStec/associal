@@ -12,11 +12,12 @@ const { registrarAuditoria } = require('../lib/auditoria');
 const { normalizarData, texto, inteiroPositivo, lancarSeErros } = require('../lib/validacao');
 const familias = require('./familias');
 const contato = require('./acompanhamento-contato');
+const pesquisa = require('./pesquisa');
 
 const SITUACOES = Object.freeze(['MELHORANDO', 'IGUAL', 'PIORANDO', 'NAO_SEI']);
-const TIPOS_EVENTO = Object.freeze(['INICIO', 'QUESTIONARIO', 'REGISTRO', 'ATENDIMENTO', 'ENCAMINHAMENTO', 'PRAZO', 'ENCERRAMENTO']);
+const TIPOS_EVENTO = Object.freeze(['INICIO', 'QUESTIONARIO', 'REGISTRO', 'ATENDIMENTO', 'ENCAMINHAMENTO', 'PESQUISA', 'PRAZO', 'ENCERRAMENTO']);
 // Desempate de eventos na mesma data/momento (maior = mais acima na lista, que é do mais novo ao mais antigo)
-const PESO = Object.freeze({ PRAZO: 7, ENCERRAMENTO: 6, QUESTIONARIO: 4, REGISTRO: 4, ENCAMINHAMENTO: 3, ATENDIMENTO: 2, INICIO: 1 });
+const PESO = Object.freeze({ PRAZO: 7, ENCERRAMENTO: 6, QUESTIONARIO: 4, REGISTRO: 4, PESQUISA: 4, ENCAMINHAMENTO: 3, ATENDIMENTO: 2, INICIO: 1 });
 
 const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) : null);
 const paramData = (v) => [tipos.Date, v ?? null];
@@ -236,7 +237,7 @@ const TITULO_QUESTIONARIO = {
 };
 
 // Pura: transforma as linhas lidas em eventos {data, momento, tipo, titulo, ...}. Exportada para teste.
-function montarEventos({ ac, hoje, textoRestrito, registros, atendimentos, questionarios, familiaNome }) {
+function montarEventos({ ac, hoje, textoRestrito, registros, atendimentos, questionarios, familiaNome, pesquisas = [] }) {
   const eventos = [];
   const txt = (v) => (textoRestrito ? null : v || null);
   const inicio = isoData(ac.dataInicio);
@@ -286,6 +287,29 @@ function montarEventos({ ac, hoje, textoRestrito, registros, atendimentos, quest
     }
   }
 
+  const ROTULO_MOMENTO = { FINAL: 'ao encerrar', SEMESTRAL: 'semestral', AVULSA: 'avulsa' };
+  for (const p of pesquisas) {
+    const quando = ROTULO_MOMENTO[p.momento] || '';
+    if (p.situacao === 'RECUSADA') {
+      eventos.push({
+        tipo: 'PESQUISA', data: isoData(p.dataAplicacao), momento: new Date(p.criadoEm).toISOString(),
+        titulo: 'Pesquisa de satisfação: a família preferiu não responder', detalhe: `Pesquisa ${quando}`, resumo: null,
+        autor: p.autorNome, referencia: { tipo: 'PESQUISA', id: p.id },
+      });
+      continue;
+    }
+    const r = p.resumo || {};
+    const partes = [];
+    if (r.nps !== null && r.nps !== undefined) partes.push(`Nota geral: ${r.nps} de 10`);
+    if (r.indice !== null && r.indice !== undefined) partes.push(`Satisfação: ${r.indice}%`);
+    const comentarios = p.comentarios.map((c) => `${c.codigo === 'T1' ? 'Faz de melhor' : 'Precisa melhorar'}: ${c.texto}`).join('\n');
+    eventos.push({
+      tipo: 'PESQUISA', data: isoData(p.dataAplicacao), momento: new Date(p.criadoEm).toISOString(),
+      titulo: 'Pesquisa de satisfação aplicada', detalhe: [`Pesquisa ${quando}`, ...partes].join(' · '), resumo: txt(comentarios),
+      autor: p.autorNome, nps: r.nps ?? null, categoriaNps: r.categoriaNps ?? null, referencia: { tipo: 'PESQUISA', id: p.id },
+    });
+  }
+
   if (ac.status === 'EM_ANDAMENTO' && ac.dataPrevistaFinal && !questionarios.some((q) => q.tipo === 'FINAL')) {
     const prazo = isoData(ac.dataPrevistaFinal);
     eventos.push({
@@ -331,7 +355,7 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
   const paramsAt = { pessoa: familia.responsavelPessoaId, hoje: paramData(hoje) };
   const filtroUnidade = clausulaUnidades(req, 'a.unidade_id', paramsAt);
 
-  const [registros, atendimentos, questionarios, assistente] = await Promise.all([
+  const [registros, atendimentos, questionarios, assistente, pesquisas] = await Promise.all([
     consultar(
       `SELECT r.id, r.data_registro, r.tipo_contato_outro, tc.nome AS tipo_contato_nome, r.houve_contato, r.situacao, r.resumo,
               r.proximo_contato_em, u.nome AS autor_nome, r.criado_em
@@ -359,11 +383,12 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
         WHERE q.acompanhamento_id = @id AND q.concluido = 1`,
       { id: ac.id }),
     consultarUm('SELECT nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
+    pesquisa.paraLinhaDoTempo(req, ac.id),
   ]);
 
   let eventos = montarEventos({
     ac: { ...ac, assistenteNome: assistente?.nome }, hoje, textoRestrito: restrito(req), registros, atendimentos, questionarios,
-    familiaNome: familia?.nome,
+    familiaNome: familia?.nome, pesquisas,
   });
   if (filtroTipos) eventos = eventos.filter((e) => filtroTipos.has(e.tipo));
   const total = eventos.length;

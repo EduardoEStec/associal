@@ -57,6 +57,13 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
       h('a', { href: `#/a/${id}/acompanhamento` }, 'Ver acompanhamento'))
     : null;
 
+  const pend = d.pesquisa?.pendencia;
+  const pesquisaPendente = pend && escrita
+    ? h('div', { class: 'aviso aviso-aviso', role: 'status' },
+      `Pesquisa de satisfação pendente (${pend.momento === 'FINAL' ? 'ao encerrar o acompanhamento' : 'semestral'}). `,
+      h('a', { href: `#/a/${id}/pesquisa/${pend.momento}` }, 'Aplicar agora'))
+    : null;
+
   const membros = d.membros.length === 0
     ? h('p', { class: 'texto-pequeno texto-suave' }, 'Nenhum outro membro cadastrado.')
     : h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela tabela-responsiva' },
@@ -105,7 +112,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
 
   let corpo;
   if (aba === 'acompanhamento') {
-    corpo = await renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo: !!opcoes.abrirNovo });
+    corpo = await renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo: !!opcoes.abrirNovo, usuario });
   } else if (aba === 'linha-do-tempo') {
     corpo = await renderLinhaTempo({ id, d });
   } else {
@@ -121,6 +128,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
         + (d.dataEncerramento ? ` · encerrado em ${formatarData(d.dataEncerramento)}` : ''))),
     alerta,
     semContato,
+    pesquisaPendente,
     encerrado && d.observacoes ? h('div', { class: 'aviso' }, h('strong', {}, 'Observações: '), d.observacoes) : null,
 
     abas,

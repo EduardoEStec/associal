@@ -8,13 +8,14 @@ import { campo } from './util.js';
 const TAMANHO = 30;
 const ICONE = {
   INICIO: 'familias', QUESTIONARIO: 'relatorios', REGISTRO: 'mensagem', ATENDIMENTO: 'atendimentos',
-  ENCAMINHAMENTO: 'seta', PRAZO: 'calendario', ENCERRAMENTO: 'check',
+  ENCAMINHAMENTO: 'seta', PESQUISA: 'estrela', PRAZO: 'calendario', ENCERRAMENTO: 'check',
 };
 const FILTROS = [
   ['', 'Tudo'],
   ['REGISTRO', 'Contatos e visitas'],
   ['ATENDIMENTO,ENCAMINHAMENTO', 'Atendimentos e encaminhamentos'],
   ['QUESTIONARIO', 'Questionários'],
+  ['PESQUISA', 'Pesquisas de satisfação'],
 ];
 
 function itemLinha(e) {

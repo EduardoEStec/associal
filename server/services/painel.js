@@ -14,6 +14,7 @@ const { clausulaUnidades, unidadesPermitidas } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
 const { normalizarData, inteiroPositivo } = require('../lib/validacao');
 const contato = require('./acompanhamento-contato');
+const pesquisaRegras = require('./pesquisa-regras');
 
 const MAX_DIAS_PERIODO = 366 * 5;
 const MAX_MESES_EVOLUCAO = 60;
@@ -416,10 +417,11 @@ async function alertas(req, unidadeId = null) {
 async function resumoInicio(req) {
   const hoje = hojeBrasil();
   const periodo = limitesDoMes(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)));
-  const [ind, pendentes, semContato] = await Promise.all([
+  const [ind, pendentes, semContato, pesquisas] = await Promise.all([
     indicadoresPorUnidade(req, periodo),
     questionariosFinaisPendentes(req, hoje),
     familiasSemContato(req, hoje),
+    pesquisaRegras.listarPendencias(req, hoje),
   ]);
   return {
     periodo,
@@ -432,6 +434,8 @@ async function resumoInicio(req) {
       itens: pendentes.slice(0, 10),
       semContato: semContato.length,
       semContatoItens: semContato.slice(0, 10),
+      pesquisa: pesquisas.length,
+      pesquisaItens: pesquisas.slice(0, 10),
     },
   };
 }

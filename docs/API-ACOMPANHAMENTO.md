@@ -47,7 +47,7 @@ anulação vai para a auditoria. Mesmas permissões do `PUT`. Devolve o mesmo fo
 ## Linha do tempo
 
 ### `GET /api/familias/acompanhamentos/:id/linha-do-tempo?tipos=&pagina=&tamanho=`
-`tipos`: lista separada por vírgula entre `INICIO, QUESTIONARIO, REGISTRO, ATENDIMENTO, ENCAMINHAMENTO, PRAZO, ENCERRAMENTO`
+`tipos`: lista separada por vírgula entre `INICIO, QUESTIONARIO, REGISTRO, ATENDIMENTO, ENCAMINHAMENTO, PESQUISA, PRAZO, ENCERRAMENTO`
 (inválido ⇒ `400`). `tamanho` padrão 30, máx. 100. Do mais novo ao mais antigo.
 ```json
 { "acompanhamentoId": 3, "textoRestrito": false, "total": 9, "pagina": 1, "tamanho": 30,
@@ -62,13 +62,14 @@ anulação vai para a auditoria. Mesmas permissões do `PUT`. Devolve o mesmo fo
 | `REGISTRO` | registros de contato (tentativas incluídas, `situacao` null) |
 | `ATENDIMENTO` | atendimentos do **responsável** (os demais membros não são `pessoa`) em unidades **permitidas ao usuário**; `antesDoInicio: true` se anteriores ao início |
 | `ENCAMINHAMENTO` | encaminhamentos do atendimento (um evento por atendimento, na mesma data) |
+| `PESQUISA` | pesquisa de satisfação concluída ou recusada (F3); nunca aparece para `ADMIN` |
 | `PRAZO` | virtual: `data_prevista_final` enquanto não houver questionário final (`futuro`/`vencido`) |
 | `ENCERRAMENTO` | `CONCLUIDO` ou `DESLIGADO`, com as observações |
 
 ## Alerta "família sem contato"
 
 **Último contato** = a data mais recente entre: início do acompanhamento, registro **com contato** (não anulado), atendimento do
-responsável **na unidade do acompanhamento** e questionário concluído. **Sem contato** = acompanhamento `EM_ANDAMENTO` com mais de
+responsável **na unidade do acompanhamento**, questionário concluído e pesquisa de satisfação aplicada ou recusada (`docs/API-PESQUISA.md`). **Sem contato** = acompanhamento `EM_ANDAMENTO` com mais de
 `alerta_sem_contato_dias` dias (padrão 30; editável em Administração > Configurações, também pelo COORDENADOR).
 
 Onde aparece:

@@ -10,6 +10,7 @@ const { erros } = require('../lib/erros');
 const { registrarAuditoria } = require('../lib/auditoria');
 const { normalizarTelefone } = require('./pessoas');
 const contato = require('./acompanhamento-contato');
+const pesquisaRegras = require('./pesquisa-regras');
 const {
   normalizarCpf, cpfValido, normalizarCep, cepValido, normalizarData, texto, inteiroPositivo,
   lancarSeErros, apenasDigitos,
@@ -264,6 +265,7 @@ async function detalhar(req, id) {
     diasParaFinal: dias,
     comparacaoDisponivel: inicial.concluido && final.concluido,
     contato: await contato.lerResumoContato(ac, hoje, semContatoDias),
+    pesquisa: { pendencia: await pesquisaRegras.lerPendencia(ac, hoje) },
   };
 }
 

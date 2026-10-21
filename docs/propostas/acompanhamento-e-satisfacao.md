@@ -483,6 +483,15 @@ Escopo imediato: **F2**, abaixo.
 - Tela: aba **Acompanhamento** (formulário curto e lista) e aba **Linha do tempo** na ficha da família.
 - Alerta "família sem contato há X dias" no Painel, na tela Início e como selo na lista de famílias.
 
+
+### 10.2 F3 — escopo fechado (pesquisa de satisfação v1)
+
+- Migração `081_pesquisa_satisfacao.sql`: `pesquisa_modelo` e `pesquisa_pergunta` (versionados), `pesquisa_resposta` (identificada, com `acompanhamento_id`), `pesquisa_resposta_item`, modelo v1 com o **aviso de consentimento provisório** (D12) e as configurações `pesquisa_intervalo_dias` (180), `pesquisa_prazo_final_dias` (60) e `pesquisa_n_minimo` (5, para a F6).
+- Tela passo a passo aplicada pela assistente: aviso para ler à família, 9 perguntas (uma por tela, botões grandes), "prefere não responder", revisão, agradecimento; salva rascunho a cada passo e retoma. Os 5 rostos desenhados da seção 6.2 **não** entraram: cada opção traz o texto escrito, e o desenho fica para quando a coordenação aprovar o instrumento (D6).
+- Momentos: ao encerrar (pesquisa final) e semestral para quem segue em andamento, com **pendência na ficha e na tela Início**; avulsa a qualquer momento.
+- Resultado: cartão na aba Acompanhamento, "Ver respostas" e evento na linha do tempo. A pesquisa aplicada (ou recusada) conta como contato no alerta "sem contato".
+- Privacidade (D11): ADMIN sem respostas nem comentários; coordenação oculta comentário dos relatórios; auditoria sem respostas. A visão agregada (NPS e satisfação por unidade e período) fica para a **F6**. Contrato: `docs/API-PESQUISA.md`.
+
 ---
 
 ## Apêndice A — Rascunho das tabelas principais (só ilustrativo; não é migração)

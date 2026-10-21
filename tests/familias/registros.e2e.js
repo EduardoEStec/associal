@@ -53,7 +53,8 @@ async function travaDeSeguranca() {
 }
 
 async function limpar() {
-  const pessoas = (await db.consultar('SELECT id FROM pessoa WHERE cpf IN (@a, @b)', { a: CPF_A, b: CPF_B })).map((p) => p.id);
+  // só apaga o que o próprio teste criou: CPF de teste E nome com o prefixo exclusivo
+  const pessoas = (await db.consultar("SELECT id FROM pessoa WHERE cpf IN (@a, @b) AND nome LIKE 'Teste F2E2E%'", { a: CPF_A, b: CPF_B })).map((p) => p.id);
   for (const pid of pessoas) {
     const fams = (await db.consultar('SELECT id FROM familia WHERE responsavel_pessoa_id = @pid', { pid })).map((f) => f.id);
     for (const fid of fams) {
@@ -104,6 +105,8 @@ const iso = (v) => String(v).slice(0, 10);
 
 (async () => {
   await travaDeSeguranca();
+  const colisao = await db.consultar("SELECT cpf, nome FROM pessoa WHERE cpf IN (@a, @b) AND nome NOT LIKE 'Teste F2E2E%'", { a: CPF_A, b: CPF_B });
+  if (colisao.length) { console.error('RECUSADO: CPF de teste já pertence a dados que este teste não criou:', colisao.map((c) => c.nome).join(', ')); process.exit(3); }
   await limpar();
 
   const unidades = await db.consultar('SELECT TOP 2 id, sigla FROM unidade WHERE ativo = 1 ORDER BY id');
@@ -144,7 +147,7 @@ const iso = (v) => String(v).slice(0, 10);
 
     await teste('cadastro: família iniciada há 40 dias já nasce "sem contato" (padrão 30 dias)', async () => {
       const r = await a.req('POST', '/api/familias', {
-        unidadeId: uA.id, dataInicio: dias(-40), responsavel: { cpf: CPF_A, nome: 'Familia F2 Teste A' }, membros: [],
+        unidadeId: uA.id, dataInicio: dias(-40), responsavel: { cpf: CPF_A, nome: 'Teste F2E2E A' }, membros: [],
       });
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
       acId = r.corpo.acompanhamentoId;

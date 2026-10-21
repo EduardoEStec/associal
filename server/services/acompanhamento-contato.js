@@ -4,7 +4,7 @@
 //
 // Último contato = a data mais recente entre: início do acompanhamento, registro de acompanhamento COM
 // contato (tentativas sem sucesso não contam; registros anulados também não), atendimento do responsável
-// NA UNIDADE do acompanhamento e questionário concluído. Só acompanhamentos EM_ANDAMENTO podem estar "sem contato".
+// NA UNIDADE do acompanhamento, questionário concluído e pesquisa de satisfação aplicada (ou recusada pela família). Só acompanhamentos EM_ANDAMENTO podem estar "sem contato".
 
 const { consultar, consultarUm, tipos } = require('../db');
 
@@ -20,7 +20,9 @@ function sqlUltimoContato(ac = 'ac', familia = 'f') {
       ((SELECT MAX(a.data_atendimento) FROM atendimento a
          WHERE a.pessoa_id = ${familia}.responsavel_pessoa_id AND a.unidade_id = ${ac}.unidade_id AND a.data_atendimento <= @hoje)),
       ((SELECT MAX(q.data_aplicacao) FROM questionario q
-         WHERE q.acompanhamento_id = ${ac}.id AND q.concluido = 1))
+         WHERE q.acompanhamento_id = ${ac}.id AND q.concluido = 1)),
+      ((SELECT MAX(ps.data_aplicacao) FROM pesquisa_resposta ps
+         WHERE ps.acompanhamento_id = ${ac}.id AND ps.situacao IN ('CONCLUIDA', 'RECUSADA')))
     ) AS v(d))`;
 }
 

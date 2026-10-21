@@ -86,6 +86,15 @@ main > h2 { margin: var(--esp-5) 0 var(--esp-3); }
   color: var(--cor-texto-suave); font-weight: 600; text-decoration: none; white-space: nowrap; border-bottom: 3px solid transparent;
 }
 .fam-aba:hover { color: var(--cor-texto); }
+/* celular: as 3 abas dividem a largura (cabem em 360px); se faltar espaço, rolam na horizontal e a borda esmaecida indica que há mais */
+@media (max-width: 639px) {
+  .fam-abas { gap: 0; background:
+    linear-gradient(to right, var(--cor-superficie) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--cor-superficie) 30%, transparent) right / 24px 100% no-repeat local,
+    linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent) left / 10px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent) right / 10px 100% no-repeat scroll; }
+  .fam-aba { flex: 1 0 auto; justify-content: center; padding: 0 var(--esp-2); font-size: var(--texto-sm); }
+}
 .fam-aba[aria-current="page"] { color: var(--cor-primaria-escura); border-bottom-color: var(--cor-primaria); font-weight: 800; }
 .fam-aba-topo { margin: var(--esp-4) 0 var(--esp-3); align-items: flex-end; }
 .fam-aba-topo h2 { margin: 0; }
@@ -124,3 +133,55 @@ main > h2 { margin: var(--esp-5) 0 var(--esp-3); }
 .fam-evento-resumo { white-space: pre-wrap; }
 .fam-evento-autor { margin: var(--esp-1) 0 0; }
 .fam-linha-rodape { margin-top: var(--esp-3); text-align: center; }
+
+/* Pesquisa de satisfação — cartão da aba Acompanhamento */
+.fam-secao-pesquisa { margin: var(--esp-4) 0; }
+.pesq-card h3 { margin: 0; }
+.pesq-barra { margin-top: var(--esp-3); }
+.pesq-historico { list-style: none; margin: var(--esp-3) 0 0; padding: 0; display: grid; gap: var(--esp-2); }
+.pesq-hist { padding-top: var(--esp-3); border-top: 1px solid var(--cor-borda); }
+.pesq-oculto { margin-top: var(--esp-3); }
+.fam-evento-pesquisa .fam-evento-marca { color: var(--cor-texto-primaria); border-color: var(--cor-primaria); }
+
+/* Pesquisa de satisfação — passo a passo (aplicado no celular, texto grande e botões grandes) */
+.pesq-cabecalho { margin-bottom: var(--esp-4); }
+.pesq-cartao { margin-bottom: var(--esp-4); }
+.pesq-contexto { margin: 0 0 var(--esp-3); color: var(--cor-texto-suave); font-weight: 700; }
+.pesq-instrucao { margin: 0 0 var(--esp-2); font-size: var(--texto-sm); font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; color: var(--cor-texto-primaria); }
+.pesq-aviso { margin: 0 0 var(--esp-3); padding: var(--esp-4); font-size: var(--texto-lg); line-height: 1.55; background: var(--cor-fundo-suave); border-left: 4px solid var(--cor-primaria); border-radius: var(--raio-medio); }
+.pesq-pergunta { margin: 0 0 var(--esp-4); font-size: 1.5rem; line-height: 1.35; font-weight: 800; color: var(--cor-texto); }
+.pesq-acoes-grandes { display: grid; gap: var(--esp-3); margin-top: var(--esp-3); }
+.pesq-botao-grande { min-height: 60px; font-size: var(--texto-lg); }
+.pesq-botao { min-height: 56px; min-width: 120px; font-size: var(--texto-lg); }
+.pesq-nav .q-nav-botoes { flex: 1; justify-content: flex-end; }
+.pesq-nav .q-status { flex: 1 0 100%; }
+.pesq-sair-linha { text-align: center; margin: var(--esp-2) 0 var(--esp-4); }
+.pesq-sair { color: var(--cor-texto-suave); }
+.pesq-nps { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--esp-2); }
+.pesq-nota {
+  min-height: 60px; font: inherit; font-size: 1.4rem; font-weight: 800; color: var(--cor-texto);
+  background: var(--cor-superficie); border: 2px solid var(--cor-borda); border-radius: var(--raio-medio); cursor: pointer;
+}
+.pesq-nota:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-clara); }
+.pesq-nota.pesq-escolhida { color: var(--cor-texto-inverso); background: var(--cor-primaria); border-color: var(--cor-primaria); }
+.pesq-nota:focus-visible, .pesq-recusa:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.pesq-nps-pontas { display: flex; justify-content: space-between; gap: var(--esp-3); margin-top: var(--esp-2); font-size: var(--texto-sm); color: var(--cor-texto-suave); font-weight: 700; }
+.pesq-likert .q-opcao { min-height: 64px; font-size: var(--texto-lg); }
+.pesq-recusa { width: 100%; margin-top: var(--esp-4); min-height: 52px; }
+.pesq-recusa.pesq-escolhida { border-color: var(--cor-primaria); color: var(--cor-texto-primaria); background: var(--cor-primaria-clara); }
+.pesq-texto { min-height: 180px; font-size: var(--texto-lg); }
+.pesq-rev { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-2); }
+.pesq-rev-item { list-style: none; }
+.pesq-rev-botao { display: flex; flex-direction: column; align-items: flex-start; gap: var(--esp-1); width: 100%; padding: var(--esp-3) var(--esp-4); font: inherit; text-align: left; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-medio); cursor: pointer; }
+.pesq-rev-botao:hover { border-color: var(--cor-primaria); }
+ul.pesq-rev > .pesq-rev-item:not(:has(button)) { display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3) var(--esp-4); border: 1px solid var(--cor-borda); border-radius: var(--raio-medio); }
+.pesq-rev-pergunta { color: var(--cor-texto-suave); font-size: var(--texto-sm); }
+.pesq-rev-valor { overflow-wrap: anywhere; }
+.pesq-fim { text-align: center; }
+.pesq-fim h2 { color: var(--cor-titulo); }
+@media (min-width: 640px) {
+  .pesq-nps { grid-template-columns: repeat(11, 1fr); }
+  .pesq-acoes-grandes { grid-template-columns: 1fr 1fr; }
+}
+/* o atributo hidden precisa vencer o display das classes (passo do aviso não tem navegação) */
+.q-nav[hidden], .pesq-sair-linha[hidden], .pesq-cabecalho[hidden], .pesq-sair[hidden] { display: none; }
