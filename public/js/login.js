@@ -7,6 +7,14 @@ registrarServiceWorker();
 const form = document.getElementById('form-login');
 const erro = document.getElementById('erro-login');
 
+// "Trocar de usuário": campo usuário vazio e focado (o navegador pode restaurar/autopreencher depois do carregamento)
+if (new URLSearchParams(location.search).has('trocar')) {
+  const limpar = () => { form.login.value = ''; form.senha.value = ''; form.login.focus(); };
+  limpar();
+  addEventListener('pageshow', limpar);
+  setTimeout(limpar, 150);
+}
+
 // Só aceita voltar para caminhos internos (evita redirecionamento para sites externos)
 function destino() {
   const proximo = new URLSearchParams(location.search).get('proximo');

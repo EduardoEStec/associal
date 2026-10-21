@@ -12,6 +12,7 @@ import { api, ErroApi } from './api.js';
 import { h, toast, abrirModal, mostrarErrosCampos } from './ui.js';
 import { registrarServiceWorker } from './pwa.js';
 import './select-bonito.js'; // troca os <select> por listas suspensas no visual do app
+import { montarMenuUsuario } from './menu-usuario.js'; // botão do usuário + menu suspenso (Trocar de usuário / Sair)
 import './data-bonita.js'; // troca os <input type="date"> por campo digitável + calendário no visual do app
 
 const SVG = {
@@ -33,6 +34,9 @@ const SVG = {
   igual: '<path d="M5 9h14M5 15h14"/>',
   seta: '<path d="M5 12h14M12 5l7 7-7 7"/>',
   calendario: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  sair: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  trocar: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>',
   mensagem: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
 };
 
@@ -71,12 +75,10 @@ function montarCabecalho(usuario) {
     h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
       h('img', { class: 'app-logo', src: '/img/logo-associal.png', alt: '', width: 40, height: 40 }),
       h('span', { class: 'app-marca-nome' }, 'ASSOCIAL')),
-    h(
-      'div', { class: 'app-usuario' },
-      h('div', { class: 'nome' }, usuario.nome, h('small', {}, [ROTULO_PERFIL[usuario.perfil], unidades].filter(Boolean).join(' · '))),
-      h('span', { class: 'app-avatar', 'aria-hidden': 'true' }, iniciais(usuario.nome)),
-      h('button', { type: 'button', class: 'btn btn-texto btn-pequeno', onclick: sair }, 'Sair'),
-    ),
+    h('div', { class: 'app-usuario' }, montarMenuUsuario({
+      nome: usuario.nome, perfil: ROTULO_PERFIL[usuario.perfil], unidades, avatar: iniciais(usuario.nome),
+      icone, aoSair: sair, aoTrocar: trocarUsuario,
+    })),
   );
 }
 
@@ -128,6 +130,12 @@ function montarMenu(chaveAtual, itens) {
 async function sair() {
   try { await api.post('/api/auth/logout'); } catch { /* sai mesmo assim */ }
   location.href = '/login.html';
+}
+
+// Encerra a sessão e abre o login com o campo usuário vazio (o login não guarda o último usuário).
+async function trocarUsuario() {
+  try { await api.post('/api/auth/logout'); } catch { /* sai mesmo assim */ }
+  location.href = '/login.html?trocar=1';
 }
 
 // Troca de senha obrigatória (primeiro acesso / senha redefinida). Resolve quando concluída.
