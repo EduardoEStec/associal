@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { salvarShell } from './shell-cache.js';
 import { comEspera } from './ui.js';
 import { registrarServiceWorker } from './pwa.js';
 
@@ -27,6 +28,8 @@ form.addEventListener('submit', async (e) => {
   await comEspera(document.getElementById('botao-entrar'), async () => {
     try {
       await api.post('/api/auth/login', { login: form.login.value, senha: form.senha.value });
+      // já deixa o nome e o perfil prontos para a primeira página desenhar o casco completo
+      try { salvarShell((await api.get('/api/auth/me')).usuario); } catch { /* segue sem a pré-pintura */ }
       location.href = destino();
     } catch (err) {
       const detalhe = err.detalhes ? Object.values(err.detalhes)[0] : null;

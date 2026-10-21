@@ -309,7 +309,11 @@ fieldset.secao > legend + * { clear: both; }
   animation: gira 0.8s linear infinite;
 }
 @keyframes gira { to { transform: rotate(360deg); } }
+/* Conteúdo que chega do servidor depois do desenho da página: aparece com um fade curto, sem mexer no layout */
+.aparece { animation: aparece 180ms ease-out both; }
+@keyframes aparece { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .btn, .opcao, .input, .select, .textarea { transition: none; }
   .carregando::after { animation-duration: 2.4s; }
+  .aparece { animation: none; }
 }

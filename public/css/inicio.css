@@ -4,6 +4,15 @@
 #conteudo > * { margin-top: 0; margin-bottom: 0; }
 #resumo:empty, #pendencias:empty { display: none; }
 
+/* Esqueleto do resumo: mesma estrutura do cartão real, para a página não pular quando o resumo chega do servidor */
+.resumo-esqueleto h2, .resumo-esqueleto p, .resumo-esqueleto strong, .resumo-esqueleto .tile-rotulo {
+  color: transparent; background: var(--cor-cinza-claro); border-radius: 8px; user-select: none;
+}
+.resumo-esqueleto h2 { width: 11rem; max-width: 100%; }
+.resumo-esqueleto p { width: 14rem; max-width: 100%; }
+.resumo-esqueleto strong { display: block; width: 3.5rem; }
+.resumo-esqueleto .tile-rotulo { display: block; width: 70%; }
+
 /* Herói: laranja vivo (superfície grande, texto grande e negrito) + faixa gradiente na base */
 .heroi {
   position: relative; overflow: hidden; padding: var(--esp-4) var(--esp-4) var(--esp-5);
@@ -33,7 +42,7 @@
 }
 .tile-ic { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--esp-1); color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 14px; }
 .tile strong { font-size: 2rem; font-weight: 800; line-height: 1; }
-.tile-rotulo { font-size: var(--texto-sm); font-weight: 600; line-height: 1.2; color: var(--cor-texto-suave); }
+.tile-rotulo { min-height: 2.4em; font-size: var(--texto-sm); font-weight: 600; line-height: 1.2; color: var(--cor-texto-suave); } /* 2 linhas reservadas: o esqueleto e o resumo têm a mesma altura */
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(6, 1fr); } }
 

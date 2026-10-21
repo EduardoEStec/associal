@@ -12,9 +12,46 @@
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/familias.css">
   <link rel="stylesheet" href="/css/metas.css">
+  <link rel="modulepreload" href="/js/layout.js">
+  <link rel="modulepreload" href="/js/api.js">
+  <link rel="modulepreload" href="/js/ui.js">
+  <link rel="modulepreload" href="/js/pwa.js">
+  <link rel="modulepreload" href="/js/shell-cache.js">
+  <link rel="modulepreload" href="/js/select-bonito.js">
+  <link rel="modulepreload" href="/js/menu-usuario.js">
+  <link rel="modulepreload" href="/js/data-bonita.js">
+  <link rel="modulepreload" href="/js/painel-unico.js">
+  <script src="/js/shell-previo.js"></script>
 </head>
 <body>
-  <main id="conteudo">
+  <header class="app-cabecalho">
+    <a class="app-marca" href="/index.html" aria-label="ASSOCIAL — início">
+      <img class="app-logo" src="/img/logo-associal.png" alt="" width="40" height="40">
+      <span class="app-marca-nome">ASSOCIAL</span>
+    </a>
+    <div class="app-usuario" id="app-usuario">
+      <div class="app-usuario-botao app-usuario-previo" aria-hidden="true">
+        <span class="nome"><span id="previo-nome"></span><small id="previo-perfil"></small></span>
+        <span class="app-avatar" id="previo-avatar"></span>
+        <svg class="icone app-usuario-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+  </header>
+  <nav class="app-menu" aria-label="Menu principal">
+    <a class="app-menu-marca" href="/index.html">
+      <img src="/img/logo-associal.png" alt="" width="48" height="48">
+      <span class="app-menu-marca-texto"><strong>ASSOCIAL</strong>Serviço Social</span>
+    </a>
+    <a href="/index.html"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Início</span></a>
+    <a href="/atendimentos.html"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Atendimentos</span></a>
+    <a href="/acoes.html"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Ações</span></a>
+    <a href="/familias.html" aria-current="page"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>Famílias</span></a>
+    <a href="/relatorios.html" class="menu-extra-coord"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span>Relatórios</span></a>
+    <a href="/painel.html" class="so-coordenacao menu-extra-coord"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg><span>Painel</span></a>
+    <a href="/admin.html" class="so-coordenacao menu-extra-coord"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Administração</span></a>
+    <button type="button" class="menu-mais-botao"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg><span>Mais</span></button>
+  </nav>
+  <main id="conteudo" class="conteudo">
     <div class="carregando" role="status" aria-label="Carregando"></div>
   </main>
   <script type="module" src="/js/paginas/familias.js"></script>

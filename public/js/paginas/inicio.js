@@ -3,38 +3,25 @@ import { iniciarPagina, icone } from '../layout.js';
 import { h, formatarNumero, formatarData } from '../ui.js';
 import { api } from '../api.js';
 
+// O resumo do mês começa a carregar junto com a identificação do usuário (não depois dela)
+const resumoPendente = api.get('/api/painel/resumo-inicio').catch(() => null);
+
 const { usuario, itens } = await iniciarPagina('inicio');
 
-const DESCRICOES = {
-  atendimentos: 'Registrar e consultar atendimentos',
-  acoes: 'Visitas institucionais e ações, com fotos',
-  familias: 'Famílias acompanhadas e questionários',
-  relatorios: 'Gerar relatórios em Word (.docx)',
-  painel: 'Indicadores por unidade e período',
-  admin: 'Usuários, unidades e configurações',
-};
-
 // ---- Herói ----
+// Herói, atalhos e o espaço do resumo já vêm no HTML (js/shell-previo.js pré-preenche os textos); aqui só se confirma o que mudou.
 const hora = new Date().getHours();
 const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 const primeiroNome = usuario.nome.split(' ')[0];
-document.getElementById('saudacao').textContent = `${saudacao}, ${primeiroNome}!`;
+const definirTexto = (id, texto) => { const e = document.getElementById(id); if (e.textContent !== texto) e.textContent = texto; };
+definirTexto('saudacao', `${saudacao}, ${primeiroNome}!`);
 const dataExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 const unidade = usuario.unidades.length === 1 ? `${usuario.unidades[0].nome} · ` : '';
-document.getElementById('data-hoje').replaceChildren(icone('acoes'), `${unidade}${dataExtenso}`);
-document.getElementById('carregando').remove();
+definirTexto('data-hoje-texto', `${unidade}${dataExtenso}`);
 
-// ---- Atalhos (blocos sólidos) ----
-const atalhos = document.getElementById('atalhos');
-itens.filter((i) => i.chave !== 'inicio').forEach((item) => {
-  atalhos.append(
-    h('a', { class: 'atalho', href: item.href },
-      h('span', { class: 'atalho-ic' }, icone(item.chave)),
-      h('span', { class: 'atalho-texto' }, h('strong', {}, item.rotulo), h('small', {}, DESCRICOES[item.chave] || '')),
-      h('span', { class: 'atalho-seta', 'aria-hidden': 'true' }, '›'),
-    ),
-  );
-});
+// ---- Atalhos (blocos sólidos): o HTML traz todos; sai o que o perfil não pode abrir ----
+const permitidos = new Set(itens.map((i) => i.href));
+document.querySelectorAll('#atalhos .atalho').forEach((a) => { if (!permitidos.has(a.getAttribute('href'))) a.remove(); });
 
 if (usuario.unidades.length === 0 && usuario.perfil === 'ASSISTENTE') {
   document.getElementById('conteudo').prepend(
@@ -43,8 +30,10 @@ if (usuario.unidades.length === 0 && usuario.perfil === 'ASSISTENTE') {
 }
 
 // ---- Resumo do mês (T6): ASSISTENTE vê as suas unidades; COORDENADOR/ADMIN veem o total geral ----
+const quadroResumo = document.getElementById('resumo');
 try {
-  const r = await api.get('/api/painel/resumo-inicio');
+  const r = await resumoPendente;
+  if (!r) throw new Error('sem resumo');
   const t = r.total;
   const pct = t.pctEncaminhamentos === null || t.pctEncaminhamentos === undefined
     ? '—' : `${(t.pctEncaminhamentos * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
@@ -54,8 +43,8 @@ try {
   const escopo = usuario.perfil === 'ASSISTENTE'
     ? (usuario.unidades.length === 1 ? usuario.unidades[0].nome : 'suas unidades')
     : 'todas as unidades';
-  document.getElementById('resumo').append(
-    h('section', { class: 'card resumo-inicio', 'aria-labelledby': 'resumo-titulo' },
+  quadroResumo.replaceChildren( // troca o esqueleto (mesma altura) pelo resumo, com um fade curto
+    h('section', { class: 'card resumo-inicio aparece', 'aria-labelledby': 'resumo-titulo' },
       h('h2', { id: 'resumo-titulo' }, `Seu mês — ${mes}/${ano}`),
       h('p', { class: 'texto-suave texto-pequeno' }, `Dados de ${escopo}.`),
       h('div', { class: 'tiles' },
@@ -121,4 +110,4 @@ try {
             reavaliacoes > 0 ? `${reavaliacoes} ${reavaliacoes === 1 ? 'reavaliação pendente' : 'reavaliações pendentes'}` : null].filter(Boolean).join(' · ') + '.'),
         h('div', { class: 'pendencias' }, [...linhasContato, ...linhasMeta, ...linhasReavaliacao, ...linhasPesquisa, ...linhas])));
   }
-} catch { /* o resumo é opcional: a tela inicial funciona sem ele */ }
+} catch { quadroResumo.replaceChildren(); /* o resumo é opcional: a tela inicial funciona sem ele */ }

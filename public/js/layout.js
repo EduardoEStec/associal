@@ -13,6 +13,7 @@ import { h, toast, abrirModal, mostrarErrosCampos } from './ui.js';
 import { registrarServiceWorker } from './pwa.js';
 import './select-bonito.js'; // troca os <select> por listas suspensas no visual do app
 import { montarMenuUsuario } from './menu-usuario.js'; // botão do usuário + menu suspenso (Trocar de usuário / Sair)
+import { salvarShell, limparShell } from './shell-cache.js'; // lembra o usuário para pré-pintar o casco na próxima página
 import './data-bonita.js'; // troca os <input type="date"> por campo digitável + calendário no visual do app
 
 const SVG = {
@@ -70,18 +71,53 @@ function iniciais(nome) {
   return ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
 }
 
-function montarCabecalho(usuario) {
+function menuDoUsuario(usuario) {
   const unidades = usuario.unidades.length === 1 ? usuario.unidades[0].nome : '';
+  return montarMenuUsuario({
+    nome: usuario.nome, perfil: ROTULO_PERFIL[usuario.perfil], unidades, avatar: iniciais(usuario.nome),
+    icone, aoSair: sair, aoTrocar: trocarUsuario,
+  });
+}
+
+// Só para página sem casco no HTML (todas as páginas do app já trazem o casco; ver public/*.html)
+function montarCabecalho(usuario) {
   return h(
     'header', { class: 'app-cabecalho' },
     h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
       h('img', { class: 'app-logo', src: '/img/logo-associal.png', alt: '', width: 40, height: 40 }),
       h('span', { class: 'app-marca-nome' }, 'ASSOCIAL')),
-    h('div', { class: 'app-usuario' }, montarMenuUsuario({
-      nome: usuario.nome, perfil: ROTULO_PERFIL[usuario.perfil], unidades, avatar: iniciais(usuario.nome),
-      icone, aoSair: sair, aoTrocar: trocarUsuario,
-    })),
+    h('div', { class: 'app-usuario' }, menuDoUsuario(usuario)),
   );
+}
+
+// O botão do usuário substitui o espaço reservado do HTML (mesma caixa, sem pulo)
+function hidratarCabecalho(cabecalho, usuario) {
+  cabecalho.querySelector('.app-usuario').replaceChildren(menuDoUsuario(usuario));
+}
+
+function abrirMais(extras) {
+  abrirModal({
+    titulo: 'Mais opções',
+    conteudo: h('div', { class: 'menu-mais' }, extras.map((it) => h('a', { href: it.href }, icone(it.chave), it.rotulo))),
+    botoes: [{ texto: 'Fechar', classe: 'btn btn-secundario' }],
+  });
+}
+
+// O menu já está no HTML (com todos os itens); aqui ele só é conferido contra o perfil e ganha o botão "Mais".
+function hidratarMenu(nav, chaveAtual, itens) {
+  const hrefAtual = ITENS_MENU.find((it) => it.chave === chaveAtual)?.href;
+  const permitidos = new Set(itens.map((it) => it.href));
+  for (const a of nav.querySelectorAll('a[href]:not(.app-menu-marca)')) {
+    const href = a.getAttribute('href');
+    if (!permitidos.has(href)) a.remove();
+    else if (href === hrefAtual) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  }
+  const botao = nav.querySelector('.menu-mais-botao');
+  const extras = itens.length > MAX_ITENS_CELULAR ? itens.slice(MAX_ITENS_CELULAR - 1) : [];
+  if (!botao) return;
+  if (extras.length) botao.addEventListener('click', () => abrirMais(extras));
+  else botao.remove();
 }
 
 function montarMenu(chaveAtual, itens) {
@@ -98,7 +134,7 @@ function montarMenu(chaveAtual, itens) {
       'a',
       {
         href: item.href,
-        class: i >= visiveisNoCelular ? 'menu-extra' : null,
+        class: i >= visiveisNoCelular ? 'menu-extra-coord' : null,
         'aria-current': item.chave === chaveAtual ? 'page' : null,
       },
       icone(item.chave),
@@ -115,11 +151,7 @@ function montarMenu(chaveAtual, itens) {
         {
           type: 'button',
           class: 'menu-mais-botao',
-          onclick: () => abrirModal({
-            titulo: 'Mais opções',
-            conteudo: h('div', { class: 'menu-mais' }, extras.map((it) => h('a', { href: it.href }, icone(it.chave), it.rotulo))),
-            botoes: [{ texto: 'Fechar', classe: 'btn btn-secundario' }],
-          }),
+          onclick: () => abrirMais(extras),
         },
         icone('mais'),
         h('span', {}, 'Mais'),
@@ -131,12 +163,14 @@ function montarMenu(chaveAtual, itens) {
 
 async function sair() {
   try { await api.post('/api/auth/logout'); } catch { /* sai mesmo assim */ }
+  limparShell();
   location.href = '/login.html';
 }
 
 // Encerra a sessão e abre o login com o campo usuário vazio (o login não guarda o último usuário).
 async function trocarUsuario() {
   try { await api.post('/api/auth/logout'); } catch { /* sai mesmo assim */ }
+  limparShell();
   location.href = '/login.html?trocar=1';
 }
 
@@ -191,10 +225,14 @@ export async function iniciarPagina(chave) {
     return new Promise(() => {}); // interrompe o script da página
   }
 
+  document.documentElement.dataset.perfil = usuario.perfil;
+  salvarShell(usuario);
   const conteudo = document.getElementById('conteudo');
   conteudo.classList.add('conteudo');
-  document.body.prepend(montarCabecalho(usuario));
-  document.body.append(montarMenu(chave, itens));
+  const cabecalho = document.querySelector('.app-cabecalho');
+  if (cabecalho) hidratarCabecalho(cabecalho, usuario); else document.body.prepend(montarCabecalho(usuario));
+  const menu = document.querySelector('.app-menu');
+  if (menu) hidratarMenu(menu, chave, itens); else document.body.append(montarMenu(chave, itens));
   document.body.classList.add('com-layout');
 
   if (usuario.deveTrocarSenha) await exigirTrocaSenha();

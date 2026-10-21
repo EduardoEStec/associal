@@ -7,6 +7,8 @@
 //   const lista = await api.get('/api/atendimentos', { dataInicio: '2026-01-01' });
 //   await api.post('/api/atendimentos', { ... });
 
+import { limparShell } from './shell-cache.js';
+
 export class ErroApi extends Error {
   constructor(status, codigo, mensagem, detalhes) {
     super(mensagem);
@@ -19,6 +21,7 @@ export class ErroApi extends Error {
 
 function irParaLogin() {
   if (location.pathname.endsWith('/login.html') || location.pathname === '/login') return;
+  limparShell(); // sessão expirada: o próximo usuário deste aparelho não herda o nome na tela
   const proximo = encodeURIComponent(location.pathname + location.search);
   location.href = `/login.html?proximo=${proximo}`;
 }

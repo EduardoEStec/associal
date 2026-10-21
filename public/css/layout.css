@@ -36,6 +36,8 @@
 .um-painel .sb-lista { padding: var(--esp-1); }
 @media (max-width: 899px) { .app-usuario-botao { padding-left: var(--esp-1); } .app-usuario-botao .nome { display: none; } }
 @media (prefers-reduced-motion: reduce) { .app-usuario-botao, .app-usuario-seta { transition: none; } }
+/* Espaço do botão do usuário enquanto o JS não chegou: mesma caixa do botão, sem interação */
+.app-usuario-previo { cursor: default; pointer-events: none; }
 
 /* Conteúdo */
 .conteudo {
@@ -67,9 +69,17 @@
   color: var(--cor-texto-inverso); background: var(--cor-primaria);
 }
 
-/* Celular: itens além dos 4 primeiros vão para o botão "Mais" (só quando há mais de 5 itens) */
+/* O menu já vem completo no HTML (aparece no primeiro quadro, sem esperar o JS). Quem aparece depende do perfil:
+   o atributo data-perfil do <html> vem do último usuário conhecido (js/shell-previo.js) e é confirmado por js/layout.js.
+   Sem perfil conhecido, vale o menu mínimo (o da assistente social). */
+.app-menu .so-coordenacao, .atalho.so-coordenacao { display: none; }
+html[data-perfil="COORDENADOR"] .app-menu .so-coordenacao, html[data-perfil="ADMIN"] .app-menu .so-coordenacao,
+html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"] .atalho.so-coordenacao { display: flex; }
+.app-menu .menu-mais-botao { display: none; }
+/* Celular, coordenação: 7 itens não cabem na barra; do 5.º em diante vão para o botão "Mais" */
 @media (max-width: 899px) {
-  .app-menu .menu-extra { display: none; }
+  html[data-perfil="COORDENADOR"] .app-menu .menu-extra-coord, html[data-perfil="ADMIN"] .app-menu .menu-extra-coord { display: none; }
+  html[data-perfil="COORDENADOR"] .app-menu .menu-mais-botao, html[data-perfil="ADMIN"] .app-menu .menu-mais-botao { display: flex; }
 }
 
 /* Lista do "Mais" (modal) */
@@ -117,6 +127,18 @@
 .login-marca { text-align: center; margin-bottom: var(--esp-5); }
 .login-marca img { display: block; height: 96px; width: 96px; margin: 0 auto var(--esp-3); }
 .login-marca h1 { margin: 0 0 var(--esp-1); font-size: var(--texto-xl); color: var(--cor-titulo); }
+
+/* Troca suave entre páginas (View Transitions entre documentos): só o conteúdo faz um fade curto; cabeçalho e menu
+   são camadas próprias e ficam no lugar. Navegador sem suporte ou com "reduzir movimento": troca direta, como antes. */
+.app-cabecalho { view-transition-name: cabecalho; }
+.app-menu { view-transition-name: menu; }
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+::view-transition-group(*) { animation-duration: 180ms; animation-timing-function: ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
 
 @media print {
   .app-cabecalho, .app-menu, .toasts { display: none !important; }
