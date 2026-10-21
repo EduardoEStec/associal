@@ -213,12 +213,13 @@ function renderAlertas(a) {
 
   if (a.resumoPorUnidade.length) {
     blocos.push(h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela tabela-responsiva' },
-      h('thead', {}, h('tr', {}, ['Unidade', 'Questionários vencidos', 'Questionários a vencer', 'Ações sem atualização'].map((t) => h('th', { scope: 'col' }, t)))),
+      h('thead', {}, h('tr', {}, ['Unidade', 'Questionários vencidos', 'Questionários a vencer', 'Ações sem atualização', 'Famílias sem contato'].map((t) => h('th', { scope: 'col' }, t)))),
       h('tbody', {}, a.resumoPorUnidade.map((r) => h('tr', {},
         h('td', { 'data-rotulo': 'Unidade' }, r.unidadeSigla),
         h('td', { 'data-rotulo': 'Questionários vencidos', class: 'num' }, r.questionariosVencidos),
         h('td', { 'data-rotulo': 'Questionários a vencer', class: 'num' }, r.questionariosAVencer),
-        h('td', { 'data-rotulo': 'Ações sem atualização', class: 'num' }, r.acoesDesatualizadas)))))));
+        h('td', { 'data-rotulo': 'Ações sem atualização', class: 'num' }, r.acoesDesatualizadas),
+        h('td', { 'data-rotulo': 'Famílias sem contato', class: 'num' }, r.familiasSemContato)))))));
   }
   if (vencidos.length) {
     blocos.push(h('h3', {}, 'Questionários finais vencidos'),
@@ -227,6 +228,11 @@ function renderAlertas(a) {
   if (aVencer.length) {
     blocos.push(h('h3', {}, 'Questionários finais a vencer'),
       lista(aVencer, (q) => `${q.unidadeSigla} — ${q.responsavelNome} (limite ${formatarData(q.dataLimite)})`, 'badge-aviso', (q) => (q.diasRestantes === 0 ? 'vence hoje' : `em ${q.diasRestantes} d`)));
+  }
+  if (a.familiasSemContato.length) {
+    blocos.push(h('h3', {}, 'Famílias sem contato'),
+      lista(a.familiasSemContato, (f) => `${f.unidadeSigla} — ${f.responsavelNome} (último contato em ${formatarData(f.ultimoContato)})`,
+        'badge-aviso', (f) => `${f.diasSemContato} d`));
   }
   if (a.acoesDesatualizadas.length) {
     blocos.push(h('h3', {}, 'Ações planejadas sem atualização'),

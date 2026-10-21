@@ -9,6 +9,7 @@ const { clausulaUnidades, unidadesPermitidas, exigirUnidade, resolverUnidade } =
 const { erros } = require('../lib/erros');
 const { registrarAuditoria } = require('../lib/auditoria');
 const { normalizarTelefone } = require('./pessoas');
+const contato = require('./acompanhamento-contato');
 const {
   normalizarCpf, cpfValido, normalizarCep, cepValido, normalizarData, texto, inteiroPositivo,
   lancarSeErros, apenasDigitos,
@@ -42,13 +43,14 @@ const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) :
 async function lerConfiguracao(executor = { consultar }) {
   const linhas = await executor.consultar(
     `SELECT chave, valor FROM configuracao
-      WHERE chave IN ('prazo_questionario_final_dias', 'alerta_questionario_final_dias_antes')`,
+      WHERE chave IN ('prazo_questionario_final_dias', 'alerta_questionario_final_dias_antes', 'alerta_sem_contato_dias')`,
   );
   const mapa = Object.fromEntries(linhas.map((l) => [l.chave, Number(l.valor)]));
   const inteiro = (v, padrao) => (Number.isInteger(v) && v >= 0 ? v : padrao);
   return {
     prazoDias: inteiro(mapa.prazo_questionario_final_dias, PRAZO_PADRAO_DIAS),
     alertaDias: inteiro(mapa.alerta_questionario_final_dias_antes, ALERTA_PADRAO_DIAS),
+    semContatoDias: inteiro(mapa.alerta_sem_contato_dias, contato.LIMITE_PADRAO_DIAS),
   };
 }
 
@@ -99,9 +101,9 @@ const escaparLike = (t) => t.replace(/[\\%_[]/g, (c) => `\\${c}`);
 
 async function listar(req, consulta) {
   const hoje = hojeIso();
-  const { alertaDias } = await lerConfiguracao();
+  const { alertaDias, semContatoDias } = await lerConfiguracao();
 
-  const params = { hoje: [tipos.Date, hoje], alerta: alertaDias };
+  const params = { hoje: [tipos.Date, hoje], alerta: alertaDias, semContato: semContatoDias };
   const filtros = [clausulaUnidades(req, 'ac.unidade_id', params)];
 
   if (consulta.unidadeId !== undefined && consulta.unidadeId !== '') {
@@ -116,14 +118,19 @@ async function listar(req, consulta) {
     filtros.push('ac.status = @status');
     params.status = consulta.status;
   }
-  let filtroSituacao = '';
+  const filtrosExternos = [];
   if (consulta.finalSituacao) {
     if (!SITUACOES.includes(consulta.finalSituacao)) throw erros.validacao({ finalSituacao: 'Situação do questionário final inválida.' });
-    filtroSituacao = consulta.finalSituacao === 'PENDENTE'
-      ? "WHERE situacao_final IN ('EM_DIA', 'VENCENDO', 'VENCIDO')"
-      : 'WHERE situacao_final = @situacao';
+    filtrosExternos.push(consulta.finalSituacao === 'PENDENTE'
+      ? "situacao_final IN ('EM_DIA', 'VENCENDO', 'VENCIDO')"
+      : 'situacao_final = @situacao');
     if (consulta.finalSituacao !== 'PENDENTE') params.situacao = consulta.finalSituacao;
   }
+  if (consulta.contato) {
+    if (consulta.contato !== 'SEM_CONTATO') throw erros.validacao({ contato: 'Filtro de contato inválido.' });
+    filtrosExternos.push(`(${contato.SQL_SEM_CONTATO})`);
+  }
+  const filtroSituacao = filtrosExternos.length ? `WHERE ${filtrosExternos.join(' AND ')}` : '';
   const busca = texto(consulta.q, 100);
   if (busca) {
     const partes = ["p.nome LIKE @busca ESCAPE '\\'"];
@@ -149,6 +156,7 @@ async function listar(req, consulta) {
              (SELECT COUNT(*) FROM familia_membro fm WHERE fm.familia_id = ac.familia_id) + 1 AS qtd_membros,
              CAST(CASE WHEN qi.concluido = 1 THEN 1 ELSE 0 END AS BIT) AS inicial_concluido,
              CAST(CASE WHEN qf.concluido = 1 THEN 1 ELSE 0 END AS BIT) AS final_concluido,
+             ${contato.sqlUltimoContato('ac', 'f')} AS ultimo_contato,
              CASE
                WHEN ac.status <> 'EM_ANDAMENTO' THEN NULL
                WHEN qf.concluido = 1 THEN 'CONCLUIDO'
@@ -195,6 +203,7 @@ async function listar(req, consulta) {
       finalConcluido: !!l.finalConcluido,
       finalSituacao: situacao,
       diasParaFinal: dias,
+      ...contato.resumoContato({ status: l.status, ultimoContato: l.ultimoContato, hoje, limiteDias: semContatoDias }),
     };
   });
   return { itens, total, pagina, tamanho };
@@ -220,7 +229,7 @@ async function detalhar(req, id) {
     consultarUm('SELECT id, nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
   ]);
 
-  const { alertaDias } = await lerConfiguracao();
+  const { alertaDias, semContatoDias } = await lerConfiguracao();
   const resumoQ = (tipo) => {
     const q = questionarios.find((x) => x.tipo === tipo);
     return q
@@ -254,6 +263,7 @@ async function detalhar(req, id) {
     finalSituacao: situacao,
     diasParaFinal: dias,
     comparacaoDisponivel: inicial.concluido && final.concluido,
+    contato: await contato.lerResumoContato(ac, hoje, semContatoDias),
   };
 }
 

@@ -1,6 +1,6 @@
 # Proposta — Acompanhamento das famílias e pesquisa de satisfação
 
-Status: **proposta (F1) — nenhum código, migração ou commit foi feito.** Depende das decisões da seção 9.
+Status: **F1 aprovada em 21/10/2026.** As decisões do usuário estão na **seção 10** e prevalecem sobre as recomendações da seção 9 onde diferem (anonimato, canal da pesquisa, tipos de contato). A seção 6 já reflete a pesquisa **identificada, aplicada pessoalmente pela assistente**.
 Origem: pedido do usuário — "esse sistema precisa ter todo acompanhamento das famílias e entender como estão progredindo, se o projeto está sendo bom ou ruim, como uma pesquisa de satisfação".
 
 ## 0. Resumo
@@ -13,10 +13,10 @@ A proposta tem seis peças que se encaixam no que já existe:
 2. **Plano de metas** da família, com status.
 3. **Linha do tempo** da família, montada a partir de tudo que já é gravado + os registros novos (consulta, não tabela duplicada).
 4. **Índice de progresso por dimensão** (alimentação, renda, economia/poupança, autonomia) calculado a partir do questionário, com semáforo melhorou / igual / piorou e gráfico; opcionalmente uma **reavaliação rápida** no meio do prazo para ter mais de 2 pontos no tempo.
-5. **Pesquisa de satisfação do projeto** respondida pela família (NPS 0–10 + 6 perguntas Likert + 2 textos), **híbrida quanto ao anonimato** (resposta sem vínculo com a família, controle de quem já respondeu separado), aplicada primeiro no aparelho da unidade e, depois, por link/QR se a TI puder publicar um endereço público mínimo.
+5. **Pesquisa de satisfação do projeto** (NPS 0–10 + 6 perguntas Likert + 2 textos), **identificada** (a resposta fica ligada à família) e **aplicada pessoalmente pela assistente social**, no celular dela, fazendo as perguntas à família e registrando as respostas. Não há link público.
 6. **Visão do coordenador**: % de famílias que melhoraram, NPS/satisfação por unidade e período, alertas de família sem contato há X dias, e novas seções no relatório semestral e no individual.
 
-Entrega em 6 etapas (F2 a F7), começando pelo que gera dado mais cedo (registros e satisfação), porque indicadores só existem depois que há dado acumulado. As decisões que dependem do usuário estão na seção 9, cada uma com a recomendação.
+Entrega em 5 etapas (F2 a F6; a F7, link público, foi cancelada), começando pelo que gera dado mais cedo (registros e satisfação), porque indicadores só existem depois que há dado acumulado. As decisões estão nas seções 9 (opções e recomendações) e 10 (o que foi decidido).
 
 ---
 
@@ -91,7 +91,7 @@ Somente a comparação inicial × final por família e o consolidado no relatór
 2. **Registro curto vence registro completo.** Se o contato leva mais de 1 minuto no celular, não será preenchido. Os campos obrigatórios são poucos.
 3. **Número sempre com o n ao lado** e sem percentual quando o n é pequeno (poucas famílias por unidade em cada semestre).
 4. **Acessível sem cor** (semáforo = ícone SVG + palavra, sem emoji, como já feito na comparação) e no visual sóbrio atual (fundo branco, laranja só como acento, sem emojis).
-5. **LGPD por padrão**: filtro por unidade no back-end em tudo (`clausulaUnidades`), menor visibilidade possível para texto livre, satisfação sem vínculo com a família (seção 6).
+5. **LGPD por padrão**: filtro por unidade no back-end em tudo (`clausulaUnidades`), menor visibilidade possível para texto livre, pesquisa identificada com aviso claro à família e acesso restrito (seção 6.5).
 6. **Tudo editável pelo coordenador/admin sem deploy**: prazos, tolerâncias e limiares em `configuracao`; tipos de contato como tabela de apoio.
 7. **Cada entrega gera valor sozinha**, com testes no padrão de `tests/familias` (API com banco real no Docker de teste) e validação visual desktop/celular como nas fases V.
 
@@ -113,7 +113,7 @@ Uma lista cronológica (mais recente primeiro) na ficha da família, com filtros
 | ATENDIMENTO | `atendimento` onde `pessoa_id` = responsável **e** `unidade_id` permitida | sim (vínculo por CPF do responsável) | demanda(s), encaminhamento(s) |
 | ACAO | `acao_visita_familia` (família marcada como presente) | **novo, opcional** | tipo e tema da ação |
 | ENCAMINHAMENTO | `atendimento_encaminhamento` + `registro_encaminhamento` | parcial | aparece como "chips" dentro do evento pai |
-| PESQUISA | `pesquisa_convite` (somente "foi oferecida / foi respondida", nunca o conteúdo) | **novo** | "Pesquisa de satisfação respondida" |
+| PESQUISA | `pesquisa_resposta` (identificada, F3) | **novo** | "Pesquisa de satisfação aplicada" (a nota NPS aparece; os comentários só abrem na própria pesquisa) |
 | PRAZO | virtual: `data_prevista_final` | sim | "Prazo do questionário final" (futuro, em destaque se vencido) |
 | ENCERRAMENTO | `acompanhamento.data_encerramento` + status | sim | "Concluído / Desligado" (+ motivo, ver L8) |
 
@@ -253,8 +253,8 @@ Texto simples, vocabulário do dia a dia, 8 perguntas (a P8 tem duas caixas), me
 
 **Dados de contexto (não são perguntas à família)**
 
-- "Quem ajudou a responder?" (a própria família sozinha · a família com ajuda de alguém da família · a assistente leu e anotou). Serve para medir o viés de aplicação.
-- Opcional, com consentimento explícito: "Se quiser que a equipe entre em contato sobre algum problema, marque aqui". É a única ponte para identificação, e só por escolha da família (6.5).
+- "Como foi respondida?" (a família disse as respostas e a assistente anotou · a família preencheu sozinha no aparelho · outra pessoa da família ajudou). Serve para medir o viés de aplicação (6.3).
+- Em cada pergunta, a opção "prefere não responder".
 
 Escala visual: botões grandes, 5 rostos desenhados em SVG simples (sem emojis), texto sempre junto do desenho; NPS em fileira de 11 botões numerados. Telas de uma pergunta por vez, como o questionário atual (barra de progresso, sem rolagem longa).
 
@@ -262,37 +262,44 @@ Escala visual: botões grandes, 5 rostos desenhados em SVG simples (sem emojis),
 
 | Momento | Quem | Observação |
 |---|---|---|
-| **Ao final do acompanhamento** (junto do questionário final, mas em tela separada) | família responde; assistente só entrega o aparelho | principal fonte de "o projeto foi bom?" |
+| **Ao final do acompanhamento** (depois do questionário final, em tela separada) | a assistente social que acompanha a família | principal fonte de "o projeto foi bom?" |
 | **Semestral**, para famílias ainda em acompanhamento | idem | alimenta o relatório semestral e permite ver tendência |
-| **Avulsa** (programável pela coordenação) | idem | por exemplo, após uma mudança relevante |
+| **Avulsa** (a critério da assistente ou da coordenação) | idem | por exemplo, após uma mudança relevante |
 
-Regra de ouro metodológica: **a assistente que acompanha a família não deve ler a pergunta e anotar a resposta**, porque a família tende a agradar quem está na frente (hoje o bloco 5 tem esse viés). Preferência: família responde sozinha no aparelho; se não souber ler, outra pessoa da equipe (que não é a assistente da família) ou um acompanhante da família lê; o campo "quem ajudou a responder" registra isso.
+**A assistente aplica pessoalmente**, no celular dela: lê cada pergunta à família, a família responde em voz alta e a assistente registra. A tela é feita para isso: uma pergunta por vez, botões grandes, rostos e números fáceis de apontar, sem mostrar nada que identifique a família além do que a assistente já vê na ficha.
+
+Risco metodológico a gerenciar, já que a assistente pergunta sobre o próprio trabalho: a família tende a agradar quem está na frente (o bloco 5 do questionário tem o mesmo viés). Mitigações previstas, sem exigir outra pessoa:
+- texto fixo para a assistente ler antes de começar ("não existe resposta certa, a opinião de vocês ajuda a melhorar o projeto; pode dizer o que não gostou"), exibido na primeira tela;
+- perguntas lidas exatamente como escritas, sem explicações adicionais, e a opção "prefere não responder" em cada uma;
+- o campo de contexto **"como foi respondida"** (a família disse as respostas e a assistente anotou · a família preencheu sozinha no aparelho · outra pessoa da família ajudou), que permite à coordenação olhar os resultados por modo de aplicação;
+- relatórios sempre comparam períodos aplicados do mesmo jeito, e o painel mostra a taxa de recusa ("prefere não responder").
 
 Público-alvo: o **responsável adulto** de cada família em acompanhamento (D2). Membros menores de idade não respondem.
 
-### 6.4 Canais
+### 6.4 Canal
 
-1. **Modo família no aparelho da unidade (fase 1).** Na ficha da família, "Aplicar pesquisa de satisfação": o sistema cria um convite de uso único e abre uma página de tela cheia, sem menu e sem nenhum dado da família na tela; ao terminar, mostra agradecimento e volta à ficha. Funciona na rede interna HTTP atual. Cuidado: a página fica sob a sessão da assistente (cookie), por isso não contém links nem chamadas além da própria pesquisa.
-2. **Link ou QR no celular da família (fase 2, depende da TI — D4).** A assistente gera um link de uso único (token aleatório de 128 bits guardado como hash, validade configurável, ex.: 14 dias) e envia por WhatsApp abrindo `wa.me/55<telefone>?text=…` com o telefone de `pessoa.telefone` (já existe, T8): envio manual, sem integração com API. **Pré-requisito: publicar na internet apenas `/pesquisa.html` e `/api/publico/pesquisa/*`** via proxy reverso; o resto do sistema continua só na rede interna. É decisão de infraestrutura e de segurança, não de código.
-3. **Alternativa fora do sistema:** Microsoft Forms (já usado pela INTECS) e importação de CSV. Custo menor, mas sem controle de token, sem painel e com o LGPD num terceiro; listada em D4 por completude.
+**Um único canal: a assistente aplica pessoalmente, no celular dela** (decisão D4, seção 10). Na ficha da família, "Aplicar pesquisa de satisfação" abre a tela da pesquisa, em tela cheia, dentro da sessão normal da assistente. Funciona na rede interna HTTP atual e não cria superfície pública nova: **não há link, QR, token nem rota sem sessão**, e a F7 foi cancelada. Se a família não puder responder naquele dia, a assistente salva como rascunho (a resposta fica incompleta até ser concluída) ou registra "família não quis responder", que também conta para a taxa de recusa.
 
-A rota pública é a **única** nova superfície sem sessão: exige `PUBLICAS` em `routes/index.js` (ou um router próprio), limite de requisições por IP, tokens de uso único, nenhuma leitura de dados pessoais, e resposta que não distingue "token inexistente" de "expirado".
+### 6.5 Identificação × LGPD
 
-### 6.5 Anonimato × vínculo × LGPD
+**Decisão (D3): a pesquisa é identificada**, ligada ao acompanhamento da família, e não anônima. Consequências e salvaguardas:
 
-| Modelo | Como funciona | Vantagens | Problemas |
-|---|---|---|---|
-| A. Anônima total | resposta sem nada da família; só unidade e período | máxima sinceridade | sem controle de duplicidade nem de cobertura; sem como atender uma reclamação |
-| B. Identificada | resposta ligada ao `acompanhamento_id` | permite cruzar satisfação × progresso por família e responder reclamações | viés de agradar; dado pessoal de opinião ligado a pessoa vulnerável; qualquer assistente pode ver |
-| **C. Híbrida pseudonimizada (recomendada)** | duas estruturas **sem chave em comum**: o **convite** guarda "a família X recebeu/respondeu" (controle de cobertura e de duplicidade); a **resposta** guarda unidade, período, canal e as notas, mas **nem token nem acompanhamento** | sinceridade + controle de taxa de resposta + sem repetição; satisfação × progresso só em nível agregado (unidade/período) | não se corrige uma resposta individual; precisa de n mínimo para não reidentificar |
+| Aspecto | Efeito da pesquisa identificada |
+|---|---|
+| Duplicidade e cobertura | controlada pela própria resposta (uma por família, momento e período), sem tabela de convite |
+| Satisfação × progresso | pode ser cruzada **por família** (por exemplo, quem melhorou mais está mais satisfeito?) |
+| Reclamação | a assistente enxerga o problema na ficha e pode registrar uma ação; sem "pedido de contato" separado |
+| Viés de agradar | mais forte que na pesquisa anônima; ver mitigações em 6.3 |
+| Dado pessoal | opinião ligada a pessoa em situação de vulnerabilidade; vale o cuidado de dado pessoal comum, com acesso restrito |
 
-Salvaguardas da opção C:
-- A resposta não guarda `criado_em` com hora; só a data do período, para o horário de resposta não permitir cruzar com o horário de uso do convite.
-- **n mínimo de 5** (`pesquisa_n_minimo`) para exibir qualquer recorte (unidade × período); abaixo disso, mostra-se só o nível acima (unidade → total).
-- Comentários livres podem identificar alguém sozinhos ("meu filho Pedro…"): ficam visíveis só para o COORDENADOR, com opção de ocultar um comentário; **não aparecem para ASSISTENTE nem ADMIN** (D11).
-- Pedido de contato (item 5 do instrumento): só se a família marcar; cria um **alerta de acompanhamento** ligado ao convite (e portanto à família), sem copiar as notas da resposta para a ficha.
-- Antes da primeira pergunta, aviso curto: para que serve, que não pede CPF nem nome, quem vê, que a resposta não pode ser apagada depois por ser anônima, que responder não muda o atendimento.
-- Base legal e texto do aviso a validar com o jurídico/encarregado da INTECS (D12). Dados de renda, alimentação e saúde nutricional do questionário já são sensíveis ou quase; a pesquisa não coleta nenhum deles.
+Salvaguardas:
+- **Aviso falado antes da primeira pergunta** (texto fixo na tela): para que serve a pesquisa, que a resposta fica registrada junto da ficha da família, quem pode ver, que responder ou não responder **não muda o atendimento nem o acompanhamento**, e que a família pode pedir para apagar. O aviso deve ser aprovado pelo jurídico/encarregado (D12).
+- **Quem vê (D11 ajustada):** ASSISTENTE vê as respostas das famílias da própria unidade (ela mesma registrou); COORDENADOR vê tudo, inclusive comentários, e pode ocultar um comentário dos relatórios; **ADMIN não vê respostas individuais nem comentários**, só configuração e números agregados.
+- **Nos agregados** (painel e relatórios) mostra-se sempre o n; percentuais e NPS só aparecem com **n ≥ 5** no recorte (`pesquisa_n_minimo`), porque abaixo disso o número é instável. Aqui a razão é estatística, não de sigilo.
+- **Comentários nos relatórios** só passam pela coordenação: nunca com o nome da família; a coordenação escolhe os trechos e pode editá-los.
+- **Apagar a pedido** da família: o COORDENADOR pode anular uma resposta com motivo (sai dos números e dos relatórios; a trilha de auditoria fica).
+- **Não é coletado nada novo de identificação**: a ficha já existe. Não se pergunta renda, alimentação nem saúde na pesquisa.
+- **Retenção** conforme D12 (aberta).
 
 ### 6.6 Apuração
 - **NPS** = % promotoras(es) (9–10) − % detratoras(es) (0–6), de −100 a +100.
@@ -320,7 +327,7 @@ Reorganizar `painel.html` em abas: **Operação** (o que existe hoje, intacto) �
 ### 7.2 Satisfação
 - **NPS** e **índice de satisfação** por unidade e por período, com taxa de resposta; semáforo nos limiares configurados.
 - Perguntas ordenadas da pior para a melhor concordância (onde o projeto falha mais).
-- Lista de comentários (só COORDENADOR; filtro por unidade/período; botão "ocultar").
+- Lista de comentários (só COORDENADOR; filtro por unidade/período; botão "ocultar"; a ASSISTENTE vê os comentários das famílias da própria unidade na ficha de cada uma).
 - Comparação entre períodos (semestre atual × anterior) com o n.
 
 ### 7.3 Alertas (extensão de `/api/painel/alertas`)
@@ -329,8 +336,7 @@ Hoje: finais vencendo/vencidos e ações desatualizadas. Acrescentar, por unidad
 - **Famílias piorando** (últimas duas situações "piorando", ou índice caiu além da tolerância).
 - **Metas vencidas** sem fechamento.
 - **Reavaliação a fazer** (se adotada).
-- **Pedidos de contato da pesquisa** não tratados.
-- **Taxa de resposta da pesquisa baixa** no semestre (ex.: abaixo de 30%).
+- **Famílias elegíveis sem pesquisa** no semestre e taxa de recusa alta.
 O bloco de pendentes da tela Início (assistente e coordenador) passa a mostrar os mesmos itens.
 
 ### 7.4 Relatório semestral
@@ -347,7 +353,7 @@ Todas idempotentes (`IF OBJECT_ID … IS NULL`, `COL_LENGTH`, `sys.indexes`), co
 | Script | Conteúdo | Etapa |
 |---|---|---|
 | `080_acompanhamento_registro.sql` | `tipo_contato` (apoio, entra em `TABELAS_APOIO`), `acompanhamento_registro`, `registro_encaminhamento`, `motivo_desligamento` (apoio) + `acompanhamento.motivo_desligamento_id`, configurações `alerta_sem_contato_dias`, `intervalo_contato_dias` | F2 |
-| `081_pesquisa_satisfacao.sql` | `pesquisa_modelo`, `pesquisa_pergunta`, `pesquisa_convite`, `pesquisa_resposta`, `pesquisa_resposta_item`, `pesquisa_pedido_contato`; semente do modelo v1; configurações `pesquisa_n_minimo`, `pesquisa_validade_link_dias` | F3 |
+| `081_pesquisa_satisfacao.sql` | `pesquisa_modelo`, `pesquisa_pergunta`, `pesquisa_resposta` (identificada, com `acompanhamento_id`), `pesquisa_resposta_item`; semente do modelo v1; configuração `pesquisa_n_minimo` | F3 |
 | `082_acompanhamento_meta.sql` | `acompanhamento_meta`, `registro_meta`; opcionalmente `acao_visita_familia` | F4 |
 | `083_questionario_reavaliacao.sql` | `questionario.ordem`, novo `CHECK` de tipo, nova `UNIQUE`; configuração `reavaliacao_dias` | F5 |
 | `084_acompanhamento_indice.sql` | `acompanhamento_indice` (instantâneo), configurações `indice_tolerancia_pontos`, `salario_minimo_referencia` | F5 |
@@ -366,15 +372,13 @@ As faixas `082`–`084` seguem a ordem das etapas; ajustar o número quando a et
 | `GET /api/painel/progresso?inicio=&fim=&unidadeId=` | COORDENADOR, ADMIN | % melhoraram, cobertura, desligamentos |
 | `GET /api/painel/satisfacao?inicio=&fim=&unidadeId=` | COORDENADOR, ADMIN | NPS, índice, n mínimo aplicado |
 | `GET /api/painel/alertas` | (existente, ampliado) | novos itens da seção 7.3 |
-| `POST /api/pesquisas/convites` | ASSISTENTE, COORDENADOR | cria convite (modo aparelho ou link) |
-| `GET/POST /api/pesquisas/aplicar/:token` | sessão da assistente (modo aparelho) | |
-| `GET/POST /api/publico/pesquisa/:token` | **sem sessão** (fase F7) | limite de requisições, token de uso único |
+| `GET/POST/PUT /api/familias/acompanhamentos/:id/pesquisas` | ASSISTENTE, COORDENADOR (leitura: perfis da unidade, exceto ADMIN) | cria, salva rascunho e conclui a pesquisa da família |
 | `GET/PUT /api/pesquisas/modelo` | COORDENADOR (edita), ADMIN | editor do instrumento |
 
 Documentar em `docs/API-ACOMPANHAMENTO.md` e `docs/API-PESQUISA.md` no mesmo formato de `API-FAMILIAS.md`.
 
 ### 8.3 Telas
-**Novas:** `pesquisa.html` (modo família/público, sem menu), aba "Progresso" e aba "Satisfação" no Painel, editor do instrumento em Administração, formulário "Registrar contato" (modal no desktop, folha de baixo no celular), formulário de meta.
+**Novas:** tela da pesquisa (aplicada pela assistente, em tela cheia, dentro da ficha da família), aba "Progresso" e aba "Satisfação" no Painel, editor do instrumento em Administração, formulário "Registrar contato" (modal no desktop, folha de baixo no celular), formulário de meta.
 **Alteradas:** ficha da família (abas), lista de famílias (selos e filtro de contato), Início (card de famílias sem contato), questionário (final termina com "Aplicar pesquisa de satisfação"; inicial com "Definir metas"), encerramento (motivo estruturado), Relatórios (seções novas e prévia), formulário de ações (marcar famílias presentes, opcional).
 
 ### 8.4 Entregas incrementais
@@ -388,9 +392,9 @@ Tamanho relativo tomando **T4 (módulo de Famílias completo) = 1,0**.
 | **F4** | Plano de metas (+ metas nos registros e na linha do tempo; vínculo de famílias às ações, opcional) | F2 | ≈ 0,3 | acompanhamento com objetivo |
 | **F5** | Índice de progresso + reavaliação rápida + aba Indicadores + seção no individual | D9, D10 | ≈ 0,8 | semáforo e gráfico por família |
 | **F6** | Painel do coordenador (Progresso e Satisfação) + alertas ampliados + seções do semestral + CSV | F3 e F5 | ≈ 0,7 | "o projeto está sendo bom?" em números |
-| **F7** | Link/QR público para a família (opcional) | D4 e TI | ≈ 0,3 + infra | resposta no celular da própria família |
+| ~~F7~~ | ~~Link/QR público para a família~~ | | | **cancelada** (D4) |
 
-Ordem recomendada: F2 → F3 → F4 → F5 → F6 → F7. Motivo: F2 e F3 começam a acumular dado imediatamente; F5 e F6, que dependem de volume, entram quando já há histórico. Se o usuário quiser ver resultado de progresso mais cedo, F5 pode subir antes de F4 sem prejuízo (F4 só depende de F2).
+Ordem decidida (D1): F2 → F3 → F4 → F5 → F6. Motivo: F2 e F3 começam a acumular dado imediatamente; F5 e F6, que dependem de volume, entram quando já há histórico. Se o usuário quiser ver resultado de progresso mais cedo, F5 pode subir antes de F4 sem prejuízo (F4 só depende de F2).
 
 Em todas: testes de API no padrão de `tests/familias` com banco real do Docker de teste, teste de escopo de unidade (assistente da unidade A tentando ler dado da B), service worker com nova `VERSAO`, validação visual desktop e celular.
 
@@ -399,7 +403,7 @@ Em todas: testes de API no padrão de `tests/familias` com banco real do Docker 
 - **Preenchimento**: se o registro de contato for pesado, não será usado (mitigado pelo formulário curto; medir pela cobertura).
 - **Questionário é o modelo oficial do Termo de Colaboração**: mudar perguntas exige aval; esta proposta **não altera o instrumento** (D10).
 - **Alterar `questionario` (F5)**: único ponto que mexe em tabela e lógica existentes; isolar em script próprio e coberto por teste.
-- **Superfície pública (F7)** é um risco novo de segurança; só com proxy restrito às duas rotas e rate limit.
+- **Viés de aplicação** da pesquisa (a assistente pergunta sobre o próprio trabalho): mitigado por texto fixo, opção de recusa e campo "como foi respondida"; acompanhar pela taxa de recusa.
 
 ---
 
@@ -407,23 +411,23 @@ Em todas: testes de API no padrão de `tests/familias` com banco real do Docker 
 
 Cada decisão tem opções e a recomendação (marcada).
 
-**D1 — Ordem e escopo das entregas.**
+**D1 — Ordem e escopo das entregas.** *(decidida: ver seção 10)*
 (a) F2→F3→F4→F5→F6→F7. **(recomendada)** (b) Progresso primeiro (F2→F4→F5→F6), satisfação depois. (c) Só F2+F3 por ora e reavaliar depois do primeiro semestre de dados.
 
 **D2 — Quem responde a pesquisa de satisfação.**
 (a) **Responsável adulto de cada família em acompanhamento. (recomendada)** (b) Todo público do Armazém (inclui quem só fez atendimento). (c) (a) agora; (b) numa etapa futura.
 
-**D3 — Anonimato.**
+**D3 — Anonimato.** *(decidida: pesquisa identificada; ver seção 10)*
 (a) Anônima total. (b) Identificada. (c) **Híbrida: resposta sem vínculo, controle de quem respondeu separado, n mínimo 5, pedido de contato opcional com consentimento. (recomendada)**
 
-**D4 — Canal.**
+**D4 — Canal.** *(decidida: a assistente aplica pessoalmente; F7 cancelada; ver seção 10)*
 (a) **Fase 1 no aparelho da unidade (modo família); fase 2 link/QR se a TI publicar só as rotas públicas da pesquisa. (recomendada)** (b) Só aparelho da unidade, sem link. (c) MS Forms + importação de CSV (fora do sistema). (d) Cartaz com QR fixo no armazém (anônimo e aberto; maior risco de abuso e duplicidade).
 Pergunta direta à TI: é aceitável expor publicamente `/pesquisa.html` e `/api/publico/pesquisa/*` por proxy reverso, mantendo o resto interno?
 
 **D5 — Quando aplicar.**
 (a) **Ao final do acompanhamento + semestral para quem segue em andamento. (recomendada)** (b) Só no final. (c) A cada reavaliação/contato (risco de cansaço).
 
-**D6 — Instrumento.**
+**D6 — Instrumento.** *(em aberto: formato do Termo; bloqueia só a F3 em produção)*
 (a) **NPS + 6 afirmações Likert + 2 textos (seção 6.2). (recomendada)** (b) Versão mais curta (NPS + 3 afirmações + 1 texto). (c) Versão do próprio usuário/prefeitura.
 Pergunta: o Termo de Colaboração TCL/073/2023/SMDHC/SESANA ou a SMDHC exigem indicadores de satisfação ou pesquisa em formato próprio? Se exigirem, o modelo deve seguir esse formato.
 E o bloco 5 do questionário: **manter e deixar de usar nos relatórios quando a pesquisa estiver no ar. (recomendada)** ou remover do formulário (mexe no instrumento oficial).
@@ -431,7 +435,7 @@ E o bloco 5 do questionário: **manter e deixar de usar nos relatórios quando a
 **D7 — Plano de metas.**
 (a) **Opcional, com alerta se não houver meta em 30 dias. (recomendada)** (b) Obrigatório para concluir o questionário inicial. (c) Deixar de fora por ora.
 
-**D8 — Como o projeto acompanha de fato.**
+**D8 — Como o projeto acompanha de fato.** *(decidida: todas as opções; ver seção 10)*
 Pergunta ao usuário: as assistentes fazem **visita domiciliar** ou o contato é no Armazém, por telefone e WhatsApp? A lista de tipos de contato e o alerta dependem disso.
 Intervalo mínimo entre contatos para o alerta: (a) **30 dias. (recomendada)** (b) 15 dias. (c) 45 dias. Em todos os casos o valor fica editável em Configurações.
 
@@ -441,10 +445,10 @@ Intervalo mínimo entre contatos para o alerta: (a) **30 dias. (recomendada)** (
 **D10 — Cálculo do índice e instrumento.**
 (a) **Aprovar a regra da seção 5.2 (4 dimensões, renda per capita por faixa de salário mínimo, tolerância de 5 pontos, itens de percepção com peso reduzido no inicial) sem alterar o questionário. (recomendada)** (b) Aprovar a regra e, em paralelo, propor uma "versão 2" do questionário que corrija L5 (perguntas de estado no lugar das de "melhorou?" e 2 a 3 itens de autonomia), com aval do Termo. (c) Usar só contagem de itens que melhoraram (sem índice).
 
-**D11 — Quem vê o quê (privacidade).**
+**D11 — Quem vê o quê (privacidade).** *(ajustada para a pesquisa identificada; ver seção 10)*
 (a) **ASSISTENTE: registros, metas, linha do tempo e índices das famílias da própria unidade; satisfação só agregada (n ≥ 5) e sem comentários. COORDENADOR: tudo, incluindo comentários. ADMIN: configuração e dados agregados, sem texto livre de registros nem comentários. (recomendada)** (b) Como hoje: ADMIN lê tudo que lê de famílias. (c) Assistente também vê os comentários da própria unidade.
 
-**D12 — LGPD e retenção.**
+**D12 — LGPD e retenção.** *(em aberto; bloqueia só a F3 em produção)*
 Validar com o jurídico/encarregado da INTECS: base legal (execução do Termo de Colaboração/política pública), texto do aviso na pesquisa e prazo de guarda. Sugestão de prazo: manter respostas enquanto durar o Termo e a prestação de contas dele, depois anonimizar/eliminar. Sem decisão, a F3 não deve ir para produção.
 
 **D13 — Metas de referência dos semáforos.**
@@ -452,6 +456,32 @@ Validar com o jurídico/encarregado da INTECS: base legal (execução do Termo d
 
 **D14 — Unidade-piloto.**
 Escolher 1 unidade-piloto (sugestão: a que tem mais famílias em acompanhamento) para F2/F3 antes de liberar nas 7. **(recomendada)** ou liberar em todas de uma vez.
+
+---
+
+## 10. Decisões tomadas (21/10/2026)
+
+Resposta do usuário à lista da seção 9. Onde não houver ressalva, vale a recomendação.
+
+| # | Decisão | Efeito no desenho |
+|---|---|---|
+| D1 | Ordem **F2 → F3 → F4 → F5 → F6** | F2 registros + linha do tempo; F3 pesquisa de satisfação; F4 metas; F5 índice + reavaliação; F6 painel e relatórios |
+| D3 | **Pesquisa identificada**, ligada à família, não anônima | Resposta guarda `acompanhamento_id`; sem tabela de convite nem token; seção 6.5 reescrita |
+| D4 | A **assistente social aplica pessoalmente**, no celular dela, fazendo as perguntas e registrando as respostas. **Sem link público; F7 cancelada** | Um único canal; nenhuma rota sem sessão; seção 6.4 reescrita; sem pré-requisito de TI |
+| D8 | "Não tenho certeza, coloque todas as opções": tipos de contato = **visita domiciliar, atendimento no Armazém, telefone, WhatsApp e outro**; alerta de **30 dias editável** | `tipo_contato` semeado com as 5 opções (a lista continua editável pelo ADMIN, que pode desativar as que a prática descartar); `alerta_sem_contato_dias` = 30 em Configurações |
+| D11 | Ajustada à pesquisa identificada | ASSISTENTE vê registros, metas, linha do tempo, índices **e as pesquisas das famílias da própria unidade**; COORDENADOR vê tudo; ADMIN não vê texto livre (registros, comentários) nem respostas individuais |
+| D2, D5, D7, D9, D10, D13, D14 | Seguem a recomendação | Responsável adulto das famílias em acompanhamento; pesquisa no final e a cada semestre; metas opcionais com alerta em 30 dias; reavaliação na metade do prazo; regra do índice sem alterar o questionário oficial; limiares provisórios editáveis; unidade-piloto |
+| D6 | **Em aberto**: formato exigido pelo Termo de Colaboração | Bloqueia a F3 **em produção**, não o desenvolvimento |
+| D12 | **Em aberto**: LGPD (base legal, aviso, retenção) | Bloqueia a F3 **em produção**, não o desenvolvimento |
+
+Escopo imediato: **F2**, abaixo.
+
+### 10.1 F2 — escopo fechado
+
+- Migração `080_acompanhamento_registro.sql`: `tipo_contato` (apoio, 5 opções), `acompanhamento_registro`, configuração `alerta_sem_contato_dias` = 30 e índice de apoio em `atendimento`. **Ficaram fora da F2:** `registro_encaminhamento` (os encaminhamentos aparecem na linha do tempo a partir dos atendimentos), motivo estruturado de desligamento e `intervalo_contato_dias` (o próximo contato é sugerido com o próprio limite do alerta). Contrato da API em `docs/API-ACOMPANHAMENTO.md`.
+- API em `/api/familias/acompanhamentos/:id/registros` e `/linha-do-tempo`, mais o resumo de contato na lista de famílias e os alertas.
+- Tela: aba **Acompanhamento** (formulário curto e lista) e aba **Linha do tempo** na ficha da família.
+- Alerta "família sem contato há X dias" no Painel, na tela Início e como selo na lista de famílias.
 
 ---
 
@@ -486,29 +516,24 @@ CREATE TABLE dbo.acompanhamento_meta (
   -- + colunas de auditoria
 );
 
--- 081 (resposta sem chave para a família)
-CREATE TABLE dbo.pesquisa_convite (
+-- 081 (pesquisa identificada, aplicada pela assistente)
+CREATE TABLE dbo.pesquisa_resposta (
   id INT IDENTITY(1,1) PRIMARY KEY,
-  token_hash BINARY(32) NOT NULL UNIQUE,
-  modelo_id INT NOT NULL, acompanhamento_id INT NOT NULL, unidade_id INT NOT NULL,
-  momento VARCHAR(10) NOT NULL,         -- FINAL | SEMESTRAL | AVULSA
-  canal   VARCHAR(10) NOT NULL,         -- APARELHO | LINK
-  criado_por INT NOT NULL, criado_em DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME(),
-  expira_em DATETIME2(0) NOT NULL,
-  respondido_em DATE NULL
-);
-CREATE TABLE dbo.pesquisa_resposta (         -- NÃO tem token, convite nem acompanhamento
-  id INT IDENTITY(1,1) PRIMARY KEY,
-  modelo_id INT NOT NULL, unidade_id INT NOT NULL,
-  periodo DATE NOT NULL,                      -- 1º dia do mês da resposta
-  canal VARCHAR(10) NOT NULL,
-  ajuda_resposta VARCHAR(15) NULL,            -- SOZINHA | COM_FAMILIAR | ASSISTENTE_ANOTOU
-  oculta BIT NOT NULL DEFAULT 0               -- comentário oculto pelo coordenador
+  modelo_id INT NOT NULL REFERENCES dbo.pesquisa_modelo(id),
+  acompanhamento_id INT NOT NULL REFERENCES dbo.acompanhamento(id),
+  usuario_id INT NOT NULL REFERENCES dbo.usuario(id),   -- assistente que aplicou
+  momento VARCHAR(10) NOT NULL,                          -- FINAL | SEMESTRAL | AVULSA
+  data_aplicacao DATE NOT NULL,
+  modo VARCHAR(20) NOT NULL,                             -- FAMILIA_FALOU | FAMILIA_PREENCHEU | COM_AJUDA
+  situacao VARCHAR(12) NOT NULL DEFAULT 'RASCUNHO',      -- RASCUNHO | CONCLUIDA | RECUSADA | ANULADA
+  comentario_oculto BIT NOT NULL DEFAULT 0
+  -- + colunas de auditoria
 );
 CREATE TABLE dbo.pesquisa_resposta_item (
   resposta_id INT NOT NULL REFERENCES dbo.pesquisa_resposta(id) ON DELETE CASCADE,
   pergunta_id INT NOT NULL REFERENCES dbo.pesquisa_pergunta(id),
   valor_num TINYINT NULL, valor_texto NVARCHAR(1000) NULL,
+  prefere_nao_responder BIT NOT NULL DEFAULT 0,
   PRIMARY KEY (resposta_id, pergunta_id)
 );
 

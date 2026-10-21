@@ -28,6 +28,12 @@ const SVG = {
   relogio: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   editar: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   mais: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  subir: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  descer: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
+  igual: '<path d="M5 9h14M5 15h14"/>',
+  seta: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  calendario: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  mensagem: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
 };
 
 export function icone(nome) {

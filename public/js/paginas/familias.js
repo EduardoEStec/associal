@@ -1,7 +1,9 @@
 // Acompanhamento Familiar — roteador por hash dentro da página:
 //   #/                       lista de famílias
 //   #/nova                   cadastro
-//   #/a/<id>                 ficha da família
+//   #/a/<id>                 ficha da família (aba Resumo)
+//   #/a/<id>/acompanhamento  aba Acompanhamento (registros de contato); /novo abre o formulário
+//   #/a/<id>/linha-do-tempo  aba Linha do tempo
 //   #/a/<id>/editar          edição
 //   #/a/<id>/q/INICIAL|FINAL questionário em etapas
 //   #/a/<id>/comparacao      comparação inicial × final
@@ -48,6 +50,8 @@ async function rotear() {
       else if (partes[2] === 'editar') { exigirEscrita(); await renderCadastro(ctx, id); }
       else if (partes[2] === 'q' && partes[3]) await renderQuestionario(ctx, id, partes[3]);
       else if (partes[2] === 'comparacao') await renderComparacao(ctx, id);
+      else if (partes[2] === 'acompanhamento') await renderDetalhe(ctx, id, 'acompanhamento', { abrirNovo: partes[3] === 'novo' });
+      else if (partes[2] === 'linha-do-tempo') await renderDetalhe(ctx, id, 'linha-do-tempo');
       else erroRota('Página não encontrada.');
     } else erroRota('Página não encontrada.');
   } catch (e) {

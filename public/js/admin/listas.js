@@ -7,6 +7,7 @@ const ROTULOS = {
   demanda: 'Demandas', encaminhamento: 'Encaminhamentos', vulnerabilidade: 'Vulnerabilidades', escolaridade: 'Escolaridade',
   raca: 'Raça/cor', genero: 'Gênero', faixa_etaria: 'Faixas etárias', nivel_vulnerabilidade: 'Níveis de vulnerabilidade',
   tema: 'Temas das ações', tipo_acao: 'Tipos de ação', beneficio: 'Benefícios recebidos', destino_economia: 'Destino da economia',
+  tipo_contato: 'Tipos de contato',
 };
 
 export async function montarListas(raiz) {

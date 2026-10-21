@@ -34,6 +34,15 @@ export function seloFinal(item) {
   return h('span', { class: `badge ${classe}` }, simbolo ? icone(simbolo) : null, texto);
 }
 
+// Último contato com a família (alerta "sem contato"): ícone + texto, não só cor.
+export function seloContato(item) {
+  if (item.status !== 'EM_ANDAMENTO' || !item.ultimoContatoEm) return h('span', { class: 'texto-suave' }, '—');
+  const dias = item.diasSemContato;
+  const quando = dias === 0 ? 'hoje' : `há ${pluralDias(dias)}`;
+  if (item.semContato) return h('span', { class: 'badge badge-aviso' }, icone('alerta'), `Sem contato ${quando}`);
+  return h('span', { class: 'texto-pequeno' }, quando);
+}
+
 export function rotuloSimNao(v) {
   if (v === true) return 'Sim';
   if (v === false) return 'Não';

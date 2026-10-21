@@ -13,6 +13,7 @@ const { tipos } = require('../db');
 const { clausulaUnidades, unidadesPermitidas } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
 const { normalizarData, inteiroPositivo } = require('../lib/validacao');
+const contato = require('./acompanhamento-contato');
 
 const MAX_DIAS_PERIODO = 366 * 5;
 const MAX_MESES_EVOLUCAO = 60;
@@ -347,6 +348,30 @@ async function questionariosFinaisPendentes(req, hoje = hojeBrasil(), unidadeId 
   }));
 }
 
+// Famílias em acompanhamento sem contato há mais de `alerta_sem_contato_dias` (regra em acompanhamento-contato.js).
+async function familiasSemContato(req, hoje = hojeBrasil(), unidadeId = null) {
+  const limite = await lerConfigNumero('alerta_sem_contato_dias', contato.LIMITE_PADRAO_DIAS);
+  const params = { hoje: dataParam(hoje), semContato: limite };
+  const where = filtroUnidade(req, 'ac.unidade_id', params, unidadeId);
+  const linhas = await consultar(
+    `WITH base AS (
+       SELECT ac.id AS acompanhamento_id, ac.unidade_id, un.sigla AS unidade_sigla, pe.nome AS responsavel_nome, ac.status,
+              ${contato.sqlUltimoContato('ac', 'f')} AS ultimo_contato
+         FROM acompanhamento ac
+         JOIN unidade un ON un.id = ac.unidade_id
+         JOIN familia f ON f.id = ac.familia_id
+         JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+        WHERE ac.status = 'EM_ANDAMENTO' AND ${where})
+     SELECT acompanhamento_id, unidade_id, unidade_sigla, responsavel_nome, ultimo_contato,
+            DATEDIFF(DAY, ultimo_contato, @hoje) AS dias_sem_contato
+       FROM base
+      WHERE ${contato.SQL_SEM_CONTATO}
+      ORDER BY dias_sem_contato DESC, unidade_sigla, responsavel_nome`,
+    params,
+  );
+  return linhas.map((l) => ({ ...l, diasSemContato: Number(l.diasSemContato) }));
+}
+
 // Ações planejadas cuja data já passou sem atualização de status.
 async function acoesDesatualizadas(req, hoje = hojeBrasil(), unidadeId = null) {
   const params = { hoje: dataParam(hoje) };
@@ -363,23 +388,26 @@ async function acoesDesatualizadas(req, hoje = hojeBrasil(), unidadeId = null) {
 
 async function alertas(req, unidadeId = null) {
   const hoje = hojeBrasil();
-  const [questionarios, acoes] = await Promise.all([
+  const [questionarios, acoes, semContato] = await Promise.all([
     questionariosFinaisPendentes(req, hoje, unidadeId),
     acoesDesatualizadas(req, hoje, unidadeId),
+    familiasSemContato(req, hoje, unidadeId),
   ]);
   const porUnidade = new Map();
   const conta = (sigla, campo) => {
-    const o = porUnidade.get(sigla) || { unidadeSigla: sigla, questionariosVencidos: 0, questionariosAVencer: 0, acoesDesatualizadas: 0 };
+    const o = porUnidade.get(sigla) || { unidadeSigla: sigla, questionariosVencidos: 0, questionariosAVencer: 0, acoesDesatualizadas: 0, familiasSemContato: 0 };
     o[campo] += 1;
     porUnidade.set(sigla, o);
   };
   questionarios.forEach((q) => conta(q.unidadeSigla, q.situacao === 'VENCIDO' ? 'questionariosVencidos' : 'questionariosAVencer'));
   acoes.forEach((a) => conta(a.unidadeSigla, 'acoesDesatualizadas'));
+  semContato.forEach((s) => conta(s.unidadeSigla, 'familiasSemContato'));
   return {
     hoje,
     resumoPorUnidade: [...porUnidade.values()].sort((a, b) => a.unidadeSigla.localeCompare(b.unidadeSigla)),
     questionariosFinais: questionarios,
     acoesDesatualizadas: acoes,
+    familiasSemContato: semContato,
   };
 }
 
@@ -388,9 +416,10 @@ async function alertas(req, unidadeId = null) {
 async function resumoInicio(req) {
   const hoje = hojeBrasil();
   const periodo = limitesDoMes(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)));
-  const [ind, pendentes] = await Promise.all([
+  const [ind, pendentes, semContato] = await Promise.all([
     indicadoresPorUnidade(req, periodo),
     questionariosFinaisPendentes(req, hoje),
+    familiasSemContato(req, hoje),
   ]);
   return {
     periodo,
@@ -401,6 +430,8 @@ async function resumoInicio(req) {
       vencidos: pendentes.filter((p) => p.situacao === 'VENCIDO').length,
       aVencer: pendentes.filter((p) => p.situacao === 'A_VENCER').length,
       itens: pendentes.slice(0, 10),
+      semContato: semContato.length,
+      semContatoItens: semContato.slice(0, 10),
     },
   };
 }
@@ -408,5 +439,5 @@ async function resumoInicio(req) {
 module.exports = {
   hojeBrasil, limitesDoMes, lerPeriodo, lerUnidadeFiltro,
   indicadoresPorUnidade, evolucaoMensal, perfilPublico, alertas, resumoInicio,
-  questionariosFinaisPendentes, acoesDesatualizadas,
+  questionariosFinaisPendentes, acoesDesatualizadas, familiasSemContato,
 };

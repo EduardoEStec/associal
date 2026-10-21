@@ -3,6 +3,8 @@ import { api, ErroApi } from '../api.js';
 import { icone } from '../layout.js';
 import { formatarTelefone } from '../telefone.js';
 import { h, toast, carregando, abrirModal, formatarData, formatarCpf, mostrarErrosCampos, hojeIso } from '../ui.js';
+import { renderAbaAcompanhamento } from './acompanhamento.js';
+import { renderLinhaTempo } from './linha-tempo.js';
 import {
   carregarApoio, cabecalhoPagina, podeEscrever, seloStatus, seloFinal, rotuloSimNao, textoOuTraco, campo, montar,
 } from './util.js';
@@ -28,7 +30,7 @@ function cartaoQuestionario({ titulo, tipo, resumo, acId, escrita, bloqueado, te
     h('h3', {}, titulo), h('div', {}, situacao), acao);
 }
 
-export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
+export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'resumo', opcoes = {}) {
   montar(conteudo, carregando());
   const [d, apoio] = await Promise.all([api.get(`/api/familias/acompanhamentos/${id}`), carregarApoio()]);
   const escrita = podeEscrever(usuario);
@@ -38,6 +40,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
 
   const acoes = [];
   if (escrita && !encerrado) {
+    acoes.push(h('a', { class: 'btn', href: `#/a/${id}/acompanhamento/novo` }, 'Registrar contato'));
     acoes.push(h('a', { class: 'btn btn-secundario', href: `#/a/${id}/editar` }, 'Editar família'));
     acoes.push(h('button', { type: 'button', class: 'btn btn-secundario', onclick: abrirEncerramento }, 'Encerrar acompanhamento'));
   }
@@ -46,6 +49,13 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
   let alerta = null;
   if (d.finalSituacao === 'VENCIDO') alerta = h('div', { class: 'aviso aviso-perigo', role: 'alert' }, `O prazo do questionário final venceu em ${formatarData(d.dataPrevistaFinal)}. Agende a aplicação.`);
   else if (d.finalSituacao === 'VENCENDO') alerta = h('div', { class: 'aviso aviso-aviso' }, `O questionário final vence em ${formatarData(d.dataPrevistaFinal)}.`);
+
+  const c = d.contato;
+  const semContato = d.status === 'EM_ANDAMENTO' && c?.semContato
+    ? h('div', { class: 'aviso aviso-aviso', role: 'status' },
+      `Sem contato há ${c.diasSemContato} dias (último em ${formatarData(c.ultimoContatoEm)}). `,
+      h('a', { href: `#/a/${id}/acompanhamento` }, 'Ver acompanhamento'))
+    : null;
 
   const membros = d.membros.length === 0
     ? h('p', { class: 'texto-pequeno texto-suave' }, 'Nenhum outro membro cadastrado.')
@@ -62,16 +72,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
   const qF = d.questionarios.final;
   const finalBloqueado = !qI.concluido && !qF.existe;
 
-  montar(conteudo, 
-    cabecalhoPagina(r.nome, { voltar: { href: '#/', texto: 'Lista de famílias' }, acoes }),
-    h('div', { class: 'linha fam-resumo' },
-      seloStatus(d.status),
-      d.status === 'EM_ANDAMENTO' ? seloFinal(d) : null,
-      h('span', { class: 'texto-pequeno texto-suave' }, `${d.unidade?.nome || ''} · início ${formatarData(d.dataInicio)}`
-        + (d.dataEncerramento ? ` · encerrado em ${formatarData(d.dataEncerramento)}` : ''))),
-    alerta,
-    encerrado && d.observacoes ? h('div', { class: 'aviso' }, h('strong', {}, 'Observações: '), d.observacoes) : null,
-
+  const corpoResumo = [
     h('h2', {}, 'Questionários'),
     h('div', { class: 'grade grade-3 fam-q-grade' },
       cartaoQuestionario({ titulo: 'Questionário inicial', tipo: 'INICIAL', resumo: qI, acId: id, escrita, encerrado }),
@@ -96,6 +97,34 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id) {
     membros,
     !encerrado && d.observacoes ? [h('h2', {}, 'Observações'), h('p', {}, d.observacoes)] : null,
     h('p', { class: 'texto-pequeno texto-suave' }, `Assistente responsável: ${d.assistente?.nome || '—'}`),
+  ];
+
+  const abas = h('nav', { class: 'fam-abas', 'aria-label': 'Seções da ficha da família' },
+    [['resumo', 'Resumo', `#/a/${id}`], ['acompanhamento', 'Acompanhamento', `#/a/${id}/acompanhamento`], ['linha-do-tempo', 'Linha do tempo', `#/a/${id}/linha-do-tempo`]]
+      .map(([chave, rotulo, href]) => h('a', { class: 'fam-aba', href, 'aria-current': chave === aba ? 'page' : null }, rotulo)));
+
+  let corpo;
+  if (aba === 'acompanhamento') {
+    corpo = await renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo: !!opcoes.abrirNovo });
+  } else if (aba === 'linha-do-tempo') {
+    corpo = await renderLinhaTempo({ id, d });
+  } else {
+    corpo = corpoResumo;
+  }
+
+  montar(conteudo, 
+    cabecalhoPagina(r.nome, { voltar: { href: '#/', texto: 'Lista de famílias' }, acoes }),
+    h('div', { class: 'linha fam-resumo' },
+      seloStatus(d.status),
+      d.status === 'EM_ANDAMENTO' ? seloFinal(d) : null,
+      h('span', { class: 'texto-pequeno texto-suave' }, `${d.unidade?.nome || ''} · início ${formatarData(d.dataInicio)}`
+        + (d.dataEncerramento ? ` · encerrado em ${formatarData(d.dataEncerramento)}` : ''))),
+    alerta,
+    semContato,
+    encerrado && d.observacoes ? h('div', { class: 'aviso' }, h('strong', {}, 'Observações: '), d.observacoes) : null,
+
+    abas,
+    corpo,
   );
 
   function abrirEncerramento() {

@@ -68,7 +68,14 @@ try {
 
   // ---- Pra ficar de olho: questionários finais pendentes ----
   const pend = r.pendentes;
-  if (pend.vencidos + pend.aVencer > 0) {
+  const semContato = pend.semContato || 0;
+  if (pend.vencidos + pend.aVencer + semContato > 0) {
+    const linhasContato = (pend.semContatoItens || []).map((i) => h('div', { class: 'pendencia' },
+      h('span', { class: 'pendencia-ic' }, icone('atendimentos')),
+      h('div', { class: 'pendencia-texto' },
+        h('p', {}, `Sem contato com a família de ${i.responsavelNome} há ${i.diasSemContato} dias`),
+        h('small', {}, `${i.unidadeSigla} · último contato em ${formatarData(i.ultimoContato)}`),
+        h('a', { class: 'btn btn-pequeno', href: `/familias.html#/a/${i.acompanhamentoId}/acompanhamento/novo` }, 'Registrar contato'))));
     const linhas = pend.itens.map((i) => {
       const vencido = i.situacao === 'VENCIDO';
       const dias = Math.abs(i.diasRestantes);
@@ -85,7 +92,9 @@ try {
     document.getElementById('pendencias').append(
       h('section', { class: 'card', 'aria-labelledby': 'pendencias-titulo' },
         h('h2', { id: 'pendencias-titulo' }, 'Pra ficar de olho'),
-        h('p', { class: 'texto-suave texto-pequeno' }, `${pend.vencidos} vencido(s) e ${pend.aVencer} a vencer.`),
-        h('div', { class: 'pendencias' }, linhas)));
+        h('p', { class: 'texto-suave texto-pequeno' },
+          [pend.vencidos + pend.aVencer > 0 ? `${pend.vencidos} questionário(s) vencido(s) e ${pend.aVencer} a vencer` : null,
+            semContato > 0 ? `${semContato} ${semContato === 1 ? 'família sem contato' : 'famílias sem contato'}` : null].filter(Boolean).join(' · ') + '.'),
+        h('div', { class: 'pendencias' }, [...linhasContato, ...linhas])));
   }
 } catch { /* o resumo é opcional: a tela inicial funciona sem ele */ }

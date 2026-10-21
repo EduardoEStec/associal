@@ -9,6 +9,7 @@ const { requirePerfil } = require('../middlewares/auth');
 const familias = require('../services/familias');
 const questionarioDados = require('../services/questionario-dados');
 const { montarModelo } = require('../services/questionario');
+const registros = require('../services/acompanhamento-registros');
 
 const router = express.Router();
 
@@ -53,6 +54,30 @@ router.put('/acompanhamentos/:id/questionarios/:tipo', escrita, async (req, res)
 
 router.get('/acompanhamentos/:id/comparacao', async (req, res) => {
   res.json(await questionarioDados.comparacaoFamilia(req, req.params.id));
+});
+
+// ----- registros de acompanhamento e linha do tempo (F2) -----
+
+router.get('/acompanhamentos/:id/registros', async (req, res) => {
+  res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+router.post('/acompanhamentos/:id/registros', escrita, async (req, res) => {
+  res.status(201).json(await registros.criarRegistro(req, req.params.id, req.body || {}));
+});
+
+router.put('/acompanhamentos/:id/registros/:registroId', escrita, async (req, res) => {
+  await registros.atualizarRegistro(req, req.params.id, req.params.registroId, req.body || {});
+  res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+router.post('/acompanhamentos/:id/registros/:registroId/anular', escrita, async (req, res) => {
+  await registros.anularRegistro(req, req.params.id, req.params.registroId, req.body || {});
+  res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+router.get('/acompanhamentos/:id/linha-do-tempo', async (req, res) => {
+  res.json(await registros.linhaDoTempo(req, req.params.id, req.query));
 });
 
 // ----- lista e cadastro -----

@@ -64,6 +64,7 @@ async function sqlEmUso(tabela, alias) {
 const CONFIG_REGRAS = Object.freeze({
   prazo_questionario_final_dias: { tipo: 'inteiro', min: 1, max: 3650, coordenador: true, rotulo: 'Prazo do questionário final (dias)' },
   alerta_questionario_final_dias_antes: { tipo: 'inteiro', min: 1, max: 365, coordenador: true, rotulo: 'Alerta antes do vencimento (dias)' },
+  alerta_sem_contato_dias: { tipo: 'inteiro', min: 1, max: 365, coordenador: true, rotulo: 'Alerta de família sem contato (dias)' },
   upload_max_mb: { tipo: 'inteiro', min: 1, max: 50, coordenador: false, rotulo: 'Tamanho máximo de foto (MB)' },
   nome_entidade: { tipo: 'texto', max: 150, coordenador: false, rotulo: 'Nome da entidade' },
   termo_colaboracao: { tipo: 'texto', max: 200, coordenador: false, rotulo: 'Termo de colaboração' },
