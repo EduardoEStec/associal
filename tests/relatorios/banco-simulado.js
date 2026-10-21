@@ -31,6 +31,30 @@ const FINAL = {
   melhoriaPlanejamento: true, impactoComunidade: 'Vizinhos passaram a frequentar o armazém.', oQueMelhorar: 'Mais variedade de verduras.',
   avaliacaoArmazem: 'OTIMA', principalBeneficio: 'Preço baixo e produtos frescos', recomendaria: true,
 };
+// F6: instantâneo do índice (acompanhamento_indice) das duas famílias — a 10 (BRA) melhora, a 20 (TIR) fica igual
+const linhaIndice = (acompanhamentoId, unidadeId, questionarioId, tipo, dataRef, g, a, r, e, u) => [['GERAL', g], ['ALIMENTACAO', a], ['RENDA', r], ['ECONOMIA', e], ['AUTONOMIA', u]]
+  .map(([dimensao, nivel]) => ({ acompanhamentoId, unidadeId, questionarioId, tipo, dataRef: d(dataRef), dimensao, nivel }));
+const INDICES = [
+  ...linhaIndice(10, 1, 101, 'INICIAL', '2026-02-10', 40, 30, 40, 40, 50), ...linhaIndice(10, 1, 102, 'FINAL', '2026-05-12', 70, 80, 60, 70, 70),
+  ...linhaIndice(20, 2, 201, 'INICIAL', '2026-02-10', 50, 50, 50, 50, 50), ...linhaIndice(20, 2, 202, 'FINAL', '2026-05-12', 52, 52, 50, 50, 56),
+];
+const METAS = [
+  { acompanhamentoId: 10, unidadeId: 1, dimensao: 'ALIMENTACAO', descricao: 'Comprar frutas 3x por semana', prazo: d('2026-06-01'), status: 'ATINGIDA', concluidaEm: d('2026-05-10'), criadoEm: d('2026-02-12') },
+  { acompanhamentoId: 10, unidadeId: 1, dimensao: 'ECONOMIA', descricao: 'Guardar R$ 20 por semana', prazo: null, status: 'EM_ANDAMENTO', concluidaEm: null, criadoEm: d('2026-02-12') },
+  { acompanhamentoId: 20, unidadeId: 2, dimensao: 'RENDA', descricao: 'Retomar o bico', prazo: null, status: 'NAO_ATINGIDA', concluidaEm: d('2026-05-20'), criadoEm: d('2026-02-15') },
+];
+const PESQUISAS = [
+  { id: 1, acompanhamentoId: 10, unidadeId: 1, situacao: 'CONCLUIDA', momento: 'FINAL', dataAplicacao: d('2026-05-13'), comentarioOculto: false },
+  { id: 2, acompanhamentoId: 20, unidadeId: 2, situacao: 'CONCLUIDA', momento: 'FINAL', dataAplicacao: d('2026-05-14'), comentarioOculto: false },
+  { id: 3, acompanhamentoId: 20, unidadeId: 2, situacao: 'RECUSADA', momento: 'AVULSA', dataAplicacao: d('2026-04-01'), comentarioOculto: false },
+];
+const itemPesq = (respostaId, codigo, tipo, valorNum, valorTexto = null, pergunta = '') => ({ respostaId, codigo, tipo, valorNum, valorTexto, pergunta, prefereNaoResponder: false });
+const AFIRMACOES = ['Fui tratada(o) com respeito.', 'Os produtos têm qualidade.', 'Os preços cabem no orçamento.', 'O atendimento foi claro.', 'Recomendaria a um vizinho.', 'Resolvi meus problemas.'];
+const ITENS_PESQUISA = [
+  ...[[1, 10, 5], [2, 6, 3]].flatMap(([id, nps, lk]) => [itemPesq(id, 'NPS', 'NPS', nps), ...AFIRMACOES.map((t, i) => itemPesq(id, `L${i + 1}`, 'LIKERT', lk, null, t))]),
+  itemPesq(1, 'T1', 'TEXTO', null, 'Preço bom & atendimento <acolhedor>.'), itemPesq(2, 'T2', 'TEXTO', null, 'Mais variedade de frutas.'),
+];
+
 // outra família (unidade 2) só para o filtro de unidade
 const INICIAL_2 = { ...INICIAL, id: 201, acompanhamentoId: 20, unidadeId: 2, rendaMensalMedia: 900 };
 const FINAL_2 = { ...FINAL, id: 202, acompanhamentoId: 20, unidadeId: 2, rendaMensalMedia: 1000, principalBeneficio: 'Economia' };
@@ -77,6 +101,18 @@ function responder(sql, p = {}) {
   if (/FROM acompanhamento ac WHERE ac.id = @id AND/.test(s)) {
     return ACOMPANHAMENTOS.filter((a) => a.id === p.id && permitidasDe(p).includes(a.unidadeId)).map((a) => ({ ...a, usuarioId: 1, dataPrevistaFinal: null, observacoes: null }));
   }
+  // F6 (painel/relatório semestral): todas as consultas por unidade passam pelo filtro un*/sel*
+  if (/FROM configuracao WHERE chave IN \('pesquisa_n_minimo'/.test(s)) return [{ chave: 'pesquisa_n_minimo', valor: '1' }];
+  if (/SELECT ac\.id, ac\.unidade_id, ac\.status, ac\.data_inicio/.test(s)) return visiveis(ACOMPANHAMENTOS, p);
+  if (/FROM acompanhamento_indice ai JOIN acompanhamento ac/.test(s)) return visiveis(INDICES, p);
+  if (/FROM acompanhamento_meta m JOIN acompanhamento ac/.test(s)) return visiveis(METAS, p);
+  if (/FROM acompanhamento_registro r JOIN acompanhamento ac/.test(s)) return [{ total: 5, familias: 2 }];
+  if (/FROM pesquisa_resposta_item i/.test(s)) {
+    const ids = new Set(visiveis(PESQUISAS, p).map((x) => x.id));
+    return ITENS_PESQUISA.filter((i) => ids.has(i.respostaId));
+  }
+  if (/FROM pesquisa_resposta r JOIN acompanhamento ac/.test(s)) return visiveis(PESQUISAS, p);
+  if (/FROM acompanhamento_meta WHERE acompanhamento_id = @id/.test(s)) return METAS.filter((m) => m.acompanhamentoId === p.id);
   if (/FROM configuracao WHERE chave IN \('indice_tolerancia_pontos'/.test(s)) return [];
   if (/FROM questionario WHERE acompanhamento_id = @ac/.test(s)) return p.ac === 10 ? [INICIAL, FINAL] : [];
   if (/FROM acompanhamento_indice/.test(s)) return [];

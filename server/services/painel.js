@@ -16,6 +16,7 @@ const { normalizarData, inteiroPositivo } = require('../lib/validacao');
 const contato = require('./acompanhamento-contato');
 const pesquisaRegras = require('./pesquisa-regras');
 const metasRegras = require('./metas-regras');
+const painelFamilias = require('./painel-familias');
 
 const MAX_DIAS_PERIODO = 366 * 5;
 const MAX_MESES_EVOLUCAO = 60;
@@ -390,26 +391,35 @@ async function acoesDesatualizadas(req, hoje = hojeBrasil(), unidadeId = null) {
 
 async function alertas(req, unidadeId = null) {
   const hoje = hojeBrasil();
-  const [questionarios, acoes, semContato] = await Promise.all([
+  const [questionarios, acoes, semContato, semMeta, pesquisas, reavaliacoes] = await Promise.all([
     questionariosFinaisPendentes(req, hoje, unidadeId),
     acoesDesatualizadas(req, hoje, unidadeId),
     familiasSemContato(req, hoje, unidadeId),
+    metasRegras.listarSemMeta(req, hoje, unidadeId),
+    pesquisaRegras.listarPendencias(req, hoje, unidadeId),
+    painelFamilias.listarReavaliacoesPendentes(req, hoje, unidadeId),
   ]);
   const porUnidade = new Map();
   const conta = (sigla, campo) => {
-    const o = porUnidade.get(sigla) || { unidadeSigla: sigla, questionariosVencidos: 0, questionariosAVencer: 0, acoesDesatualizadas: 0, familiasSemContato: 0 };
+    const o = porUnidade.get(sigla) || { unidadeSigla: sigla, questionariosVencidos: 0, questionariosAVencer: 0, acoesDesatualizadas: 0, familiasSemContato: 0, familiasSemMeta: 0, pesquisasPendentes: 0, reavaliacoesPendentes: 0 };
     o[campo] += 1;
     porUnidade.set(sigla, o);
   };
   questionarios.forEach((q) => conta(q.unidadeSigla, q.situacao === 'VENCIDO' ? 'questionariosVencidos' : 'questionariosAVencer'));
   acoes.forEach((a) => conta(a.unidadeSigla, 'acoesDesatualizadas'));
   semContato.forEach((s) => conta(s.unidadeSigla, 'familiasSemContato'));
+  semMeta.forEach((s) => conta(s.unidadeSigla, 'familiasSemMeta'));
+  pesquisas.forEach((s) => conta(s.unidadeSigla, 'pesquisasPendentes'));
+  reavaliacoes.forEach((s) => conta(s.unidadeSigla, 'reavaliacoesPendentes'));
   return {
     hoje,
     resumoPorUnidade: [...porUnidade.values()].sort((a, b) => a.unidadeSigla.localeCompare(b.unidadeSigla)),
     questionariosFinais: questionarios,
     acoesDesatualizadas: acoes,
     familiasSemContato: semContato,
+    familiasSemMeta: semMeta,
+    pesquisasPendentes: pesquisas,
+    reavaliacoesPendentes: reavaliacoes,
   };
 }
 
@@ -418,12 +428,13 @@ async function alertas(req, unidadeId = null) {
 async function resumoInicio(req) {
   const hoje = hojeBrasil();
   const periodo = limitesDoMes(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)));
-  const [ind, pendentes, semContato, pesquisas, semMeta] = await Promise.all([
+  const [ind, pendentes, semContato, pesquisas, semMeta, reavaliacoes] = await Promise.all([
     indicadoresPorUnidade(req, periodo),
     questionariosFinaisPendentes(req, hoje),
     familiasSemContato(req, hoje),
     pesquisaRegras.listarPendencias(req, hoje),
     metasRegras.listarSemMeta(req, hoje),
+    painelFamilias.listarReavaliacoesPendentes(req, hoje),
   ]);
   return {
     periodo,
@@ -440,6 +451,8 @@ async function resumoInicio(req) {
       pesquisaItens: pesquisas.slice(0, 10),
       semMeta: semMeta.length,
       semMetaItens: semMeta.slice(0, 10),
+      reavaliacao: reavaliacoes.length,
+      reavaliacaoItens: reavaliacoes.slice(0, 10),
     },
   };
 }

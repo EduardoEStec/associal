@@ -71,6 +71,13 @@ try {
   const semContato = pend.semContato || 0;
   const pesquisas = pend.pesquisa || 0;
   const semMeta = pend.semMeta || 0;
+  const reavaliacoes = pend.reavaliacao || 0;
+  const linhasReavaliacao = (pend.reavaliacaoItens || []).map((i) => h('div', { class: 'pendencia' },
+    h('span', { class: 'pendencia-ic' }, icone('familias')),
+    h('div', { class: 'pendencia-texto' },
+      h('p', {}, `Reavaliação rápida pendente — família de ${i.responsavelNome}`),
+      h('small', {}, `${i.unidadeSigla} · devida desde ${formatarData(i.devidaEm)}`),
+      h('a', { class: 'btn btn-pequeno', href: `/familias.html#/a/${i.acompanhamentoId}/q/REAVALIACAO` }, 'Aplicar agora'))));
   const linhasMeta = (pend.semMetaItens || []).map((i) => h('div', { class: 'pendencia' },
     h('span', { class: 'pendencia-ic' }, icone('alvo')),
     h('div', { class: 'pendencia-texto' },
@@ -83,7 +90,7 @@ try {
       h('p', {}, `Pesquisa de satisfação ${i.momento === 'FINAL' ? 'final' : 'semestral'} pendente — família de ${i.responsavelNome}`),
       h('small', {}, `${i.unidadeSigla} · devida desde ${formatarData(i.devidaEm)}`),
       h('a', { class: 'btn btn-pequeno', href: `/familias.html#/a/${i.acompanhamentoId}/pesquisa/${i.momento}` }, 'Aplicar agora'))));
-  if (pend.vencidos + pend.aVencer + semContato + pesquisas + semMeta > 0) {
+  if (pend.vencidos + pend.aVencer + semContato + pesquisas + semMeta + reavaliacoes > 0) {
     const linhasContato = (pend.semContatoItens || []).map((i) => h('div', { class: 'pendencia' },
       h('span', { class: 'pendencia-ic' }, icone('atendimentos')),
       h('div', { class: 'pendencia-texto' },
@@ -110,7 +117,8 @@ try {
           [pend.vencidos + pend.aVencer > 0 ? `${pend.vencidos} questionário(s) vencido(s) e ${pend.aVencer} a vencer` : null,
             semContato > 0 ? `${semContato} ${semContato === 1 ? 'família sem contato' : 'famílias sem contato'}` : null,
             pesquisas > 0 ? `${pesquisas} ${pesquisas === 1 ? 'pesquisa de satisfação pendente' : 'pesquisas de satisfação pendentes'}` : null,
-            semMeta > 0 ? `${semMeta} ${semMeta === 1 ? 'família sem meta' : 'famílias sem meta'}` : null].filter(Boolean).join(' · ') + '.'),
-        h('div', { class: 'pendencias' }, [...linhasContato, ...linhasMeta, ...linhasPesquisa, ...linhas])));
+            semMeta > 0 ? `${semMeta} ${semMeta === 1 ? 'família sem meta' : 'famílias sem meta'}` : null,
+            reavaliacoes > 0 ? `${reavaliacoes} ${reavaliacoes === 1 ? 'reavaliação pendente' : 'reavaliações pendentes'}` : null].filter(Boolean).join(' · ') + '.'),
+        h('div', { class: 'pendencias' }, [...linhasContato, ...linhasMeta, ...linhasReavaliacao, ...linhasPesquisa, ...linhas])));
   }
 } catch { /* o resumo é opcional: a tela inicial funciona sem ele */ }

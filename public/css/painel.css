@@ -16,8 +16,26 @@
   .tabela-responsiva td.num { text-align: left; }
 }
 
-main > h2 { margin: var(--esp-5) 0 var(--esp-3); }
-main > .grade, main > .card, main > section { margin-bottom: var(--esp-4); }
+main > h2, .painel-aba > h2 { margin: var(--esp-5) 0 var(--esp-3); }
+main > .grade, main > .card, main > section, .painel-aba > .grade, .painel-aba > .card, .painel-aba > section { margin-bottom: var(--esp-4); }
+.painel-aba[hidden] { display: none; }
+
+/* Abas do painel (Operação, Progresso, Satisfação): rolam na horizontal no celular */
+.painel-abas { display: flex; gap: var(--esp-1); margin: 0 0 var(--esp-4); border-bottom: 2px solid var(--cor-borda); overflow-x: auto; scrollbar-width: none; }
+.painel-abas::-webkit-scrollbar { display: none; }
+.painel-abas a { flex: 0 0 auto; padding: var(--esp-3) var(--esp-4); color: var(--cor-texto-suave); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.painel-abas a:hover { color: var(--cor-texto); }
+.painel-abas a.ativa { color: var(--cor-texto-primaria); border-bottom-color: var(--cor-primaria); }
+@media (max-width: 639px) { .painel-abas a { padding: var(--esp-3); font-size: var(--texto-sm); } }
+
+/* Comentários da pesquisa (só coordenação e administrador) */
+.comentarios { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-3); }
+.comentario { padding: var(--esp-3) 0; border-top: 1px solid var(--cor-borda); }
+.comentarios > .comentario:first-child { border-top: 0; padding-top: 0; }
+.comentario-topo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-2); }
+.comentario-texto { margin: var(--esp-2) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comentario-acoes { display: flex; flex-wrap: wrap; gap: var(--esp-1); margin: var(--esp-2) calc(var(--esp-2) * -1) 0; }
+.g-fundo { fill: var(--cor-borda); }
 
 /* Gráficos */
 .grafico { margin: 0; }

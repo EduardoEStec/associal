@@ -507,6 +507,15 @@ Escopo imediato: **F2**, abaixo.
 - Telas: cartão "Plano de metas" na aba Acompanhamento (nova meta, editar, marcar como atingida, encerradas recolhidas, selo de prazo vencido), bloco "Metas tratadas neste contato" no formulário de registro, eventos de meta na linha do tempo (filtro "Metas").
 - Sem exclusão: meta que não faz mais sentido vira "cancelada". O plano é da equipe: qualquer perfil de escrita com acesso à unidade edita as metas (a auditoria guarda quem fez). Fora do escopo: vínculo de famílias às ações (opcional na proposta) e meta vencida como alerta no painel (F6).
 
+### 10.5 F6 — escopo fechado (painel do coordenador e relatórios)
+
+- **Painel** com três abas: Operação (como antes), **Progresso das famílias** e **Satisfação** (link direto `painel.html#progresso` e `#satisfacao`). Progresso: % que melhoraram, ficaram iguais e pioraram no índice da F5 (geral, por dimensão e por unidade), distribuição do índice, índice médio inicial → atual, metas (F4) e situação dos acompanhamentos (concluídos, desligados, tempo médio, contatos). Satisfação: NPS, índice, concordância por afirmação (da pior para a melhor), taxas de recusa e de cobertura, por unidade, e os comentários (só COORDENADOR e ADMIN, com "Ocultar nos relatórios"). Ambas comparam com o período anterior e exportam CSV de cada tabela. Contrato: `docs/API-PAINEL-FAMILIAS.md`.
+- **n mínimo** (`pesquisa_n_minimo`, 5): abaixo dele só o número absoluto; percentuais, NPS e semáforo ficam ocultos, em cada recorte.
+- **Semáforos (D13)**: limiares **provisórios** editáveis em Configurações (progresso 50% e 30%; NPS 50 e 0; concordância 80% e 60%), sempre com ícone e palavra. **Migração `084_painel_semaforos.sql`** (só linhas de configuração, indispensável para os limiares ficarem editáveis na tela).
+- **Alertas consolidados** no Painel e na tela Início: sem contato, **sem meta**, **pesquisa pendente** e **reavaliação pendente**, por unidade.
+- **Relatório semestral**: seções 4 (acompanhamento e evolução das famílias) e 5 (satisfação), com textos padrão editáveis, tabelas e até 5 comentários escolhidos pela coordenação; CSV de progresso e de satisfação. **Relatório individual**: as metas entram na seção Evolução (texto e tabela).
+- **Fora do escopo / limites conhecidos**: motivo estruturado de desligamento (não existe, ficou de fora desde a F2); "famílias piorando" e "contato atrasado" como alertas do painel; evolução por semestre em gráfico; questionários anteriores à F5 só entram no progresso depois de `scripts/recalcular-indices.js`.
+
 ---
 
 ## Apêndice A — Rascunho das tabelas principais (só ilustrativo; não é migração)

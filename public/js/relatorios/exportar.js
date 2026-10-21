@@ -38,5 +38,11 @@ export function montarExportar(raiz, opcoes) {
       'Equivale à aba BS_ATENDIMENTO: por unidade e mês, atendimentos, ações, participantes, famílias acompanhadas, total de atendimento e % de encaminhamentos. Não contém dados pessoais.'),
     botao('Ações e visitas (CSV)', '/api/relatorios/exportar/acoes.csv',
       'Equivale à aba BASE_UNICA_ACOES: uma linha por ação/visita, com local, endereço, até 4 temas, status e participantes.'),
+    ...(opcoes.usuario.perfil === 'ASSISTENTE' ? [] : [
+      botao('Progresso das famílias (CSV)', '/api/relatorios/exportar/progresso.csv',
+        'Famílias que melhoraram, ficaram iguais ou pioraram no índice de progresso, geral e por dimensão, no total e por unidade. Abaixo do n mínimo não há percentual. Não contém dados pessoais.'),
+      botao('Satisfação das famílias (CSV)', '/api/relatorios/exportar/satisfacao.csv',
+        'Respostas e recusas da pesquisa de satisfação, nota geral (NPS), satisfação, concordância, taxas e situação do semáforo, no total e por unidade. Não contém comentários nem dados pessoais.'),
+    ]),
   );
 }

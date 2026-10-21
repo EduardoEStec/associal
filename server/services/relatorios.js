@@ -8,6 +8,8 @@ const dados = require('./relatorios-dados');
 const textos = require('./relatorios-textos');
 const docx = require('./relatorios-docx');
 const evolucaoRel = require('./relatorios-evolucao');
+const famRel = require('./relatorios-progresso');
+const painelFam = require('./painel-familias');
 
 const { paragrafos, numero, percentual, dataBr, dataExtenso } = textos;
 
@@ -15,7 +17,7 @@ const MAX_TEXTO = 20000;
 
 const CHAVES_INDIVIDUAL = ['introducao', 'objetivo', 'metodologia', 'diagnostico', 'impactoAlimentar',
   'impactoDesafios', 'impactoEconomico', 'evolucao', 'feedback', 'consideracoes'];
-const CHAVES_SEMESTRAL = ['introducao', 'atendimentos', 'encaminhamentos', 'visitas', 'outrasAcoes', 'empoderamento', 'consideracoes'];
+const CHAVES_SEMESTRAL = ['introducao', 'atendimentos', 'encaminhamentos', 'visitas', 'outrasAcoes', 'empoderamento', 'progresso', 'satisfacao', 'consideracoes'];
 const CAMPOS_IDENTIFICACAO = ['nome', 'responsavel', 'cpf', 'nis', 'contato', 'endereco'];
 
 // ---------- helpers ----------
@@ -176,7 +178,7 @@ async function gerarIndividual(req, acompanhamentoId) {
   const local = lerTextoCurto(corpo.local, 'local', 80, 'São Paulo/SP');
   const u = req.usuario;
 
-  const tabelaEvolucao = evolucaoRel.tabelaEvolucaoXml(d.evolucao);
+  const tabelaEvolucao = evolucaoRel.tabelasEvolucaoXml(d.evolucao);
   const buffer = docx.renderizar('individual', {
     ...ident,
     ...Object.fromEntries(CHAVES_INDIVIDUAL.map((c) => [c, paragrafos(t[c])])),
@@ -199,9 +201,14 @@ function textosPadraoSemestral(coleta) {
 async function previaSemestral(req, consulta) {
   const periodo = lerPeriodo(consulta);
   const coleta = await dados.coletarSemestral(req, { ...periodo, unidadeIds: consulta.unidadeIds });
+  const fam = await famRel.coletar(req, periodo, coleta.unidades.map((u) => u.id));
   return {
     ...coleta,
-    textos: textosPadraoSemestral(coleta),
+    // F6: números das duas seções novas (os textos padrão vão junto em `textos`) e os comentários candidatos
+    progresso: fam.progresso,
+    satisfacao: { ...fam.satisfacao, comentarios: undefined },
+    comentariosSatisfacao: fam.comentarios.slice(0, 100).map((c) => ({ id: c.id, sigla: c.sigla, data: c.data, pergunta: c.pergunta, texto: c.texto })),
+    textos: { ...textosPadraoSemestral(coleta), ...famRel.textosPadrao(fam) },
     totais: { ...coleta.totais, percentualEncaminhamento: percentual(coleta.totais.atendimentosComEncaminhamento, coleta.totais.atendimentos) },
   };
 }
@@ -210,7 +217,9 @@ async function gerarSemestral(req) {
   const corpo = req.body || {};
   const periodo = lerPeriodo(corpo);
   const coleta = await dados.coletarSemestral(req, { ...periodo, unidadeIds: corpo.unidadeIds });
-  const t = mesclarTextos(corpo.textos, textosPadraoSemestral(coleta), CHAVES_SEMESTRAL);
+  const fam = await famRel.coletar(req, periodo, coleta.unidades.map((u) => u.id));
+  const t = mesclarTextos(corpo.textos, { ...textosPadraoSemestral(coleta), ...famRel.textosPadrao(fam) }, CHAVES_SEMESTRAL);
+  const comentariosSatisfacao = famRel.escolherComentarios(fam.comentarios, corpo.comentariosSatisfacao);
   const data = lerData(corpo.data, 'data', hoje());
   const local = lerTextoCurto(corpo.local, 'local', 80, 'São Paulo/SP');
 
@@ -282,6 +291,7 @@ async function gerarSemestral(req) {
     distribuicoes: coleta.comparacao.distribuicoes,
     temRelatos: relatos.length > 0,
     relatos,
+    ...famRel.dadosTemplate({ progresso: fam.progresso, satisfacao: fam.satisfacao, comentarios: comentariosSatisfacao }),
 
     localData: localData(local, data),
     assinaturaNome: u.nome,
@@ -293,7 +303,7 @@ async function gerarSemestral(req) {
   return {
     buffer,
     nomeArquivo: `Relatorio_Semestral_${periodo.dataInicio}_a_${periodo.dataFim}.docx`,
-    resumo: { fotos: anexos.midias.length, relatos: relatos.length },
+    resumo: { fotos: anexos.midias.length, relatos: relatos.length, comentariosSatisfacao: comentariosSatisfacao.length },
   };
 }
 
@@ -345,9 +355,23 @@ async function csvAcoes(req, consulta) {
   };
 }
 
+async function csvProgresso(req, consulta) {
+  const periodo = lerPeriodo(consulta);
+  const ids = dados.resolverEscopo(req, consulta.unidadeIds);
+  const d = await painelFam.progresso(req, { inicio: periodo.dataInicio, fim: periodo.dataFim }, ids, { comAnterior: false });
+  return { periodo, buffer: montarCsv(famRel.CABECALHO_CSV_PROGRESSO, famRel.linhasCsvProgresso(d)) };
+}
+
+async function csvSatisfacao(req, consulta) {
+  const periodo = lerPeriodo(consulta);
+  const ids = dados.resolverEscopo(req, consulta.unidadeIds);
+  const d = await painelFam.satisfacao(req, { inicio: periodo.dataInicio, fim: periodo.dataFim }, ids, { comComentarios: false, comAnterior: false });
+  return { periodo, buffer: montarCsv(famRel.CABECALHO_CSV_SATISFACAO, famRel.linhasCsvSatisfacao(d)) };
+}
+
 module.exports = {
   semestreAtual, lerPeriodo, hoje, enviarPara,
   previaIndividual, gerarIndividual,
   previaSemestral, gerarSemestral,
-  csvAtendimentos, csvAcoes, montarCsv,
+  csvAtendimentos, csvAcoes, csvProgresso, csvSatisfacao, montarCsv,
 };

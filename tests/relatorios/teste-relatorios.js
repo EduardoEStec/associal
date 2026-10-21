@@ -278,6 +278,125 @@ async function main() {
     assert.equal((await chamar('/exportar/acoes.csv?unidadeIds=2')).status, 403);
   });
 
+
+  // ---------- F6: progresso das famílias e satisfação no semestral, metas no individual ----------
+  await teste('F6 semestral: prévia traz progresso, satisfação, textos padrão e comentários (só coordenação)', async () => {
+    const c = await (await chamar('/semestral/previa?dataInicio=2026-01-01&dataFim=2026-06-30', { usuario: 'coordenador' })).json();
+    assert.equal(c.progresso.geral.n, 2);
+    assert.equal(c.progresso.geral.melhoraram, 1);
+    assert.equal(c.progresso.geral.iguais, 1);
+    assert.equal(c.progresso.dimensoes.length, 4);
+    assert.equal(c.progresso.metas.total, 3);
+    assert.equal(c.progresso.acompanhamentos.emAndamento, 2);
+    assert.equal(c.satisfacao.geral.respostas, 2);
+    assert.equal(c.satisfacao.geral.recusas, 1);
+    assert.equal(c.satisfacao.perguntas.length, 6);
+    assert.equal(c.satisfacao.comentarios, undefined, 'os comentários vão na lista própria');
+    assert.equal(c.comentariosSatisfacao.length, 2);
+    assert.match(c.textos.progresso, /2 famílias tiveram duas ou mais medições do índice de progresso/);
+    assert.match(c.textos.progresso, /1 \(50%\) melhoraram, 1 \(50%\) ficaram iguais e 0 \(0%\) pioraram/);
+    assert.match(c.textos.progresso, /3 metas: 1 atingida\(s\), 1 não atingida\(s\), 1 em andamento/);
+    assert.match(c.textos.satisfacao, /2 pesquisas de satisfação foram respondidas e 1 família preferiu não responder/);
+    assert.match(c.textos.satisfacao, /A afirmação com menor concordância foi "/);
+    // a assistente da BRA: só a sua unidade e sem os comentários das famílias
+    const a = await (await chamar('/semestral/previa?dataInicio=2026-01-01&dataFim=2026-06-30')).json();
+    assert.equal(a.progresso.geral.n, 1);
+    assert.deepEqual(a.progresso.unidades.map((u) => u.sigla), ['BRA']);
+    assert.equal(a.satisfacao.geral.respostas, 1);
+    assert.deepEqual(a.comentariosSatisfacao, []);
+  });
+
+  await teste('F6 semestral: .docx traz as seções 4 e 5 com tabelas e os comentários escolhidos; considerações viram a seção 6', async () => {
+    const r = await chamar('/semestral', {
+      usuario: 'coordenador', metodo: 'POST',
+      corpo: {
+        dataInicio: '2026-01-01', dataFim: '2026-06-30', fotos: [], relatos: [],
+        comentariosSatisfacao: [{ id: '1.T1' }, { id: '2.T2', texto: 'Comentário editado e sem nome.' }, { id: '99.T1', texto: 'não existe' }],
+        textos: { satisfacao: 'Texto da satisfação editado.' },
+      },
+    });
+    assert.equal(r.status, 200, await r.clone().text());
+    const { texto } = textoDocx(Buffer.from(await r.arrayBuffer()));
+    assert.match(texto, /4\. Acompanhamento e evolução das famílias/);
+    assert.match(texto, /2 famílias tiveram duas ou mais medições/);
+    assert.match(texto, /Famílias que melhoraram, ficaram iguais ou pioraram/);
+    assert.match(texto, /Alimentação[\s\S]*Índice geral/);
+    assert.match(texto, /Brasilândia[\s\S]*30[,.]?\d* → 70|40 → 70/);
+    assert.match(texto, /Metas das famílias/);
+    assert.match(texto, /5\. Satisfação das famílias/);
+    assert.match(texto, /Texto da satisfação editado\./);
+    assert.match(texto, /Concordância por afirmação/);
+    assert.match(texto, /Resolvi meus problemas\./);
+    assert.match(texto, /Trechos dos comentários das famílias/);
+    assert.match(texto, /“Preço bom & atendimento <acolhedor>\.” \(BRA\)/);
+    assert.match(texto, /“Comentário editado e sem nome\.” \(TIR\)/);
+    assert.ok(!/não existe/.test(texto), 'comentário que não está no escopo é ignorado');
+    assert.match(texto, /6\. Considerações finais/);
+    assert.ok(!/\{|\}|undefined|NaN/.test(texto), 'sem tags soltas');
+    // assistente: mesmo pedindo, não recebe comentário das famílias
+    const b = await chamar('/semestral', {
+      metodo: 'POST', corpo: { dataInicio: '2026-01-01', dataFim: '2026-06-30', fotos: [], relatos: [], comentariosSatisfacao: [{ id: '1.T1' }] },
+    });
+    assert.equal(b.status, 200);
+    const outro = textoDocx(Buffer.from(await b.arrayBuffer())).texto;
+    assert.ok(!/Preço bom/.test(outro) && !/Trechos dos comentários/.test(outro));
+    assert.match(outro, /5\. Satisfação das famílias/);
+  });
+
+  await teste('F6 semestral: abaixo do n mínimo os textos não trazem percentuais nem nota geral', async () => {
+    const fam = require(path.join(RAIZ, 'server/services/relatorios-progresso.js'));
+    const sel = { n: 2, melhoraram: 1, iguais: 1, pioraram: 0, suficiente: false, pctMelhoraram: null };
+    const progresso = { nMinimo: 5, tolerancia: 5, geral: sel, dimensoes: [], acompanhamentos: { concluidos: 0, desligados: 0, emAndamento: 2, tempoMedioDias: null }, metas: { total: 0 } };
+    const t = fam.textoProgresso(progresso);
+    assert.match(t, /inferior ao mínimo de 5 famílias para divulgar percentuais/);
+    assert.ok(!/%/.test(t.split('\n')[0]));
+    const geral = { respostas: 3, recusas: 0, suficiente: false, nps: null, taxaCobertura: null };
+    const satisfacao = { nMinimo: 5, perguntas: [], geral };
+    const s = fam.textoSatisfacao(satisfacao);
+    assert.match(s, /inferior ao mínimo de 5 para divulgar nota geral e percentuais/);
+    assert.ok(!/NPS/.test(s));
+    assert.equal(fam.textoSatisfacao({ nMinimo: 5, perguntas: [], geral: { respostas: 0, recusas: 0 } }), 'No período não foram aplicadas pesquisas de satisfação às famílias acompanhadas.');
+    const dados = fam.dadosTemplate({ progresso: { ...progresso, unidades: [], dimensoes: [], metas: { total: 0, porDimensao: [] } }, satisfacao: { geral, perguntas: [], unidades: [] }, comentarios: [] });
+    assert.equal(dados.temTabelaSatisfacao, false);
+    assert.equal(dados.progressoDimensoes.at(-1).percentual, 'n < mín.');
+  });
+
+  await teste('F6 CSV: progresso e satisfação (coordenação), sem dados pessoais; assistente 403', async () => {
+    const p = await chamar('/exportar/progresso.csv?dataInicio=2026-01-01&dataFim=2026-06-30', { usuario: 'coordenador' });
+    assert.equal(p.status, 200);
+    assert.match(p.headers.get('content-type'), /text\/csv/);
+    const bufP = Buffer.from(await p.arrayBuffer());
+    assert.deepEqual([...bufP.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+    const linhasP = bufP.toString('utf8').replace('﻿', '').trim().split('\r\n');
+    assert.equal(linhasP[0], 'Recorte;Dimensão;Famílias comparadas;Melhoraram;Ficaram iguais;Pioraram;% que melhoraram;Situação');
+    assert.ok(linhasP.includes('Todas as unidades;Índice geral;2;1;1;0;50;Bom'), linhasP.join('\n'));
+    assert.ok(linhasP.some((l) => l.startsWith('BRA;Alimentação;1;1;0;0;100;')), linhasP.join('\n'));
+    assert.ok(linhasP.some((l) => l.startsWith('TIR;Índice geral;1;0;1;0;0;')));
+    const s = await chamar('/exportar/satisfacao.csv?dataInicio=2026-01-01&dataFim=2026-06-30', { usuario: 'coordenador' });
+    assert.equal(s.status, 200);
+    const linhasS = Buffer.from(await s.arrayBuffer()).toString('utf8').replace('﻿', '').trim().split('\r\n');
+    assert.equal(linhasS[0], 'Unidade;Respostas;Recusas;Nota geral (NPS);Índice de satisfação (%);Concordância (%);Taxa de recusa (%);Cobertura (%);Situação');
+    assert.ok(linhasS.some((l) => l.startsWith('Todas as unidades;2;1;')), linhasS.join('\n'));
+    assert.ok(!linhasS.join('').includes('Preço bom'), 'sem comentários no CSV');
+    assert.equal((await chamar('/exportar/progresso.csv')).status, 403);
+    assert.equal((await chamar('/exportar/satisfacao.csv')).status, 403);
+    assert.equal((await chamar('/exportar/progresso.csv?unidadeIds=2', { usuario: 'coordenador' })).status, 200);
+  });
+
+  await teste('F6 individual: a seção Evolução traz as metas combinadas com a família (texto e tabela)', async () => {
+    const r = await chamar('/individual/10', { metodo: 'POST', corpo: {} });
+    assert.equal(r.status, 200, await r.clone().text());
+    const { texto } = textoDocx(Buffer.from(await r.arrayBuffer()));
+    assert.match(texto, /Evolução durante o acompanhamento/);
+    assert.match(texto, /Foram combinadas com a família 2 metas: 1 atingida\(s\), 0 não atingida\(s\) e 1 em andamento\./);
+    assert.match(texto, /Dimensão[\s\S]*Meta[\s\S]*Prazo[\s\S]*Situação[\s\S]*Encerrada em/);
+    assert.match(texto, /Comprar frutas 3x por semana/);
+    assert.match(texto, /Atingida/);
+    assert.match(texto, /Em andamento/);
+    assert.match(texto, /Guardar R\$ 20 por semana/);
+    assert.ok(!/\{|\}|undefined|NaN/.test(texto), 'sem tags soltas');
+  });
+
   await teste('toda consulta por unidade carregou o filtro de unidade', async () => {
     assert.deepEqual(consultasUnidade, []);
   });

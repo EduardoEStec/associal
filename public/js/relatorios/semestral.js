@@ -10,10 +10,15 @@ const TEXTOS = [
   ['visitas', '2.3 Visitas institucionais', 4],
   ['outrasAcoes', '2.4 Outras ações', 3],
   ['empoderamento', '3. Empoderamento econômico', 4],
-  ['consideracoes', '4. Considerações finais', 6],
+  ['progresso', '4. Acompanhamento e evolução das famílias', 6],
+  ['satisfacao', '5. Satisfação das famílias', 4],
+  ['consideracoes', '6. Considerações finais', 6],
 ];
 
 const FOTOS_PADRAO_POR_UNIDADE = 4;
+const MAX_COMENTARIOS_SATISFACAO = 5;
+const pctTxt = (v) => (v === null || v === undefined ? '—' : `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
+const numTxt = (v, casas = 1) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: casas }));
 
 function tabelaSimples(cabecalho, linhas, numericas = []) {
   return h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela' },
@@ -76,6 +81,21 @@ export function montarSemestral(raiz, opcoes) {
         h('label', { class: 'rel-relato-cab' }, marcar, h('span', {}, h('strong', {}, r.sigla), ` — ${r.pergunta}`)), texto) };
     });
 
+    // comentários da pesquisa de satisfação (só coordenação/ADMIN recebem a lista); até 5, editáveis para retirar identificação
+    const comentarios = (previa.comentariosSatisfacao || []).map((c) => {
+      const marcar = h('input', { type: 'checkbox' });
+      const texto = h('textarea', { class: 'textarea', rows: '2', maxlength: '1000', 'aria-label': 'Texto do comentário' });
+      texto.value = c.texto;
+      marcar.addEventListener('change', () => {
+        if (marcar.checked && comentarios.filter((x) => x.marcar.checked).length > MAX_COMENTARIOS_SATISFACAO) {
+          marcar.checked = false;
+          toast.aviso(`Escolha no máximo ${MAX_COMENTARIOS_SATISFACAO} comentários.`);
+        }
+      });
+      return { id: c.id, marcar, texto, no: h('div', { class: 'rel-relato' },
+        h('label', { class: 'rel-relato-cab' }, marcar, h('span', {}, h('strong', {}, c.sigla), ` — ${c.pergunta} · ${formatarData(c.data)}`)), texto) };
+    });
+
     // fotos selecionáveis (4 primeiras de cada unidade já marcadas)
     const contagem = new Map();
     const fotos = previa.fotos.map((f) => {
@@ -97,6 +117,7 @@ export function montarSemestral(raiz, opcoes) {
             unidadeIds: [...unidadesMarcadas],
             textos: Object.fromEntries(Object.entries(textos).map(([k, c]) => [k, c.entrada.value])),
             relatos: relatos.filter((r) => r.marcar.checked).map((r) => ({ id: r.id, texto: r.texto.value })),
+            comentariosSatisfacao: comentarios.filter((c) => c.marcar.checked).map((c) => ({ id: c.id, texto: c.texto.value })),
             fotos: fotos.filter((f) => f.marcar.checked).map((f) => f.id),
             local: local.entrada.value,
             data: data.entrada.value,
@@ -137,6 +158,21 @@ export function montarSemestral(raiz, opcoes) {
       previa.comparacao.pares > 0 ? h('div', { class: 'rel-bloco' }, h('h3', {}, `Comparação inicial × final (${previa.comparacao.pares} famílias)`),
         tabelaSimples(['Indicador', 'Inicial', 'Final'], previa.comparacao.indicadores.map((i) => [i.rotulo, i.inicial, i.final]), [1, 2])) : null,
 
+      // F6: números das duas seções novas (os mesmos do Painel; abaixo do n mínimo só o número absoluto)
+      h('div', { class: 'rel-bloco' }, h('h3', {}, `Progresso das famílias (${previa.progresso.geral.n} com 2 ou mais medições)`),
+        previa.progresso.geral.n === 0
+          ? h('p', { class: 'texto-pequeno' }, 'Nenhuma família com duas ou mais medições do índice de progresso no período; a seção traz só o texto e os acompanhamentos.')
+          : tabelaSimples(['Dimensão', 'Famílias', 'Melhoraram', 'Iguais', 'Pioraram', '% que melhoraram'],
+            [...previa.progresso.dimensoes, { ...previa.progresso.geral, nome: 'Índice geral' }].map((d) => [d.nome, d.n, d.melhoraram, d.iguais, d.pioraram, d.suficiente ? pctTxt(d.pctMelhoraram) : `n < ${previa.progresso.nMinimo}`]), [1, 2, 3, 4, 5]),
+        h('p', { class: 'texto-pequeno' }, `Metas: ${previa.progresso.metas.total} definidas (${previa.progresso.metas.atingidas} atingidas, ${previa.progresso.metas.naoAtingidas} não atingidas, ${previa.progresso.metas.emAndamento} em andamento). `
+          + `Acompanhamentos: ${previa.progresso.acompanhamentos.concluidos} concluídos e ${previa.progresso.acompanhamentos.desligados} desligados no período.`)),
+      h('div', { class: 'rel-bloco' }, h('h3', {}, `Satisfação das famílias (${previa.satisfacao.geral.respostas} respostas, ${previa.satisfacao.geral.recusas} recusas)`),
+        previa.satisfacao.geral.respostas === 0
+          ? h('p', { class: 'texto-pequeno' }, 'Nenhuma pesquisa respondida no período.')
+          : h('p', { class: 'texto-pequeno' }, previa.satisfacao.geral.suficiente
+            ? `Nota geral (NPS): ${numTxt(previa.satisfacao.geral.nps, 0)} · concordância ${pctTxt(previa.satisfacao.geral.concordancia)} · satisfação ${numTxt(previa.satisfacao.geral.indice, 0)}%.`
+            : `Menos de ${previa.satisfacao.nMinimo} respostas: nota geral e percentuais não são divulgados (o texto do relatório explica isso).`)),
+
       h('h2', { class: 'rel-passo-titulo' }, 'Textos do relatório'),
       h('p', { class: 'texto-pequeno' }, 'Textos sugeridos com base nos números acima; edite livremente. As tabelas são geradas automaticamente no documento.'),
       ...TEXTOS.map(([k]) => textos[k].elemento),
@@ -150,6 +186,13 @@ export function montarSemestral(raiz, opcoes) {
             h('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', onclick: () => alternar(relatos, false) }, 'Desmarcar todos')),
           relatos.map((r) => r.no))
         : h('p', { class: 'texto-pequeno' }, 'Nenhum relato disponível (é necessário ter questionário final concluído no período).'),
+
+      h('h2', { class: 'rel-passo-titulo' }, `Comentários das famílias na pesquisa de satisfação (${comentarios.length})`),
+      comentarios.length
+        ? h('div', {},
+          h('p', { class: 'texto-pequeno' }, `Escolha até ${MAX_COMENTARIOS_SATISFACAO} trechos para o relatório. Aparecem só com a sigla da unidade; revise o texto e retire qualquer informação que identifique a família.`),
+          comentarios.map((c) => c.no))
+        : h('p', { class: 'texto-pequeno' }, opcoes.usuario.perfil === 'ASSISTENTE' ? 'Os comentários ficam disponíveis só para a coordenação.' : 'Nenhum comentário disponível no período.'),
 
       h('h2', { class: 'rel-passo-titulo' }, `Anexo de fotos (${fotos.length} disponíveis)`),
       fotos.length

@@ -94,7 +94,11 @@ async function carregarEvolucao(req, acompanhamentoId) {
   const intervaloMedioDias = total > 1
     ? Math.round((new Date(`${dia(c.ultimo)}T00:00:00Z`) - new Date(`${dia(c.primeiro)}T00:00:00Z`)) / 86400000 / (total - 1))
     : null;
-  return { ...indicadores, contatos: { total, primeiro: dia(c?.primeiro), ultimo: dia(c?.ultimo), intervaloMedioDias } };
+  // metas combinadas com a família (F4), na ordem em que foram definidas
+  const metas = await consultar(
+    `SELECT dimensao, descricao, prazo, status, concluida_em FROM acompanhamento_meta WHERE acompanhamento_id = @id ORDER BY criado_em, id`,
+    { id: acompanhamentoId });
+  return { ...indicadores, metas, contatos: { total, primeiro: dia(c?.primeiro), ultimo: dia(c?.ultimo), intervaloMedioDias } };
 }
 
 async function carregarIndividual(req, acompanhamentoId) {

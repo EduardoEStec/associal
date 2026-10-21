@@ -8,7 +8,7 @@
 //   GET  /semestral/previa                    números, relatos e fotos candidatos
 //   POST /semestral                           gera o .docx
 //   GET  /foto/:id                            miniatura de foto (autenticada, com checagem de unidade)
-//   GET  /exportar/atendimentos.csv | acoes.csv
+//   GET  /exportar/atendimentos.csv | acoes.csv | progresso.csv | satisfacao.csv   (os dois últimos: COORDENADOR/ADMIN)
 
 const express = require('express');
 const { erros } = require('../lib/erros');
@@ -93,5 +93,9 @@ async function exportar(req, res, gerador, prefixo) {
 
 router.get('/exportar/atendimentos.csv', (req, res) => exportar(req, res, servico.csvAtendimentos, 'atendimentos'));
 router.get('/exportar/acoes.csv', (req, res) => exportar(req, res, servico.csvAcoes, 'acoes'));
+// F6: progresso das famílias e satisfação (só coordenação e ADMIN: são agregados de todas as unidades escolhidas)
+const soCoordenacao = (req, res, next) => (['COORDENADOR', 'ADMIN'].includes(req.usuario.perfil) ? next() : next(erros.proibido('Somente a coordenação exporta estes dados.')));
+router.get('/exportar/progresso.csv', soCoordenacao, (req, res) => exportar(req, res, servico.csvProgresso, 'progresso'));
+router.get('/exportar/satisfacao.csv', soCoordenacao, (req, res) => exportar(req, res, servico.csvSatisfacao, 'satisfacao'));
 
 module.exports = router;

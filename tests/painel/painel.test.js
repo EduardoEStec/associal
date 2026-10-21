@@ -12,6 +12,7 @@ const dbFalso = {
   consultar: async (texto, params = {}) => {
     chamadas.push({ texto, params });
     const t = texto.replace(/\s+/g, ' ');
+    if (t.includes("tipo IN ('REAVALIACAO', 'FINAL')")) return []; // F6: reavaliações pendentes
     if (t.includes('FROM unidade u')) return [{ unidadeId: 1, sigla: 'BRA', nome: 'Brasilândia' }, { unidadeId: 2, sigla: 'TIR', nome: 'Tiradentes' }];
     if (t.includes('FROM atendimento a WHERE') && t.includes('COUNT(*) AS total')) return [{ total: 10 }];
     if (t.includes('atendimentos_com_encaminhamento') && t.includes('GROUP BY a.unidade_id')) return [{ unidadeId: 1, atendimentos: 8, atendimentosComEncaminhamento: 4 }, { unidadeId: 2, atendimentos: 2, atendimentosComEncaminhamento: 0 }];

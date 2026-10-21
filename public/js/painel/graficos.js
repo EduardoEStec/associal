@@ -33,7 +33,7 @@ function legenda(series) {
   series.forEach((s, i) => {
     const li = document.createElement('li');
     const marca = document.createElement('span');
-    marca.className = `grafico-marca s${i % 4}`;
+    marca.className = `grafico-marca s${(s.cor ?? i) % 4}`;
     li.append(marca, document.createTextNode(s.nome));
     el.append(li);
   });
@@ -82,7 +82,7 @@ export function barras({ titulo, categorias, series, altura = 260 }) {
     const x0 = esq + larguraCat * i + (larguraCat - larguraBarra * series.length) / 2;
     series.forEach((s, j) => {
       const v = s.valores[i] ?? 0;
-      const barra = svg('rect', { x: x0 + larguraBarra * j, y: y(v), width: Math.max(1, larguraBarra - 2), height: Math.max(0, base - y(v)), rx: 2, class: `g-s${j % 4}` });
+      const barra = svg('rect', { x: x0 + larguraBarra * j, y: y(v), width: Math.max(1, larguraBarra - 2), height: Math.max(0, base - y(v)), rx: 2, class: `g-s${(s.cor ?? j) % 4}` });
       barra.append(svg('title'));
       barra.firstChild.textContent = `${cat} — ${s.nome}: ${fmt(v)}`;
       g.append(barra);
@@ -119,6 +119,39 @@ export function linhas({ titulo, categorias, series, altura = 260 }) {
     });
   });
   return moldura(titulo, descricaoTabela(categorias, series), g, series);
+}
+
+// Barras horizontais de percentuais (0 a 100): itens [{ nome, valor, detalhe }]; `valor` nulo = sem dados suficientes.
+export function barrasPercentuais({ titulo, itens, vazio = 'Sem dados no período.' }) {
+  const cartao = document.createElement('section');
+  cartao.className = 'card dist';
+  const h3 = document.createElement('h3');
+  h3.textContent = titulo;
+  cartao.append(h3);
+  if (!itens.length) {
+    const p = document.createElement('p');
+    p.className = 'texto-suave texto-pequeno';
+    p.textContent = vazio;
+    cartao.append(p);
+    return cartao;
+  }
+  const L = 400; const alturaLinha = 46;
+  const g = svg('svg', { viewBox: `0 0 ${L} ${alturaLinha * itens.length}`, class: 'grafico-svg' });
+  itens.forEach((it, i) => {
+    const y0 = i * alturaLinha;
+    const largura = it.valor === null ? 0 : Math.max(2, (it.valor / 100) * (L - 90));
+    g.append(
+      texto(it.nome, { x: 0, y: y0 + 13, class: 'g-rotulo g-rotulo-forte' }),
+      svg('rect', { x: 0, y: y0 + 18, width: L - 90, height: 12, rx: 3, class: 'g-fundo' }),
+      svg('rect', { x: 0, y: y0 + 18, width: largura, height: 12, rx: 3, class: 'g-s0' }),
+      texto(it.valor === null ? 'n insuficiente' : `${fmt(it.valor)}%`, { x: L - 84, y: y0 + 29, class: 'g-valor' }),
+    );
+    if (it.detalhe) g.append(texto(it.detalhe, { x: 0, y: y0 + 43, class: 'g-rotulo' }));
+  });
+  g.setAttribute('role', 'img');
+  g.setAttribute('aria-label', `${titulo}: ${itens.map((i) => `${i.nome} ${i.valor === null ? 'n insuficiente' : `${fmt(i.valor)}%`}`).join('; ')}`);
+  cartao.append(g);
+  return cartao;
 }
 
 // Barras horizontais para distribuições (rótulo acima da barra: legível no celular).

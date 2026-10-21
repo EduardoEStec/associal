@@ -3,6 +3,8 @@ import { iniciarPagina } from '../layout.js';
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, formatarNumero, comEspera } from '../ui.js';
 import { barras, linhas, distribuicao } from '../painel/graficos.js';
+import { renderProgresso } from '../painel/progresso.js';
+import { renderSatisfacao } from '../painel/satisfacao.js';
 
 const { usuario, conteudo } = await iniciarPagina('painel');
 
@@ -13,7 +15,9 @@ const ultimoDia = (ano, mes) => new Date(Date.UTC(ano, mes, 0)).getUTCDate();
 const pct = (v) => (v === null || v === undefined ? '—' : `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
 
 const agora = new Date();
-const estado = { tipo: 'mes', ano: agora.getFullYear(), mes: agora.getMonth() + 1, semestre: agora.getMonth() < 6 ? 1 : 2, inicio: '', fim: '', unidadeId: '' };
+const ABAS = [['operacao', 'Operação'], ['progresso', 'Progresso das famílias'], ['satisfacao', 'Satisfação']];
+const abaDoHash = () => (ABAS.find(([k]) => `#${k}` === location.hash) || ABAS[0])[0];
+const estado = { aba: abaDoHash(), tipo: 'mes', ano: agora.getFullYear(), mes: agora.getMonth() + 1, semestre: agora.getMonth() < 6 ? 1 : 2, inicio: '', fim: '', unidadeId: '' };
 
 // ---------- período ----------
 
@@ -99,12 +103,41 @@ const secTabela = h('section', { class: 'card' });
 const secGraficos = h('section', { class: 'grade grade-2' });
 const secPerfil = h('section');
 const secAlertas = h('section', { class: 'card' });
+const secProgresso = h('section', { 'aria-live': 'polite' });
+const secSatisfacao = h('section', { 'aria-live': 'polite' });
+
+const abaOperacao = h('div', { class: 'painel-aba', id: 'painel-operacao', role: 'tabpanel' },
+  secKpi, secTabela, secGraficos,
+  h('h2', {}, 'Perfil do público atendido'), secPerfil,
+  h('h2', {}, 'Alertas'), secAlertas);
+const abaProgresso = h('div', { class: 'painel-aba', id: 'painel-progresso', role: 'tabpanel' }, secProgresso);
+const abaSatisfacao = h('div', { class: 'painel-aba', id: 'painel-satisfacao', role: 'tabpanel' }, secSatisfacao);
+const paineis = { operacao: abaOperacao, progresso: abaProgresso, satisfacao: abaSatisfacao };
+
+const navAbas = h('nav', { class: 'painel-abas', role: 'tablist', 'aria-label': 'Seções do painel' },
+  ABAS.map(([chave, rotulo]) => h('a', { href: chave === 'operacao' ? '#' : `#${chave}`, role: 'tab', 'data-aba': chave, onclick: (e) => { e.preventDefault(); trocarAba(chave); } }, rotulo)));
+
+function marcarAba() {
+  for (const a of navAbas.querySelectorAll('a')) {
+    const ativa = a.dataset.aba === estado.aba;
+    a.classList.toggle('ativa', ativa);
+    a.setAttribute('aria-selected', ativa ? 'true' : 'false');
+    if (ativa) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
+  for (const [chave, el] of Object.entries(paineis)) el.hidden = chave !== estado.aba;
+}
+
+const carregadas = new Set();
+function trocarAba(chave) {
+  estado.aba = chave;
+  history.replaceState(null, '', chave === 'operacao' ? location.pathname : `#${chave}`);
+  marcarAba();
+  if (!carregadas.has(chave)) carregarAba();
+}
 
 conteudo.replaceChildren(
   h('div', { class: 'pagina-titulo' }, h('h1', {}, 'Painel do Coordenador')),
-  filtros, secKpi, secTabela, secGraficos,
-  h('h2', {}, 'Perfil do público atendido'), secPerfil,
-  h('h2', {}, 'Alertas'), secAlertas,
+  filtros, navAbas, abaOperacao, abaProgresso, abaSatisfacao,
 );
 
 function kpi(rotulo, valor, ajuda) {
@@ -213,13 +246,16 @@ function renderAlertas(a) {
 
   if (a.resumoPorUnidade.length) {
     blocos.push(h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela tabela-responsiva' },
-      h('thead', {}, h('tr', {}, ['Unidade', 'Questionários vencidos', 'Questionários a vencer', 'Ações sem atualização', 'Famílias sem contato'].map((t) => h('th', { scope: 'col' }, t)))),
+      h('thead', {}, h('tr', {}, ['Unidade', 'Questionários vencidos', 'Questionários a vencer', 'Ações sem atualização', 'Famílias sem contato', 'Famílias sem meta', 'Pesquisas pendentes', 'Reavaliações pendentes'].map((t) => h('th', { scope: 'col' }, t)))),
       h('tbody', {}, a.resumoPorUnidade.map((r) => h('tr', {},
         h('td', { 'data-rotulo': 'Unidade' }, r.unidadeSigla),
         h('td', { 'data-rotulo': 'Questionários vencidos', class: 'num' }, r.questionariosVencidos),
         h('td', { 'data-rotulo': 'Questionários a vencer', class: 'num' }, r.questionariosAVencer),
         h('td', { 'data-rotulo': 'Ações sem atualização', class: 'num' }, r.acoesDesatualizadas),
-        h('td', { 'data-rotulo': 'Famílias sem contato', class: 'num' }, r.familiasSemContato)))))));
+        h('td', { 'data-rotulo': 'Famílias sem contato', class: 'num' }, r.familiasSemContato),
+        h('td', { 'data-rotulo': 'Famílias sem meta', class: 'num' }, r.familiasSemMeta ?? 0),
+        h('td', { 'data-rotulo': 'Pesquisas pendentes', class: 'num' }, r.pesquisasPendentes ?? 0),
+        h('td', { 'data-rotulo': 'Reavaliações pendentes', class: 'num' }, r.reavaliacoesPendentes ?? 0)))))));
   }
   if (vencidos.length) {
     blocos.push(h('h3', {}, 'Questionários finais vencidos'),
@@ -234,6 +270,19 @@ function renderAlertas(a) {
       lista(a.familiasSemContato, (f) => `${f.unidadeSigla} — ${f.responsavelNome} (último contato em ${formatarData(f.ultimoContato)})`,
         'badge-aviso', (f) => `${f.diasSemContato} d`));
   }
+  if ((a.familiasSemMeta || []).length) {
+    blocos.push(h('h3', {}, 'Famílias sem meta'),
+      lista(a.familiasSemMeta, (f) => `${f.unidadeSigla} — ${f.responsavelNome} (sem meta desde ${formatarData(f.semMetaDesde)})`, 'badge-aviso', (f) => `${f.diasSemMeta} d`));
+  }
+  if ((a.pesquisasPendentes || []).length) {
+    blocos.push(h('h3', {}, 'Pesquisas de satisfação pendentes'),
+      lista(a.pesquisasPendentes, (f) => `${f.unidadeSigla} — ${f.responsavelNome} (${f.momento === 'FINAL' ? 'ao encerrar' : 'semestral'}, devida desde ${formatarData(f.devidaEm)})`,
+        'badge-aviso', (f) => (f.diasAtraso > 0 ? `${f.diasAtraso} d` : 'hoje')));
+  }
+  if ((a.reavaliacoesPendentes || []).length) {
+    blocos.push(h('h3', {}, 'Reavaliações rápidas pendentes'),
+      lista(a.reavaliacoesPendentes, (f) => `${f.unidadeSigla} — ${f.responsavelNome} (devida desde ${formatarData(f.devidaEm)})`, 'badge-aviso', (f) => `${f.diasAtraso} d`));
+  }
   if (a.acoesDesatualizadas.length) {
     blocos.push(h('h3', {}, 'Ações planejadas sem atualização'),
       lista(a.acoesDesatualizadas, (x) => `${x.unidadeSigla} — ${x.instituicaoLocal || 'sem local'} (${formatarData(x.dataAcao)})`, 'badge-aviso', (x) => `${x.diasAtraso} d`));
@@ -243,6 +292,30 @@ function renderAlertas(a) {
 }
 
 // ---------- carga ----------
+
+async function carregarProgresso() {
+  const p = periodoAtual();
+  secProgresso.replaceChildren(carregando());
+  try {
+    renderProgresso(secProgresso, await api.get('/api/painel/progresso', { inicio: p.inicio, fim: p.fim, unidadeId: estado.unidadeId || undefined }));
+  } catch (e) { secProgresso.replaceChildren(h('div', { class: 'aviso aviso-perigo' }, e.message || 'Não foi possível carregar o progresso.')); }
+}
+
+async function carregarSatisfacao() {
+  const p = periodoAtual();
+  secSatisfacao.replaceChildren(carregando());
+  try {
+    renderSatisfacao(secSatisfacao, await api.get('/api/painel/satisfacao', { inicio: p.inicio, fim: p.fim, unidadeId: estado.unidadeId || undefined }));
+  } catch (e) { secSatisfacao.replaceChildren(h('div', { class: 'aviso aviso-perigo' }, e.message || 'Não foi possível carregar a satisfação.')); }
+}
+
+// Carrega só a aba visível; as outras recarregam quando forem abertas (e quando o filtro mudar, a aba ativa recarrega e as demais ficam "velhas").
+async function carregarAba() {
+  carregadas.add(estado.aba);
+  if (estado.aba === 'progresso') await carregarProgresso();
+  else if (estado.aba === 'satisfacao') await carregarSatisfacao();
+  else await carregar();
+}
 
 async function carregar() {
   const p = periodoAtual();
@@ -263,5 +336,7 @@ async function carregar() {
   }
 }
 
-btnAplicar.addEventListener('click', () => { if (lerFiltros()) comEspera(btnAplicar, carregar); });
-await carregar();
+btnAplicar.addEventListener('click', () => { if (lerFiltros()) { carregadas.clear(); comEspera(btnAplicar, carregarAba); } });
+window.addEventListener('hashchange', () => { const chave = abaDoHash(); if (chave !== estado.aba) trocarAba(chave); });
+marcarAba();
+await carregarAba();

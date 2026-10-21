@@ -7,6 +7,7 @@ const express = require('express');
 const { requirePerfil } = require('../middlewares/auth');
 const { PERFIS } = require('../lib/dominios');
 const servico = require('../services/painel');
+const familiasPainel = require('../services/painel-familias');
 
 const router = express.Router();
 
@@ -42,6 +43,18 @@ router.get('/evolucao', async (req, res) => {
 router.get('/perfil', async (req, res) => {
   const periodo = servico.lerPeriodo(req.query);
   res.json(await servico.perfilPublico(req, periodo, servico.lerUnidadeFiltro(req)));
+});
+
+// GET /api/painel/progresso?inicio=&fim=[&unidadeId=] — progresso das famílias (índice da F5), metas, situação dos acompanhamentos
+router.get('/progresso', async (req, res) => {
+  const unidadeId = servico.lerUnidadeFiltro(req);
+  res.json(await familiasPainel.progresso(req, servico.lerPeriodo(req.query), unidadeId ? [unidadeId] : null));
+});
+
+// GET /api/painel/satisfacao?inicio=&fim=[&unidadeId=] — NPS, concordância, taxas, semáforo e comentários (só COORDENADOR/ADMIN, que são os únicos perfis deste router)
+router.get('/satisfacao', async (req, res) => {
+  const unidadeId = servico.lerUnidadeFiltro(req);
+  res.json(await familiasPainel.satisfacao(req, servico.lerPeriodo(req.query), unidadeId ? [unidadeId] : null, { comComentarios: true }));
 });
 
 // GET /api/painel/alertas[?unidadeId=]

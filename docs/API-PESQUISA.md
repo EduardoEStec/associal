@@ -85,4 +85,4 @@ Aplicar a pesquisa **conta como contato** com a família (e a recusa também) no
 - **NPS:** nota 0–10; `categoriaNps` = `PROMOTORA` (9–10), `NEUTRA` (7–8), `DETRATORA` (0–6).
 - **Satisfação:** `concordancia` = % das afirmações respondidas com 4 ou 5; `indice` = média das afirmações respondidas em 0–100 (`(valor − 1) / 4 × 100`).
 - Linha do tempo (`tipos=PESQUISA`): evento "Pesquisa de satisfação aplicada" (nota, satisfação e comentários) ou "…a família preferiu não responder".
-- Os números agregados por unidade e período (NPS, satisfação, taxa de resposta e de recusa, `pesquisa_n_minimo`) são da **F6**.
+- Os números agregados por unidade e período (NPS, satisfação, taxa de resposta e de recusa, `pesquisa_n_minimo`) são da **F6**: `docs/API-PAINEL-FAMILIAS.md`.
