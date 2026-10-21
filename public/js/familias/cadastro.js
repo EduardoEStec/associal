@@ -5,6 +5,7 @@ import {
   h, toast, carregando, mascarar, formatarCpf, formatarCep, cpfValido, apenasDigitos, hojeIso,
   mostrarErrosCampos, comEspera,
 } from '../ui.js';
+import { consumirPreCadastro, vincularRetorno } from '../retorno-atendimento.js';
 import { carregarApoio, cabecalhoPagina, campo, selectApoio, isoDia, montar } from './util.js';
 
 function entrada(attrs) {
@@ -235,7 +236,8 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
         } else {
           const res = await api.post('/api/familias', corpo);
           toast.sucesso('Família cadastrada. Agora aplique o questionário inicial.');
-          navegar(`#/a/${res.acompanhamentoId}`);
+          // veio do botão Formulário do atendimento: abre direto o questionário inicial
+          navegar(vincularRetorno(res.acompanhamentoId, corpo.responsavel.cpf) ? `#/a/${res.acompanhamentoId}/q/INICIAL` : `#/a/${res.acompanhamentoId}`);
         }
       } catch (err) {
         if (err instanceof ErroApi && err.status === 400) {
@@ -260,5 +262,12 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
     }),
     form,
   );
-  if (!edicao) cpf.focus();
+  if (!edicao) {
+    const pre = consumirPreCadastro(); // vindo do botão Formulário do atendimento: CPF e unidade já escolhidos
+    if (pre) {
+      cpf.value = formatarCpf(pre.cpf);
+      if (selUnidade && pre.unidadeId) selUnidade.value = String(pre.unidadeId);
+      buscarCpf();
+    } else cpf.focus();
+  }
 }

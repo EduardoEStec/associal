@@ -51,13 +51,13 @@ const BLOCOS = [
       },
       {
         campo: 'qtdMembrosComRenda', codigo: '1c', tipo: 'numero', min: 0, max: 30, maisMelhor: true,
-        textoInicial: 'Quantas pessoas da família têm renda?',
-        textoFinal: 'Hoje, quantas pessoas da família têm renda?',
+        textoInicial: 'Quantos membros da família estão empregados ou têm outras fontes de renda?',
+        textoFinal: 'Hoje, quantos membros da família estão empregados ou têm outras fontes de renda?',
       },
       {
         campo: 'recebeAuxilio', codigo: '1d', tipo: 'booleano',
-        textoInicial: 'A família recebe algum auxílio governamental?',
-        textoFinal: 'Hoje, a família recebe algum auxílio governamental?',
+        textoInicial: 'A família recebe auxílio governamental ou benefício social?',
+        textoFinal: 'Hoje, a família recebe auxílio governamental ou benefício social?',
         detalhe: { campo: 'beneficioIds', apoio: 'beneficio', campoOutro: 'auxilioOutro', rotulo: 'Qual(is) auxílio(s)?' },
       },
     ],
@@ -130,8 +130,8 @@ const BLOCOS = [
     perguntas: [
       {
         campo: 'empoderadaDecisoes', codigo: '4a', tipo: 'booleano', maisMelhor: true,
-        textoInicial: 'Você se sente mais empoderada(o) para tomar decisões?',
-        textoFinal: 'Hoje, você se sente mais empoderada(o) para tomar decisões?',
+        textoInicial: 'Você se sente mais empoderada(o) para decidir sobre alimentação e economia?',
+        textoFinal: 'Hoje, você se sente mais empoderada(o) para decidir sobre alimentação e economia?',
       },
       {
         campo: 'contribuicaoAutonomia', codigo: '4b', tipo: 'texto',
@@ -140,8 +140,8 @@ const BLOCOS = [
       },
       {
         campo: 'melhoriaPlanejamento', codigo: '4c', tipo: 'booleano', maisMelhor: true,
-        textoInicial: 'A família consegue planejar melhor os seus gastos?',
-        textoFinal: 'Hoje, houve melhoria no planejamento dos gastos da família?',
+        textoInicial: 'Houve melhoria na capacidade de planejamento e gestão de recursos da família?',
+        textoFinal: 'Hoje, houve melhoria na capacidade de planejamento e gestão de recursos da família?',
       },
       {
         campo: 'impactoComunidade', codigo: '4d', tipo: 'texto',

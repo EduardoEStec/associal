@@ -17,10 +17,10 @@ const QUESTIONARIO = Object.freeze({
   },
   frequenciaFrutasVerduras: { UMA_DUAS: '1-2 vezes por semana', TRES_QUATRO: '3-4 vezes por semana', CINCO_OU_MAIS: '5 ou mais vezes por semana' },
   qualidadeAlimentacao: { MELHOROU_MUITO: 'Melhorou muito', MELHOROU_POUCO: 'Melhorou um pouco', NAO_MELHOROU: 'Não melhorou', PIOROU: 'Piorou' },
-  saudeNutricional: { GRANDE_MELHORIA: 'Grande melhoria', PEQUENA_MELHORIA: 'Pequena melhoria', NENHUMA: 'Nenhuma melhoria' },
+  saudeNutricional: { GRANDE_MELHORIA: 'Grande melhoria', PEQUENA_MELHORIA: 'Pequena melhoria', NENHUMA: 'Não houve melhoria' },
   economiaMensalFaixa: { ATE_100: 'Até R$ 100', DE_101_200: 'R$ 101 a R$ 200', DE_201_300: 'R$ 201 a R$ 300', ACIMA_300: 'Acima de R$ 300' },
-  capacidadePoupanca: { REGULARMENTE: 'Regularmente', AS_VEZES: 'Às vezes', NAO_CONSEGUE: 'Não consegue' },
-  gestaoFinanceira: { MELHOROU: 'Melhorou', SEM_MUDANCA: 'Sem mudança', PIOROU: 'Piorou' },
+  capacidadePoupanca: { REGULARMENTE: 'Poupa regularmente', AS_VEZES: 'Poupa às vezes', NAO_CONSEGUE: 'Não consegue poupar' },
+  gestaoFinanceira: { MELHOROU: 'Sim, houve melhora', SEM_MUDANCA: 'Não houve mudança', PIOROU: 'Houve piora' },
   avaliacaoArmazem: { OTIMA: 'Ótima', BOA: 'Boa', REGULAR: 'Regular', RUIM: 'Ruim' },
 });
 

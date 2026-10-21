@@ -29,10 +29,9 @@ async function carregarLinha(executor, acompanhamentoId, tipo) {
 
 async function carregarSelecoes(executor, questionarioId) {
   if (!questionarioId) return { beneficioIds: [], destinoEconomiaIds: [] };
-  const [b, d] = await Promise.all([
-    executor.consultar('SELECT beneficio_id FROM questionario_beneficio WHERE questionario_id = @id ORDER BY beneficio_id', { id: questionarioId }),
-    executor.consultar('SELECT destino_economia_id FROM questionario_destino_economia WHERE questionario_id = @id ORDER BY destino_economia_id', { id: questionarioId }),
-  ]);
+  // em sequência: dentro de uma transação, duas consultas simultâneas na mesma conexão dão EREQINPROG
+  const b = await executor.consultar('SELECT beneficio_id FROM questionario_beneficio WHERE questionario_id = @id ORDER BY beneficio_id', { id: questionarioId });
+  const d = await executor.consultar('SELECT destino_economia_id FROM questionario_destino_economia WHERE questionario_id = @id ORDER BY destino_economia_id', { id: questionarioId });
   return { beneficioIds: b.map((x) => x.beneficioId), destinoEconomiaIds: d.map((x) => x.destinoEconomiaId) };
 }
 

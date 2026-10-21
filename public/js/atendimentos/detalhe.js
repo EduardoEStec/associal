@@ -2,6 +2,7 @@
 import { api } from '../api.js';
 import { formatarTelefone } from '../telefone.js';
 import { h, toast, confirmar, carregando, formatarData, formatarCpf, formatarCep } from '../ui.js';
+import { botaoFormulario } from './formulario.js';
 
 const nomeDe = (lista, id) => lista.find((o) => o.id === id)?.nome || '';
 
@@ -15,7 +16,7 @@ function listaComOutra(lista, ids, outra) {
   return nomes.join('; ');
 }
 
-export async function renderDetalhe({ conteudo, apoio }, id) {
+export async function renderDetalhe({ usuario, conteudo, apoio }, id) {
   conteudo.replaceChildren(carregando());
   const a = await api.get(`/api/atendimentos/${id}`);
   const p = a.pessoa;
@@ -58,6 +59,7 @@ export async function renderDetalhe({ conteudo, apoio }, id) {
         ...par('Resumo do atendimento', a.resumo),
       ),
       h('div', { class: 'barra-acoes' },
+        botaoFormulario({ usuario, atendimento: a }),
         a.podeExcluir ? h('button', { type: 'button', class: 'btn btn-perigo', onclick: excluir }, 'Excluir') : null,
         a.podeEditar ? h('a', { class: 'btn', href: `#${id}/editar` }, 'Editar') : null),
     ),

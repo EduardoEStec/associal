@@ -2,6 +2,7 @@
 // Rascunho salvo automaticamente no servidor; o mesmo roteiro serve para INICIAL e FINAL ("hoje").
 import { api, ErroApi } from '../api.js';
 import { h, toast, carregando, confirmar, mostrarErrosCampos } from '../ui.js';
+import { consumirRetorno } from '../retorno-atendimento.js';
 import { carregarApoio, cabecalhoPagina, podeEscrever, isoDia, montar } from './util.js';
 
 const AUTOSAVE_MS = 1500;
@@ -286,7 +287,8 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
       await api.put(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`, { ...resp, concluir: true });
       sujo = false;
       toast.sucesso(jaConcluido ? 'Alterações salvas.' : 'Questionário concluído.');
-      navegar(`#/a/${acId}`);
+      const voltarPara = consumirRetorno(acId); // veio do botão Formulário do atendimento
+      if (voltarPara) location.href = voltarPara; else navegar(`#/a/${acId}`);
     } catch (e) {
       if (e instanceof ErroApi && e.status === 400 && e.detalhes) {
         errosPendentes = e.detalhes;
