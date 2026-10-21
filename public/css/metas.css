@@ -1,0 +1,25 @@
+/* Plano de metas da família (F4): cartão da aba Acompanhamento, formulário e bloco no registro de contato. */
+
+.fam-secao-metas { margin: var(--esp-4) 0; }
+.meta-card h3 { margin: 0; }
+.meta-lista { list-style: none; margin: var(--esp-3) 0 0; padding: 0; display: grid; gap: var(--esp-3); }
+.meta-item { padding-top: var(--esp-3); border-top: 1px solid var(--cor-borda); }
+.meta-lista > .meta-item:first-child { border-top: 0; padding-top: 0; }
+.meta-item-encerrada .meta-descricao { color: var(--cor-texto-suave); }
+.meta-descricao { margin: var(--esp-2) 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.meta-rodape { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-1) var(--esp-3); margin-top: var(--esp-2); }
+.meta-avanco { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--esp-1); }
+.meta-encerradas { margin-top: var(--esp-4); }
+.meta-encerradas > summary { cursor: pointer; font-weight: 600; padding: var(--esp-2) 0; }
+.meta-card .barra-acoes { margin-top: var(--esp-3); }
+
+.meta-form .campo[hidden] { display: none; }
+
+/* Metas tratadas dentro do registro de contato (formulário e lista) */
+.meta-marcar-bloco[hidden] { display: none; }
+.meta-marcar { margin-top: var(--esp-3); padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-md, 12px); }
+.meta-marcar-titulo { margin: 0 0 var(--esp-2); overflow-wrap: anywhere; }
+.meta-marcar .opcao { flex: 1 1 120px; justify-content: center; }
+.meta-tratadas { list-style: none; margin: var(--esp-2) 0 0; padding: 0; display: grid; gap: var(--esp-1); }
+.meta-tratadas li { overflow-wrap: anywhere; }
+.fam-evento-meta .fam-evento-marca { color: var(--cor-texto-primaria); border-color: var(--cor-primaria); }

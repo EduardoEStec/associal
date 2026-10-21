@@ -83,6 +83,7 @@ const baseHandlers = () => [
   { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
   { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
   { teste: /^\s*SELECT momento, situacao, data_aplicacao FROM pesquisa_resposta/, resp: () => [] },
+  { teste: /FROM (acompanhamento_meta|registro_meta)/, resp: () => [] },
   { teste: /FROM configuracao/, resp: () => [{ chave: 'prazo_questionario_final_dias', valor: '90' }, { chave: 'alerta_questionario_final_dias_antes', valor: '15' }] },
 ];
 

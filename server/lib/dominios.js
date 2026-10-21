@@ -10,7 +10,7 @@ const ehCoordenacao = (usuario) => usuario?.perfil === PERFIS.COORDENADOR || usu
 
 const STATUS_ACAO = Object.freeze(['PLANEJADA', 'REALIZADA', 'CANCELADA']);
 const STATUS_ACOMPANHAMENTO = Object.freeze(['EM_ANDAMENTO', 'CONCLUIDO', 'DESLIGADO']);
-const TIPO_QUESTIONARIO = Object.freeze(['INICIAL', 'FINAL']);
+const TIPO_QUESTIONARIO = Object.freeze(['INICIAL', 'REAVALIACAO', 'FINAL']);
 
 // Questionário familiar — coluna -> { codigo: rotulo }
 const QUESTIONARIO = Object.freeze({

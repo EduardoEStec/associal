@@ -94,6 +94,8 @@ async function main() {
     assert.match(j.textos.impactoEconomico, /aumentou de R\$ 1\.200,00 para R\$ 1\.500,00 \(\+25,0%\)/);
     assert.match(j.textos.impactoAlimentar, /não tinha acesso para diário/);
     assert.match(j.textos.feedback, /"Ótima"/);
+    assert.match(j.textos.evolucao, /foram registrados 3 contatos/);
+    assert.match(j.textos.evolucao, /índice de progresso da família .* passou de [\d,]+ no inicial para [\d,]+ no final/);
     assert.equal(j.assinatura.nome, 'Carla Assistente');
     assert.equal(j.avisos.length, 0);
   });
@@ -127,6 +129,10 @@ async function main() {
     assert.match(texto, /Primeira linha editada\.\nSegunda linha & "aspas" <tag>\./);
     assert.match(texto, /Situação Socioeconômica Identificada/);
     assert.match(texto, /aumentou de R\$ 1\.200,00/);          // texto padrão mantido onde não editado
+    // F5: seção de evolução com a tabela das dimensões do índice de progresso
+    assert.match(texto, /Evolução durante o acompanhamento/);
+    for (const dim of ['Alimentação', 'Renda e trabalho', 'Economia e poupança', 'Autonomia', 'Índice geral']) assert.ok(texto.includes(dim), dim);
+    assert.match(texto, /Melhorou/);
     assert.match(texto, /São Paulo\/SP, 20 de outubro de 2026\./);
     assert.match(texto, /Carla Assistente\nAssistente Social\nCRESS\/SP: 12345/);
     assert.ok(!/\{|\}|undefined/.test(texto), 'sem tags soltas nem "undefined"');

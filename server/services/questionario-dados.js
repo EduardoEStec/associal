@@ -13,12 +13,13 @@ const { carregarAcompanhamento, exigirEmAndamento, hojeIso } = require('./famili
 const {
   COLUNAS, validarRespostas, montarRespostas, compararFamilia, consolidarComparacao,
 } = require('./questionario');
+const indice = require('./indice-dados');
 
 const CAMPOS_DECIMAIS = new Set(['rendaMensalMedia', 'economiaMensalValor']);
 
 function exigirTipo(tipo) {
   const t = String(tipo || '').toUpperCase();
-  if (!TIPO_QUESTIONARIO.includes(t)) throw erros.naoEncontrado('Tipo de questionário inexistente. Use INICIAL ou FINAL.');
+  if (!TIPO_QUESTIONARIO.includes(t)) throw erros.naoEncontrado('Tipo de questionário inexistente. Use INICIAL, REAVALIACAO ou FINAL.');
   return t;
 }
 
@@ -48,6 +49,11 @@ async function obter(req, acompanhamentoId, tipoEntrada) {
   else if (tipo === 'FINAL') {
     const inicial = await carregarLinha({ consultarUm }, ac.id, 'INICIAL');
     if (!inicial || !inicial.concluido) bloqueio = 'Conclua o questionário inicial antes de aplicar o final.';
+  } else if (tipo === 'REAVALIACAO') {
+    const inicial = await carregarLinha({ consultarUm }, ac.id, 'INICIAL');
+    const final = await carregarLinha({ consultarUm }, ac.id, 'FINAL');
+    if (!inicial || !inicial.concluido) bloqueio = 'Conclua o questionário inicial antes de aplicar a reavaliação.';
+    else if (!linha && final && final.concluido) bloqueio = 'O questionário final já foi concluído: a reavaliação não é mais necessária.';
   }
 
   const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM familia_membro WHERE familia_id = @f', { f: ac.familiaId });
@@ -87,21 +93,27 @@ async function salvar(req, acompanhamentoId, tipoEntrada, corpo) {
     exigirEmAndamento(ac);
 
     let inicial = null;
-    if (tipo === 'FINAL') {
+    if (tipo === 'FINAL' || tipo === 'REAVALIACAO') {
       inicial = await carregarLinha(tx, ac.id, 'INICIAL');
       if (!inicial || !inicial.concluido) {
-        throw erros.conflito('Conclua o questionário inicial antes de aplicar o final.');
+        throw erros.conflito(tipo === 'FINAL'
+          ? 'Conclua o questionário inicial antes de aplicar o final.'
+          : 'Conclua o questionário inicial antes de aplicar a reavaliação.');
       }
     }
     const existente = await carregarLinha(tx, ac.id, tipo);
+    if (tipo === 'REAVALIACAO' && !existente) {
+      const final = await carregarLinha(tx, ac.id, 'FINAL');
+      if (final && final.concluido) throw erros.conflito('O questionário final já foi concluído: a reavaliação não é mais necessária.');
+    }
     const selecaoAtual = await carregarSelecoes(tx, existente?.id);
 
     // Questionário já concluído continua válido: só aceita nova versão completa.
     const concluir = concluirPedido || !!(existente && existente.concluido);
-    const { valores: v, beneficioIds, destinoEconomiaIds, erros: problemas } = validarRespostas(corpo, { concluir, hoje });
+    const { valores: v, beneficioIds, destinoEconomiaIds, erros: problemas } = validarRespostas(corpo, { concluir, hoje, tipo });
 
     if (inicial && v.dataAplicacao && v.dataAplicacao < new Date(inicial.dataAplicacao).toISOString().slice(0, 10)) {
-      problemas.dataAplicacao = 'A data do questionário final não pode ser anterior à do inicial.';
+      problemas.dataAplicacao = `A data do questionário ${tipo === 'FINAL' ? 'final' : 'de reavaliação'} não pode ser anterior à do inicial.`;
     }
 
     // Auxílio só faz sentido quando a família recebe
@@ -153,6 +165,9 @@ async function salvar(req, acompanhamentoId, tipoEntrada, corpo) {
     for (const id of destinoEconomiaIds) {
       await tx.consultar('INSERT INTO questionario_destino_economia (questionario_id, destino_economia_id) VALUES (@q, @d)', { q: questionarioId, d: id });
     }
+
+    // instantâneo do índice de progresso (F5): refeito a cada gravação de um questionário concluído
+    if (concluir) await indice.gravarInstantaneo(tx, { acompanhamentoId: ac.id, questionarioId, tipo, dataRef: v.dataAplicacao, respostas: v });
 
     await registrarAuditoria(req, existente ? 'ALTERAR' : 'CRIAR', 'questionario', questionarioId,
       { acompanhamentoId: ac.id, tipo, concluido: concluir }, tx);

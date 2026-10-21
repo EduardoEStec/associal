@@ -11,6 +11,7 @@ const { clausulaUnidades, unidadesPermitidas } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
 const { QUESTIONARIO } = require('../lib/dominios');
 const { numero, moeda, percentual } = require('./relatorios-textos');
+const indice = require('./indice-dados');
 
 // ---------- escopo de unidades ----------
 
@@ -81,6 +82,21 @@ async function listarAcompanhamentos(req, { unidadeId, busca }) {
   );
 }
 
+// Índice de progresso + contatos registrados (seção "Evolução durante o acompanhamento")
+async function carregarEvolucao(req, acompanhamentoId) {
+  const indicadores = await indice.obterIndicadores(req, acompanhamentoId);
+  const [c] = await consultar(
+    `SELECT COUNT(*) AS total, MIN(data_registro) AS primeiro, MAX(data_registro) AS ultimo
+       FROM acompanhamento_registro WHERE acompanhamento_id = @id AND houve_contato = 1 AND anulado_em IS NULL`,
+    { id: acompanhamentoId });
+  const dia = (v) => (v ? new Date(v).toISOString().slice(0, 10) : null);
+  const total = c ? c.total : 0;
+  const intervaloMedioDias = total > 1
+    ? Math.round((new Date(`${dia(c.ultimo)}T00:00:00Z`) - new Date(`${dia(c.primeiro)}T00:00:00Z`)) / 86400000 / (total - 1))
+    : null;
+  return { ...indicadores, contatos: { total, primeiro: dia(c?.primeiro), ultimo: dia(c?.ultimo), intervaloMedioDias } };
+}
+
 async function carregarIndividual(req, acompanhamentoId) {
   const params = { id: acompanhamentoId };
   const where = clausulaUnidades(req, 'ac.unidade_id', params);
@@ -126,7 +142,8 @@ async function carregarIndividual(req, acompanhamentoId) {
     )).map((l) => l.nome)
     : [];
 
-  return { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal };
+  const evolucao = await carregarEvolucao(req, acompanhamentoId);
+  return { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, evolucao };
 }
 
 // ---------- Relatório Semestral ----------

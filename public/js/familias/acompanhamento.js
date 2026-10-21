@@ -4,6 +4,7 @@ import { icone } from '../layout.js';
 import { h, toast, abrirModal, formatarData, mostrarErrosCampos, hojeIso } from '../ui.js';
 import { campo, textoOuTraco, ehCoordenacao } from './util.js';
 import { ROTULO_MOMENTO, ROTULO_LIKERT, ROTULO_MODO } from './pesquisa.js';
+import { cartaoMetas, blocoMetasDoRegistro, seloAvanco } from './metas.js';
 
 export const ROTULO_SITUACAO = { MELHORANDO: 'Melhorando', IGUAL: 'Igual', PIORANDO: 'Piorando', NAO_SEI: 'Sem avaliação' };
 const CLASSE_SITUACAO = { MELHORANDO: 'badge-sucesso', IGUAL: 'badge-info', PIORANDO: 'badge-perigo', NAO_SEI: 'badge' };
@@ -68,6 +69,9 @@ function cartaoRegistro(reg, { escrita, encerrado, editar, anular }) {
         ? seloSituacao(reg.situacao)
         : h('span', { class: 'badge badge-aviso' }, icone('alerta'), 'Não conseguiu falar')),
     reg.resumo ? h('p', { class: 'fam-registro-texto' }, reg.resumo) : null,
+    (reg.metas || []).length
+      ? h('ul', { class: 'meta-tratadas' }, reg.metas.map((x) => h('li', {}, h('span', { class: 'texto-suave' }, `${x.dimensaoNome}: `), x.descricao, ' ', seloAvanco(x.avanco))))
+      : null,
     h('div', { class: 'fam-registro-rodape texto-pequeno texto-suave' },
       h('span', {}, `Registrado por ${textoOuTraco(reg.autor?.nome)}`),
       reg.proximoContatoEm ? h('span', {}, `Próximo contato: ${formatarData(reg.proximoContatoEm)}`) : null),
@@ -126,16 +130,18 @@ function abrirFormulario({ id, dados, registro, aoSalvar }) {
     value: editando ? (registro.proximoContatoEm?.slice(0, 10) || '') : somarDias(hoje, dados.semContatoDias) });
   const campoProximo = campo({ id: 'rg-proximo', rotulo: 'Próximo contato', ajuda: `Sugestão: daqui a ${pluralDias(dados.semContatoDias)}. Deixe em branco se não houver data.`, controle: proximo });
 
+  const blocoMetas = blocoMetasDoRegistro(dados.metas, registro);
   const atualizarFalou = () => {
     const sim = form.elements.houveContato.value !== 'false';
     campoSit.hidden = !sim;
+    blocoMetas.mostrar(sim);
     campoResumo.querySelector('label').classList.toggle('obrigatorio', sim);
   };
 
   form.append(
     campo({ id: 'rg-data', rotulo: 'Data do contato', obrigatorio: true, controle: data }),
     campo({ id: 'rg-tipo', rotulo: 'Tipo de contato', obrigatorio: true, controle: tipo }),
-    campoOutro, campoFalou, campoSit, campoResumo, campoProximo);
+    campoOutro, campoFalou, campoSit, campoResumo, blocoMetas.elemento, campoProximo);
   form.addEventListener('submit', (e) => e.preventDefault());
   tipo.addEventListener('change', atualizarOutro);
   form.addEventListener('change', (e) => { if (e.target.name === 'houveContato') atualizarFalou(); });
@@ -160,6 +166,7 @@ function abrirFormulario({ id, dados, registro, aoSalvar }) {
             situacao: houve ? form.elements.situacao.value || null : null,
             resumo: resumo.value.trim() || null,
             proximoContatoEm: proximo.value || null,
+            metas: houve ? blocoMetas.valores() : [],
           };
           try {
             if (editando) await api.put(`${url}/${registro.id}`, corpo); else await api.post(url, corpo);
@@ -305,13 +312,14 @@ function cartaoPesquisa({ id, p, escrita, usuario, aoMudar }) {
 }
 
 export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo, usuario }) {
-  const [r, pesq] = await Promise.all([
+  const [r, pesq, plano] = await Promise.all([
     api.get(`/api/familias/acompanhamentos/${id}/registros`),
     api.get(`/api/familias/acompanhamentos/${id}/pesquisas`),
+    api.get(`/api/familias/acompanhamentos/${id}/metas`),
   ]);
   const encerrado = d.status !== 'EM_ANDAMENTO';
   const recarregar = () => navegar(`#/a/${id}/acompanhamento`, true);
-  const dados = { dataInicio: d.dataInicio, tiposContato: r.tiposContato, semContatoDias: r.semContatoDias };
+  const dados = { dataInicio: d.dataInicio, tiposContato: r.tiposContato, semContatoDias: r.semContatoDias, metas: plano.metas };
   const novo = () => abrirFormulario({ id, dados, aoSalvar: recarregar });
 
   // o botão "Registrar contato" fica só no cabeçalho da ficha (detalhe.js), para não repetir
@@ -336,6 +344,7 @@ export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNo
 
   return [
     cartaoResumo(r, encerrado),
+    h('div', { class: 'fam-secao-metas' }, cartaoMetas({ id, m: plano, escrita, aoMudar: recarregar })),
     h('div', { class: 'fam-secao-pesquisa' }, cartaoPesquisa({ id, p: pesq, escrita, usuario, aoMudar: recarregar })),
     topo,
     lista,

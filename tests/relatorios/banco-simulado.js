@@ -73,6 +73,15 @@ function responder(sql, p = {}) {
     ];
   }
   if (/FROM questionario WHERE acompanhamento_id = @id/.test(s)) return p.id === 10 ? [INICIAL, FINAL] : [];
+  // F5 (índice de progresso na seção "Evolução" do individual)
+  if (/FROM acompanhamento ac WHERE ac.id = @id AND/.test(s)) {
+    return ACOMPANHAMENTOS.filter((a) => a.id === p.id && permitidasDe(p).includes(a.unidadeId)).map((a) => ({ ...a, usuarioId: 1, dataPrevistaFinal: null, observacoes: null }));
+  }
+  if (/FROM configuracao WHERE chave IN \('indice_tolerancia_pontos'/.test(s)) return [];
+  if (/FROM questionario WHERE acompanhamento_id = @ac/.test(s)) return p.ac === 10 ? [INICIAL, FINAL] : [];
+  if (/FROM acompanhamento_indice/.test(s)) return [];
+  if (/FROM acompanhamento_registro/.test(s) && /COUNT\(\*\) AS total/.test(s)) return [{ total: 3, primeiro: d('2026-02-20'), ultimo: d('2026-04-20') }];
+  if (/FROM acompanhamento_registro/.test(s)) return [{ dataRegistro: d('2026-02-20'), situacao: 'IGUAL' }, { dataRegistro: d('2026-04-20'), situacao: 'MELHORANDO' }];
   if (/FROM questionario_beneficio/.test(s)) return [{ nome: 'Bolsa Família' }, { nome: 'Tarifa Social de Energia' }];
   if (/FROM questionario_destino_economia/.test(s)) return [{ nome: 'Alimentação' }, { nome: 'Educação' }];
   if (/FROM acompanhamento ac WHERE .*ac\.data_inicio <= @fim/.test(s) && /SELECT ac\.unidade_id, ac\.data_inicio/.test(s)) {

@@ -199,6 +199,7 @@ const baseHandlers = (sobreAc = {}) => [
   { teste: /INSERT INTO auditoria/, resp: () => [] },
   { teste: /FROM configuracao/, resp: () => [{ chave: 'alerta_sem_contato_dias', valor: '30' }] },
   { teste: /FROM tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }, { id: 5, nome: 'Outro', exigeTexto: true }] },
+  { teste: /FROM (acompanhamento_meta|registro_meta)/, resp: () => [] },
 ];
 
 test('assistente de outra unidade recebe 404 em todas as rotas de registro e linha do tempo', async () => {

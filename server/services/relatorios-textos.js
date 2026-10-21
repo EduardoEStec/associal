@@ -4,6 +4,7 @@
 // a tela mostra os textos para o profissional editar antes de gerar o .docx.
 
 const { QUESTIONARIO } = require('../lib/dominios');
+const evolucaoTexto = require('./relatorios-evolucao');
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -284,6 +285,7 @@ function montarIndividual(dados) {
     }),
     diagnostico: gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio: acompanhamento.dataInicio }),
     ...impacto,
+    evolucao: evolucaoTexto.gerarTextoEvolucao(dados.evolucao),
     feedback: gerarFeedback({ final }),
     consideracoes: gerarConsideracoesIndividual({ final }),
   };

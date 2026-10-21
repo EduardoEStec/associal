@@ -12,6 +12,7 @@ const SECOES = [
   ['impactoAlimentar', '5. Impacto na Comunidade — melhoria das escolhas alimentares', 5],
   ['impactoDesafios', '5. Impacto na Comunidade — desafios e oportunidades', 5],
   ['impactoEconomico', '5. Impacto na Comunidade — impactos econômicos', 6],
+  ['evolucao', '5. Impacto na Comunidade — evolução durante o acompanhamento (índice de progresso; a tabela é incluída automaticamente)', 6],
   ['feedback', '6. Feedback dos beneficiários', 6],
   ['consideracoes', '7. Considerações finais', 5],
 ];

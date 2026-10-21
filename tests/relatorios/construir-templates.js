@@ -99,6 +99,8 @@ function corpoIndividual() {
     subsecao('Melhoria das escolhas alimentares.'), textoLista('impactoAlimentar'),
     subsecao('Desafios e Oportunidades:'), textoLista('impactoDesafios'),
     subsecao('Impactos Econômicos:'), textoLista('impactoEconomico'),
+    // F5: aparece só quando há evolução (índice de progresso com 2 ou mais pontos) ou texto
+    abre('temEvolucao'), subsecao('Evolução durante o acompanhamento:'), textoLista('evolucao'), par('{@evolucaoTabela}'), par('', { depois: 120 }), fecha('temEvolucao'),
     secao('6. Feedback dos Beneficiários'), textoLista('feedback'),
     secao('7. Considerações finais'), textoLista('consideracoes'),
     vazio(),

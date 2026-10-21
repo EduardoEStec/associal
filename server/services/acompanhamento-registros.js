@@ -14,11 +14,13 @@ const { normalizarData, texto, inteiroPositivo, lancarSeErros } = require('../li
 const familias = require('./familias');
 const contato = require('./acompanhamento-contato');
 const pesquisa = require('./pesquisa');
+const metas = require('./acompanhamento-metas');
+const metasRegras = require('./metas-regras');
 
 const SITUACOES = Object.freeze(['MELHORANDO', 'IGUAL', 'PIORANDO', 'NAO_SEI']);
-const TIPOS_EVENTO = Object.freeze(['INICIO', 'QUESTIONARIO', 'REGISTRO', 'ATENDIMENTO', 'ENCAMINHAMENTO', 'PESQUISA', 'PRAZO', 'ENCERRAMENTO']);
+const TIPOS_EVENTO = Object.freeze(['INICIO', 'QUESTIONARIO', 'REGISTRO', 'ATENDIMENTO', 'ENCAMINHAMENTO', 'PESQUISA', 'META', 'PRAZO', 'ENCERRAMENTO']);
 // Desempate de eventos na mesma data/momento (maior = mais acima na lista, que é do mais novo ao mais antigo)
-const PESO = Object.freeze({ PRAZO: 7, ENCERRAMENTO: 6, QUESTIONARIO: 4, REGISTRO: 4, PESQUISA: 4, ENCAMINHAMENTO: 3, ATENDIMENTO: 2, INICIO: 1 });
+const PESO = Object.freeze({ PRAZO: 7, ENCERRAMENTO: 6, QUESTIONARIO: 4, REGISTRO: 4, PESQUISA: 4, META: 3, ENCAMINHAMENTO: 3, ATENDIMENTO: 2, INICIO: 1 });
 
 const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) : null);
 const paramData = (v) => [tipos.Date, v ?? null];
@@ -81,7 +83,7 @@ async function tiposContatoAtivos(executor = { consultar }) {
 // Leitura
 // ---------------------------------------------------------------------------
 
-const formatarRegistro = (req, r) => ({
+const formatarRegistro = (req, r, metasDoRegistro = []) => ({
   id: r.id,
   dataRegistro: r.dataRegistro,
   tipoContatoId: r.tipoContatoId,
@@ -91,6 +93,7 @@ const formatarRegistro = (req, r) => ({
   situacao: r.situacao,
   resumo: r.resumo ?? null,
   proximoContatoEm: r.proximoContatoEm,
+  metas: metasDoRegistro.map((m) => ({ ...m, dimensaoNome: metasRegras.DIMENSOES[m.dimensao] })),
   autor: { id: r.usuarioId, nome: r.autorNome },
   criadoEm: r.criadoEm,
   alteradoEm: r.alteradoEm,
@@ -101,7 +104,7 @@ const formatarRegistro = (req, r) => ({
 async function listarRegistros(req, acompanhamentoId) {
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
   const hoje = familias.hojeIso();
-  const [config, linhas, tiposContato] = await Promise.all([
+  const [config, linhas, tiposContato, metasPorReg] = await Promise.all([
     familias.lerConfiguracao(),
     consultar(
       `SELECT r.id, r.data_registro, r.tipo_contato_id, tc.nome AS tipo_contato_nome, r.tipo_contato_outro, r.houve_contato,
@@ -114,6 +117,7 @@ async function listarRegistros(req, acompanhamentoId) {
       { id: ac.id },
     ),
     tiposContatoAtivos(),
+    metas.metasPorRegistro(ac.id),
   ]);
   return {
     acompanhamentoId: ac.id,
@@ -121,7 +125,7 @@ async function listarRegistros(req, acompanhamentoId) {
     semContatoDias: config.semContatoDias,
     resumo: await contato.lerResumoContato(ac, hoje, config.semContatoDias),
     tiposContato: tiposContato.map((t) => ({ id: t.id, nome: t.nome, exigeTexto: !!t.exigeTexto })),
-    registros: linhas.map((r) => formatarRegistro(req, r)),
+    registros: linhas.map((r) => formatarRegistro(req, r, metasPorReg.get(r.id) || [])),
   };
 }
 
@@ -155,7 +159,8 @@ async function criarRegistro(req, acompanhamentoId, corpo) {
     const { dados, erros: problemas } = validarRegistro(corpo, {
       hoje, dataInicio: isoData(ac.dataInicio), tiposAtivos: (await tiposContatoAtivos(tx)).map((t) => ({ id: t.id, exigeTexto: !!t.exigeTexto })),
     });
-    lancarSeErros(problemas);
+    const marcadas = metasRegras.validarMetasDoRegistro(corpo.metas, { houveContato: dados.houveContato, abertas: await metas.metasMarcaveis(tx, ac.id) });
+    lancarSeErros({ ...problemas, ...marcadas.erros });
     const [novo] = await tx.consultar(
       `INSERT INTO acompanhamento_registro
          (acompanhamento_id, usuario_id, data_registro, tipo_contato_id, tipo_contato_outro, houve_contato, situacao,
@@ -168,8 +173,9 @@ async function criarRegistro(req, acompanhamentoId, corpo) {
         proximo: paramData(dados.proximoContatoEm),
       },
     );
+    if (marcadas.itens.length) await metas.gravarMetasDoRegistro(tx, novo.id, marcadas.itens);
     await registrarAuditoria(req, 'CRIAR', 'acompanhamento_registro', novo.id,
-      { acompanhamentoId: ac.id, houveContato: dados.houveContato, situacao: dados.situacao }, tx);
+      { acompanhamentoId: ac.id, houveContato: dados.houveContato, situacao: dados.situacao, metas: marcadas.itens.length }, tx);
     return novo.id;
   });
   return { id };
@@ -189,7 +195,12 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
       { id: registro.id });
     if (atual && !ativos.some((t) => t.id === atual.id)) ativos.push({ id: atual.id, exigeTexto: !!atual.exigeTexto });
     const { dados, erros: problemas } = validarRegistro(corpo, { hoje, dataInicio: isoData(ac.dataInicio), tiposAtivos: ativos });
-    lancarSeErros(problemas);
+    // metas: só mexe nelas se vierem no corpo (ou se virou tentativa sem contato, que não marca metas)
+    const mexeEmMetas = corpo.metas !== undefined || !dados.houveContato;
+    const marcadas = mexeEmMetas
+      ? metasRegras.validarMetasDoRegistro(corpo.metas ?? [], { houveContato: dados.houveContato, abertas: await metas.metasMarcaveis(tx, ac.id, registro.id) })
+      : { erros: {}, itens: [] };
+    lancarSeErros({ ...problemas, ...marcadas.erros });
     await tx.consultar(
       `UPDATE acompanhamento_registro
           SET data_registro = @data, tipo_contato_id = @tipo, tipo_contato_outro = @outro, houve_contato = @houve,
@@ -202,6 +213,7 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
         proximo: paramData(dados.proximoContatoEm),
       },
     );
+    if (mexeEmMetas) await metas.gravarMetasDoRegistro(tx, registro.id, marcadas.itens);
     await registrarAuditoria(req, 'ALTERAR', 'acompanhamento_registro', registro.id, { acompanhamentoId: ac.id }, tx);
   });
 }
@@ -231,11 +243,15 @@ async function anularRegistro(req, acompanhamentoId, registroId, corpo) {
 
 const TITULO_QUESTIONARIO = {
   INICIAL: 'Questionário inicial concluído',
+  REAVALIACAO: 'Reavaliação rápida concluída',
   FINAL: 'Questionário final concluído',
 };
 
+const TITULO_META_FIM = { ATINGIDA: 'Meta atingida', NAO_ATINGIDA: 'Meta não atingida', CANCELADA: 'Meta cancelada' };
+const ROTULO_AVANCO = { AVANCOU: 'avançou', SEM_MUDANCA: 'sem mudança', RETROCEDEU: 'retrocedeu' };
+
 // Pura: transforma as linhas lidas em eventos {data, momento, tipo, titulo, ...}. Exportada para teste.
-function montarEventos({ ac, hoje, registros, atendimentos, questionarios, familiaNome, pesquisas = [] }) {
+function montarEventos({ ac, hoje, registros, atendimentos, questionarios, familiaNome, pesquisas = [], metas: metasAc = [] }) {
   const eventos = [];
   const txt = (v) => v || null;
   const inicio = isoData(ac.dataInicio);
@@ -259,7 +275,9 @@ function montarEventos({ ac, hoje, registros, atendimentos, questionarios, famil
     eventos.push({
       tipo: 'REGISTRO', data: isoData(r.dataRegistro), momento: new Date(r.criadoEm).toISOString(),
       titulo: r.houveContato ? `Contato: ${quem}` : `Tentativa sem sucesso: ${quem}`,
-      detalhe: r.houveContato ? null : 'Não foi possível falar com a família.', // a situação aparece no selo
+      detalhe: r.houveContato
+        ? ((r.metasTratadas || []).length ? `Metas: ${r.metasTratadas.map((m) => `${m.descricao} (${ROTULO_AVANCO[m.avanco]})`).join('; ')}` : null)
+        : 'Não foi possível falar com a família.', // a situação aparece no selo
       resumo: txt(r.resumo), autor: r.autorNome,
       situacao: r.houveContato ? r.situacao : null,
       proximoContatoEm: isoData(r.proximoContatoEm),
@@ -281,6 +299,24 @@ function montarEventos({ ac, hoje, registros, atendimentos, questionarios, famil
       eventos.push({
         tipo: 'ENCAMINHAMENTO', data, momento, titulo: 'Encaminhamentos', detalhe: enc, resumo: null, autor: a.autorNome,
         antesDoInicio: data < inicio, referencia: { tipo: 'ATENDIMENTO', id: a.id },
+      });
+    }
+  }
+
+  for (const m of metasAc) {
+    const dimensao = metasRegras.DIMENSOES[m.dimensao] || m.dimensao;
+    const prazo = m.prazo ? ` · prazo ${isoData(m.prazo).split('-').reverse().join('/')}` : '';
+    eventos.push({
+      tipo: 'META', data: isoData(m.criadoEm), momento: new Date(m.criadoEm).toISOString(),
+      titulo: 'Meta definida', detalhe: `${dimensao}${prazo}`, resumo: txt(m.descricao), autor: m.autorNome,
+      referencia: { tipo: 'META', id: m.id },
+    });
+    if (m.status !== 'EM_ANDAMENTO' && m.concluidaEm) {
+      const data = isoData(m.concluidaEm);
+      eventos.push({
+        tipo: 'META', data, momento: m.alteradoEm ? new Date(m.alteradoEm).toISOString() : `${data}T00:00:00.000Z`,
+        titulo: TITULO_META_FIM[m.status] || 'Meta encerrada', detalhe: dimensao, resumo: txt(m.descricao), autor: m.autorNome,
+        referencia: { tipo: 'META', id: m.id },
       });
     }
   }
@@ -353,7 +389,7 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
   const paramsAt = { pessoa: familia.responsavelPessoaId, hoje: paramData(hoje) };
   const filtroUnidade = clausulaUnidades(req, 'a.unidade_id', paramsAt);
 
-  const [registros, atendimentos, questionarios, assistente, pesquisas] = await Promise.all([
+  const [registros, atendimentos, questionarios, assistente, pesquisas, metasAc, metasPorReg] = await Promise.all([
     consultar(
       `SELECT r.id, r.data_registro, r.tipo_contato_outro, tc.nome AS tipo_contato_nome, r.houve_contato, r.situacao, r.resumo,
               r.proximo_contato_em, u.nome AS autor_nome, r.criado_em
@@ -382,11 +418,13 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
       { id: ac.id }),
     consultarUm('SELECT nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
     pesquisa.paraLinhaDoTempo(req, ac.id),
+    metas.paraLinhaDoTempo(ac.id),
+    metas.metasPorRegistro(ac.id),
   ]);
 
   let eventos = montarEventos({
-    ac: { ...ac, assistenteNome: assistente?.nome }, hoje, registros, atendimentos, questionarios,
-    familiaNome: familia?.nome, pesquisas,
+    ac: { ...ac, assistenteNome: assistente?.nome }, hoje, registros: registros.map((r) => ({ ...r, metasTratadas: metasPorReg.get(r.id) || [] })), atendimentos, questionarios,
+    familiaNome: familia?.nome, pesquisas, metas: metasAc,
   });
   if (filtroTipos) eventos = eventos.filter((e) => filtroTipos.has(e.tipo));
   const total = eventos.length;

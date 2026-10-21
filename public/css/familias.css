@@ -185,3 +185,52 @@ ul.pesq-rev > .pesq-rev-item:not(:has(button)) { display: flex; flex-direction: 
 }
 /* o atributo hidden precisa vencer o display das classes (passo do aviso não tem navegação) */
 .q-nav[hidden], .pesq-sair-linha[hidden], .pesq-cabecalho[hidden], .pesq-sair[hidden] { display: none; }
+
+/* Indicadores de progresso (aba Indicadores da ficha) */
+.ind-titulo { margin: var(--esp-2) 0 var(--esp-3); }
+.ind-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-4); margin-bottom: var(--esp-3); }
+.ind-resumo-numero { display: flex; align-items: baseline; gap: var(--esp-2); }
+.ind-grande { font-size: 3rem; font-weight: 800; line-height: 1; color: var(--cor-primaria-escura); }
+.ind-resumo-texto { flex: 1 1 220px; display: grid; gap: var(--esp-1); }
+.ind-resumo-texto p { margin: 0; }
+.ind-linhas { list-style: none; margin: var(--esp-3) 0 0; padding: 0; display: grid; gap: var(--esp-4); }
+.ind-linha-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-2); }
+.ind-barra { position: relative; height: 28px; margin: var(--esp-2) 6px var(--esp-1); }
+.ind-trilho { position: absolute; left: 0; right: 0; top: 11px; height: 6px; border-radius: 3px; background: var(--cor-cinza); }
+.ind-marcador {
+  position: absolute; top: 4px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%;
+  border: 3px solid var(--cor-superficie); box-shadow: 0 0 0 1px var(--cor-texto-suave); box-sizing: border-box;
+}
+.ind-valores { display: flex; flex-wrap: wrap; gap: var(--esp-1) var(--esp-4); }
+.ind-valor { display: inline-flex; align-items: center; gap: var(--esp-1); }
+.ind-chave { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.p-inicial { background: var(--cor-texto-suave); }
+.p-reavaliacao { background: var(--cor-roxo); }
+.p-final { background: var(--cor-primaria); }
+.ind-figura { margin: var(--esp-3) 0; }
+.ind-figura h3 { margin-top: 0; }
+.ind-grafico { display: block; width: 100%; height: auto; max-height: 260px; }
+.ind-grade { stroke: var(--cor-borda); stroke-width: 1; }
+.ind-eixo { fill: var(--cor-texto-suave); font-size: 10px; }
+.ind-linha-geral { stroke: var(--cor-primaria); stroke-width: 2.5; stroke-linejoin: round; }
+.ind-linha-registros { stroke: var(--cor-roxo); stroke-width: 2; stroke-dasharray: 5 4; }
+.ind-ponto { stroke: var(--cor-superficie); stroke-width: 2; }
+.ind-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-1) var(--esp-4); list-style: none; margin: var(--esp-2) 0 0; padding: 0; }
+.ind-legenda li { display: inline-flex; align-items: center; gap: var(--esp-2); }
+.ind-tracejo { width: 22px; height: 0; border-top: 3px solid var(--cor-primaria); }
+.ind-tracejo-registros { border-top: 2px dashed var(--cor-roxo); }
+.ind-reavaliacao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-top: var(--esp-3); }
+.ind-reavaliacao p { margin: 0; flex: 1 1 260px; }
+.ind-pendente { border-color: var(--cor-aviso); background: var(--cor-aviso-clara); }
+.ind-como { margin-top: var(--esp-3); }
+.ind-como summary { cursor: pointer; font-weight: 700; min-height: var(--alvo-toque); display: flex; align-items: center; }
+@media (max-width: 639px) {
+  .ind-grande { font-size: 2.5rem; }
+  .ind-reavaliacao .btn { width: 100%; }
+}
+@media print { .ind-como { display: none; } }
+.ind-ponto.p-inicial { fill: var(--cor-texto-suave); }
+.ind-ponto.p-reavaliacao { fill: var(--cor-roxo); }
+.ind-ponto.p-final { fill: var(--cor-primaria); }
+@media (max-width: 639px) { .fam-aba { padding: 0 var(--esp-1); } }
+@media (max-width: 639px) { .fam-aba { font-size: 0.8125rem; letter-spacing: -0.01em; } }

@@ -5,6 +5,7 @@ import { formatarTelefone } from '../telefone.js';
 import { h, toast, carregando, abrirModal, formatarData, formatarCpf, mostrarErrosCampos, hojeIso } from '../ui.js';
 import { renderAbaAcompanhamento } from './acompanhamento.js';
 import { renderLinhaTempo } from './linha-tempo.js';
+import { renderIndicadores } from './indicadores.js';
 import {
   carregarApoio, cabecalhoPagina, podeEscrever, seloStatus, seloFinal, rotuloSimNao, textoOuTraco, campo, montar,
 } from './util.js';
@@ -64,6 +65,12 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
       h('a', { href: `#/a/${id}/pesquisa/${pend.momento}` }, 'Aplicar agora'))
     : null;
 
+  const semMeta = d.status === 'EM_ANDAMENTO' && d.metas?.semMeta && escrita
+    ? h('div', { class: 'aviso aviso-aviso', role: 'status' },
+      `Família sem meta há ${d.metas.semMeta.dias} dias. `,
+      h('a', { href: `#/a/${id}/acompanhamento` }, 'Definir meta'))
+    : null;
+
   const membros = d.membros.length === 0
     ? h('p', { class: 'texto-pequeno texto-suave' }, 'Nenhum outro membro cadastrado.')
     : h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela tabela-responsiva' },
@@ -107,7 +114,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
   ];
 
   const abas = h('nav', { class: 'fam-abas', 'aria-label': 'Seções da ficha da família' },
-    [['resumo', 'Resumo', `#/a/${id}`], ['acompanhamento', 'Acompanhamento', `#/a/${id}/acompanhamento`], ['linha-do-tempo', 'Linha do tempo', `#/a/${id}/linha-do-tempo`]]
+    [['resumo', 'Resumo', `#/a/${id}`], ['acompanhamento', 'Acompanhamento', `#/a/${id}/acompanhamento`], ['linha-do-tempo', 'Linha do tempo', `#/a/${id}/linha-do-tempo`], ['indicadores', 'Indicadores', `#/a/${id}/indicadores`]]
       .map(([chave, rotulo, href]) => h('a', { class: 'fam-aba', href, 'aria-current': chave === aba ? 'page' : null }, rotulo)));
 
   let corpo;
@@ -115,6 +122,8 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
     corpo = await renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNovo: !!opcoes.abrirNovo, usuario });
   } else if (aba === 'linha-do-tempo') {
     corpo = await renderLinhaTempo({ id, d });
+  } else if (aba === 'indicadores') {
+    corpo = await renderIndicadores({ id, d, escrita });
   } else {
     corpo = corpoResumo;
   }
@@ -128,6 +137,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
         + (d.dataEncerramento ? ` · encerrado em ${formatarData(d.dataEncerramento)}` : ''))),
     alerta,
     semContato,
+    semMeta,
     pesquisaPendente,
     encerrado && d.observacoes ? h('div', { class: 'aviso' }, h('strong', {}, 'Observações: '), d.observacoes) : null,
 

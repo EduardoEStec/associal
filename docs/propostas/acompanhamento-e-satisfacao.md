@@ -499,6 +499,14 @@ Escopo imediato: **F2**, abaixo.
 - **Auditoria:** inalterada. Cada criação, alteração e anulação grava o `usuario_id` de quem fez (inclusive o ADMIN); a auditoria da pesquisa continua sem o conteúdo das respostas.
 - **Atenção ao D12 (LGPD):** o aviso de consentimento provisório diz que as respostas "só podem ser vistas pela equipe do Serviço Social e pela coordenação". Se o ADMIN for a TI e não fizer parte da coordenação, o jurídico/encarregado deve confirmar essa redação e a base legal do acesso.
 
+### 10.4 F4 — escopo fechado (plano de metas)
+
+- Migração `082_acompanhamento_meta.sql`: `acompanhamento_meta` (dimensão, descrição até 300, prazo opcional, status, `concluida_em`, autor) e `registro_meta` (avanço por registro), mais a configuração `alerta_sem_meta_dias` = 30 (7 a 365, editável pela coordenação). Contrato: `docs/API-METAS.md`.
+- **Ajustes em relação ao rascunho da seção 4.2** (pedidos ao abrir a F4): cinco dimensões (alimentação, renda, economia, autonomia, outra; "acesso a direitos" ficou de fora), quatro situações (em andamento, atingida, não atingida, cancelada; sem "aberta") e o avanço por contato com três valores (avançou, sem mudança, retrocedeu).
+- Metas **opcionais** (D7). Alerta: família em andamento sem nenhuma meta em andamento há mais de 30 dias (do início ou da última meta encerrada), na ficha, na aba Acompanhamento e na tela Início.
+- Telas: cartão "Plano de metas" na aba Acompanhamento (nova meta, editar, marcar como atingida, encerradas recolhidas, selo de prazo vencido), bloco "Metas tratadas neste contato" no formulário de registro, eventos de meta na linha do tempo (filtro "Metas").
+- Sem exclusão: meta que não faz mais sentido vira "cancelada". O plano é da equipe: qualquer perfil de escrita com acesso à unidade edita as metas (a auditoria guarda quem fez). Fora do escopo: vínculo de famílias às ações (opcional na proposta) e meta vencida como alerta no painel (F6).
+
 ---
 
 ## Apêndice A — Rascunho das tabelas principais (só ilustrativo; não é migração)

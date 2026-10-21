@@ -16,7 +16,10 @@ const numeroBr = (v) => Number(String(v).replace(',', '.'));
 
 export async function renderQuestionario(ctx, acId, tipoUrl) {
   const { usuario, conteudo, navegar } = ctx;
-  const tipo = String(tipoUrl).toUpperCase() === 'FINAL' ? 'FINAL' : 'INICIAL';
+  const pedido = String(tipoUrl).toUpperCase();
+  const tipo = ['FINAL', 'REAVALIACAO'].includes(pedido) ? pedido : 'INICIAL';
+  const reavaliacao = tipo === 'REAVALIACAO';
+  const NOME_TIPO = { INICIAL: 'Questionário inicial', REAVALIACAO: 'Reavaliação rápida', FINAL: 'Questionário final' };
   montar(conteudo, carregando());
 
   const [modelo, dados, apoio, ficha] = await Promise.all([
@@ -288,7 +291,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
       sujo = false;
       toast.sucesso(jaConcluido ? 'Alterações salvas.' : 'Questionário concluído.');
       const voltarPara = consumirRetorno(acId); // veio do botão Formulário do atendimento
-      if (voltarPara) location.href = voltarPara; else navegar(`#/a/${acId}`);
+      if (voltarPara) location.href = voltarPara; else navegar(reavaliacao ? `#/a/${acId}/indicadores` : `#/a/${acId}`);
     } catch (e) {
       if (e instanceof ErroApi && e.status === 400 && e.detalhes) {
         errosPendentes = e.detalhes;
@@ -312,10 +315,12 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     : null;
 
   montar(conteudo, 
-    cabecalhoPagina(`Questionário ${tipo === 'INICIAL' ? 'inicial' : 'final'}`, { voltar: { href: `#/a/${acId}`, texto: nomeFamilia } }),
+    cabecalhoPagina(NOME_TIPO[tipo], { voltar: { href: reavaliacao ? `#/a/${acId}/indicadores` : `#/a/${acId}`, texto: nomeFamilia } }),
     aviso,
-    tipo === 'FINAL' && editavel
-      ? h('p', { class: 'texto-pequeno texto-suave' }, 'As perguntas estão no presente ("hoje"): compare com o questionário inicial.') : null,
+    tipo !== 'INICIAL' && editavel
+      ? h('p', { class: 'texto-pequeno texto-suave' }, reavaliacao
+        ? 'Reavaliação rápida da metade do acompanhamento: só as perguntas de situação atual (cerca de 3 minutos).'
+        : 'As perguntas estão no presente ("hoje"): compare com o questionário inicial.') : null,
     h('div', { class: 'card q-cabecalho' }, titulo, barra, pontos),
     area,
     h('div', { class: 'q-nav' }, status, h('div', { class: 'q-nav-botoes' }, botaoVoltar, botaoAvancar)),

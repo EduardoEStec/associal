@@ -11,6 +11,8 @@ const questionarioDados = require('../services/questionario-dados');
 const { montarModelo } = require('../services/questionario');
 const registros = require('../services/acompanhamento-registros');
 const pesquisa = require('../services/pesquisa');
+const metas = require('../services/acompanhamento-metas');
+const indicadores = require('../services/indice-dados');
 
 const router = express.Router();
 
@@ -21,7 +23,8 @@ const escrita = requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN');
 
 // GET /api/familias/questionario/modelo?tipo=INICIAL|FINAL — perguntas, textos e opções
 router.get('/questionario/modelo', (req, res) => {
-  res.json(montarModelo(String(req.query.tipo || 'INICIAL').toUpperCase() === 'FINAL' ? 'FINAL' : 'INICIAL'));
+  const tipo = String(req.query.tipo || 'INICIAL').toUpperCase();
+  res.json(montarModelo(['FINAL', 'REAVALIACAO'].includes(tipo) ? tipo : 'INICIAL'));
 });
 
 // GET /api/familias/comparacao?inicio=&fim=&unidadeId= — consolidado inicial × final
@@ -53,6 +56,10 @@ router.put('/acompanhamentos/:id/questionarios/:tipo', escrita, async (req, res)
   res.json(await questionarioDados.salvar(req, req.params.id, req.params.tipo, req.body || {}));
 });
 
+router.get('/acompanhamentos/:id/indicadores', async (req, res) => {
+  res.json(await indicadores.obterIndicadores(req, req.params.id));
+});
+
 router.get('/acompanhamentos/:id/comparacao', async (req, res) => {
   res.json(await questionarioDados.comparacaoFamilia(req, req.params.id));
 });
@@ -75,6 +82,21 @@ router.put('/acompanhamentos/:id/registros/:registroId', escrita, async (req, re
 router.post('/acompanhamentos/:id/registros/:registroId/anular', escrita, async (req, res) => {
   await registros.anularRegistro(req, req.params.id, req.params.registroId, req.body || {});
   res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+// ----- plano de metas (F4) -----
+
+router.get('/acompanhamentos/:id/metas', async (req, res) => {
+  res.json(await metas.listar(req, req.params.id));
+});
+
+router.post('/acompanhamentos/:id/metas', escrita, async (req, res) => {
+  res.status(201).json(await metas.criar(req, req.params.id, req.body || {}));
+});
+
+router.put('/acompanhamentos/:id/metas/:metaId', escrita, async (req, res) => {
+  await metas.atualizar(req, req.params.id, req.params.metaId, req.body || {});
+  res.json(await metas.listar(req, req.params.id));
 });
 
 // ----- pesquisa de satisfação identificada (F3) -----

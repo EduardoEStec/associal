@@ -4,6 +4,8 @@ Módulo 3 — Acompanhamento Familiar. Exige sessão. **LGPD:** família só é 
 permitida ao usuário (outra unidade ⇒ `404`). Erros no formato padrão (CONVENCOES §4). Escritas exigem `X-Requested-With: fetch`
 e perfil `ASSISTENTE`, `COORDENADOR` ou `ADMIN` (V12: o ADMIN opera como a coordenação). Datas `AAAA-MM-DD`; colunas DATE chegam como `…T00:00:00.000Z`.
 
+Complementos: registros e linha do tempo em `docs/API-ACOMPANHAMENTO.md`, pesquisa de satisfação em `docs/API-PESQUISA.md`, plano de metas em `docs/API-METAS.md`.
+
 Conceitos: **família** = responsável (pessoa por CPF) + membros; **acompanhamento** = família numa unidade, com `status`
 `EM_ANDAMENTO | CONCLUIDO | DESLIGADO`. Um acompanhamento tem no máximo um questionário `INICIAL` e um `FINAL`. Todos os `:id`
 abaixo são o **`acompanhamentoId`**.
@@ -143,3 +145,42 @@ filtra a `dataAplicacao` do **FINAL** (`inicio`/`fim` opcionais, inclusivos). `u
 ```
 Percentuais sobre `totalFamilias`, 2 casas. Perguntas abertas (texto) ficam fora do consolidado. `percentualPassaramAPoupar` é `null` quando ninguém
 "não poupava" antes. Médias ignoram famílias sem resposta naquela pergunta.
+
+## Índice de progresso e reavaliação rápida (F5)
+
+Regra em `server/services/indice-progresso.js` (funções puras, testadas em `tests/familias/indice.test.js`); proposta, seção 5.
+
+**Cálculo.** Cada resposta vira 0–100 (posição na escala ordenada; sim = 100/não = 0; renda **per capita** = 1b ÷ 1a por faixa do salário mínimo de referência:
+até ¼ → 0 · ¼–½ → 33 · ½–1 → 67 · acima de 1 → 100; proporção com renda = 1c ÷ 1a). Quatro dimensões: `ALIMENTACAO` (2a, 2b, 2c, 2d), `RENDA` (1b, 1c),
+`ECONOMIA` (3a, 3b, 3d, 3e), `AUTONOMIA` (4a, 4c); o bloco 5 não entra. Nível da dimensão = média dos itens respondidos, **só existe com pelo menos metade
+dos itens respondidos** (senão `null`, nunca zero). Itens de percepção (2c, 2d, 3e) pesam metade no INICIAL. `GERAL` = média das dimensões com nível.
+Semáforo entre dois pontos: diferença ≥ +tolerância → `melhorou`, ≤ −tolerância → `piorou`, senão `igual`; sem nível nos dois lados → `sem_dados`.
+O geral da comparação usa só as dimensões com nível nos dois pontos.
+
+**Instantâneo.** Ao concluir (ou corrigir) um questionário, o serviço grava 5 linhas em `acompanhamento_indice` (GERAL + 4 dimensões) com `versao_regra` e
+`parametros` (salário mínimo usado, renda per capita). `node scripts/recalcular-indices.js` refaz todos (trava: só no Docker de teste; `--banco-real` para o real).
+
+**Reavaliação rápida (D9a).** Questionário `REAVALIACAO` (mesma tabela `questionario`, uma por acompanhamento) com 10 campos de estado: 1a (confirma o nº de pessoas), 1b, 1c, 2a, 2b, 3a, 3b (+ valor), 3d, 4a, 4c.
+Textos no presente; as perguntas oficiais do INICIAL e do FINAL não mudam. Só depois do INICIAL concluído; não é criada depois do FINAL concluído (`409`); data entre as dos demais. As rotas de questionário aceitam `:tipo` = `INICIAL | REAVALIACAO | FINAL`
+e `GET /api/familias/questionario/modelo?tipo=REAVALIACAO` devolve 4 blocos. Concluir exige só as 10 perguntas; o resto nunca é gravado.
+
+### `GET /api/familias/acompanhamentos/:id/indicadores`
+Leitura para quem acessa a unidade (ADMIN e COORDENADOR: todas).
+```json
+{ "acompanhamentoId": 3, "status": "EM_ANDAMENTO", "versaoRegra": 1, "tolerancia": 5, "salarioMinimo": 1621,
+  "rotulos": { "GERAL": "Índice geral", "ALIMENTACAO": "Alimentação", "RENDA": "Renda e trabalho", "ECONOMIA": "Economia e poupança", "AUTONOMIA": "Autonomia" },
+  "pontos": [ { "questionarioId": 12, "tipo": "INICIAL", "dataRef": "2026-08-22", "versaoRegra": 1, "desatualizado": false,
+                "dimensoes": { "ALIMENTACAO": { "nivel": 5.56, "itensValidos": 4, "itensTotal": 4 }, "RENDA": { … }, "ECONOMIA": { … }, "AUTONOMIA": { … } },
+                "geral": { "nivel": 6.3, "dimensoes": 4 }, "parametros": { "salarioMinimo": 1621, "rendaPerCapita": 300 } } ],
+  "comparacao": { "de": "INICIAL", "para": "FINAL", "geral": { "antes": 6.3, "depois": 67.7, "diferenca": 61.4, "selo": "melhorou", "dimensoesComparadas": 4 },
+                  "dimensoes": { "ALIMENTACAO": { "antes": 5.56, "depois": 87.5, "diferenca": 81.9, "selo": "melhorou" } } },
+  "passos": [ { "de": "INICIAL", "para": "REAVALIACAO", "geral": { … }, "dimensoes": { … } } ],
+  "reavaliacao": { "situacao": "PENDENTE", "dataPrevista": "2026-10-06", "existe": false, "concluida": false },
+  "situacoesRegistros": [ { "data": "2026-09-02", "situacao": "MELHORANDO" } ] }
+```
+`pontos` em ordem do tempo; `comparacao` = primeiro × último ponto (`null` com menos de 2). `reavaliacao.situacao`: `NAO_SE_APLICA` · `AGENDADA` · `PENDENTE` (passou de `dataInicio + reavaliacao_dias`) · `CONCLUIDA` · `DISPENSADA` (final já concluído).
+Pontos de questionários concluídos antes da F5 são calculados na hora (`calculadoAgora`) até rodar o script de recálculo.
+
+**Configurações** (Administração > Configurações, COORDENADOR e ADMIN): `indice_tolerancia_pontos` (5), `salario_minimo_referencia` (R$ 1621, atualizar todo ano), `reavaliacao_dias` (45).
+
+**Relatório individual.** Subseção "Evolução durante o acompanhamento" (texto editável `textos.evolucao` + tabela das dimensões inicial → reavaliação → final com o selo escrito); só aparece com 2 ou mais pontos.

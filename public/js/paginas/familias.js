@@ -2,11 +2,12 @@
 //   #/                       lista de famílias
 //   #/nova                   cadastro
 //   #/a/<id>                 ficha da família (aba Resumo)
+//   #/a/<id>/indicadores     aba Indicadores (índice de progresso)
 //   #/a/<id>/acompanhamento  aba Acompanhamento (registros de contato); /novo abre o formulário
 //   #/a/<id>/linha-do-tempo  aba Linha do tempo
 //   #/a/<id>/pesquisa/<FINAL|SEMESTRAL|AVULSA>  pesquisa de satisfação (passo a passo)
 //   #/a/<id>/editar          edição
-//   #/a/<id>/q/INICIAL|FINAL questionário em etapas
+//   #/a/<id>/q/INICIAL|REAVALIACAO|FINAL questionário em etapas
 //   #/a/<id>/comparacao      comparação inicial × final
 import { iniciarPagina } from '../layout.js';
 import { h, toast } from '../ui.js';
@@ -54,6 +55,7 @@ async function rotear() {
       else if (partes[2] === 'comparacao') await renderComparacao(ctx, id);
       else if (partes[2] === 'acompanhamento') await renderDetalhe(ctx, id, 'acompanhamento', { abrirNovo: partes[3] === 'novo' });
       else if (partes[2] === 'linha-do-tempo') await renderDetalhe(ctx, id, 'linha-do-tempo');
+      else if (partes[2] === 'indicadores') await renderDetalhe(ctx, id, 'indicadores');
       else if (partes[2] === 'pesquisa') await renderPesquisa(ctx, id, partes[3]);
       else erroRota('Página não encontrada.');
     } else erroRota('Página não encontrada.');

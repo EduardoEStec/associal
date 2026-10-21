@@ -180,6 +180,17 @@ const BLOCOS = [
 
 const PERGUNTAS = BLOCOS.flatMap((b) => b.perguntas.map((p) => ({ ...p, bloco: b.numero })));
 
+// Reavaliação rápida (metade do prazo): só as perguntas de ESTADO que alimentam o índice de progresso (F5, D9a).
+// Os textos são os do questionário final ("hoje"); a pergunta 1a só confirma o nº de pessoas (base da renda per capita).
+const PERGUNTAS_REAVALIACAO = Object.freeze([
+  'qtdMembrosFamilia', 'rendaMensalMedia', 'qtdMembrosComRenda',
+  'acessoAlimentosInNatura', 'frequenciaFrutasVerduras',
+  'conseguePoupar', 'economiaMensalFaixa', 'capacidadePoupanca',
+  'empoderadaDecisoes', 'melhoriaPlanejamento',
+]);
+// Colunas gravadas na reavaliação: as perguntas acima + o valor aproximado da economia (detalhe de 3b)
+const CAMPOS_REAVALIACAO = Object.freeze([...PERGUNTAS_REAVALIACAO, 'economiaMensalValor']);
+
 // Colunas escalares de dbo.questionario (campo da API -> coluna) — fora data/concluido.
 const COLUNAS = Object.freeze({
   qtdMembrosFamilia: 'qtd_membros_familia',
@@ -213,13 +224,14 @@ const CAMPOS_TEXTO = ['contribuicaoAutonomia', 'impactoComunidade', 'oQueMelhora
 
 // Modelo entregue à tela: textos conforme o tipo (INICIAL "como está" / FINAL "hoje").
 function montarModelo(tipo) {
-  const final = tipo === 'FINAL';
+  const reavaliacao = tipo === 'REAVALIACAO';
+  const final = tipo === 'FINAL' || reavaliacao;
   return {
     tipo,
     blocos: BLOCOS.map((b) => ({
       numero: b.numero,
       titulo: b.titulo,
-      perguntas: b.perguntas.map((p) => {
+      perguntas: b.perguntas.filter((p) => !reavaliacao || PERGUNTAS_REAVALIACAO.includes(p.campo)).map((p) => {
         const saida = {
           campo: p.campo,
           codigo: p.codigo,
@@ -238,7 +250,7 @@ function montarModelo(tipo) {
         }
         return saida;
       }),
-    })),
+    })).filter((b) => b.perguntas.length > 0),
   };
 }
 
@@ -270,7 +282,8 @@ function listaDeIds(v) {
 // Normaliza e valida o corpo do PUT do questionário. NÃO consulta o banco: a checagem de
 // existência das opções de apoio (beneficioIds/destinoEconomiaIds) é feita pelo service.
 // `concluir`: exige as respostas fechadas. Retorna { valores, beneficioIds, destinoEconomiaIds, erros }.
-function validarRespostas(corpo, { concluir, hoje }) {
+function validarRespostas(corpo, { concluir, hoje, tipo }) {
+  const reavaliacao = tipo === 'REAVALIACAO';
   const erros = {};
   const origem = corpo && typeof corpo === 'object' ? corpo : {};
   const v = {};
@@ -340,17 +353,17 @@ function validarRespostas(corpo, { concluir, hoje }) {
 
   if (concluir) {
     const falta = 'Responda esta pergunta para concluir.';
-    const obrigatorios = [
+    const obrigatorios = reavaliacao ? PERGUNTAS_REAVALIACAO : [
       'qtdMembrosFamilia', 'rendaMensalMedia', 'qtdMembrosComRenda', 'recebeAuxilio',
       ...CAMPOS_ESCOLHA, 'conseguePoupar', 'empoderadaDecisoes', 'melhoriaPlanejamento', 'recomendaria',
     ];
     for (const campo of obrigatorios) {
       if (!erros[campo] && (v[campo] === null || v[campo] === undefined)) erros[campo] = falta;
     }
-    if (v.recebeAuxilio === true && !erros.beneficioIds && (beneficioIds || []).length === 0) {
+    if (!reavaliacao && v.recebeAuxilio === true && !erros.beneficioIds && (beneficioIds || []).length === 0) {
       erros.beneficioIds = 'Informe qual(is) auxílio(s) a família recebe.';
     }
-    if (!erros.destinoEconomiaIds && (destinoEconomiaIds || []).length === 0) {
+    if (!reavaliacao && !erros.destinoEconomiaIds && (destinoEconomiaIds || []).length === 0) {
       erros.destinoEconomiaIds = 'Informe para onde vai a economia (escolha ao menos uma opção).';
     }
     if (v.economiaMensalFaixa === 'ACIMA_300' && !erros.economiaMensalValor && v.economiaMensalValor === null) {
@@ -358,6 +371,11 @@ function validarRespostas(corpo, { concluir, hoje }) {
     }
   }
 
+  if (reavaliacao) {
+    // só as perguntas de estado existem na reavaliação: o resto nunca é gravado
+    for (const campo of Object.keys(COLUNAS)) if (!CAMPOS_REAVALIACAO.includes(campo)) v[campo] = null;
+    return { valores: v, beneficioIds: [], destinoEconomiaIds: [], erros };
+  }
   return {
     valores: v,
     beneficioIds: beneficioIds || [],
@@ -618,6 +636,7 @@ function contarTendencias(p, pares) {
 module.exports = {
   BLOCOS,
   PERGUNTAS,
+  PERGUNTAS_REAVALIACAO,
   ESCALAS,
   COLUNAS,
   TENDENCIA,

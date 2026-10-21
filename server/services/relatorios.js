@@ -7,13 +7,14 @@ const { normalizarData, apenasDigitos, lancarSeErros } = require('../lib/validac
 const dados = require('./relatorios-dados');
 const textos = require('./relatorios-textos');
 const docx = require('./relatorios-docx');
+const evolucaoRel = require('./relatorios-evolucao');
 
 const { paragrafos, numero, percentual, dataBr, dataExtenso } = textos;
 
 const MAX_TEXTO = 20000;
 
 const CHAVES_INDIVIDUAL = ['introducao', 'objetivo', 'metodologia', 'diagnostico', 'impactoAlimentar',
-  'impactoDesafios', 'impactoEconomico', 'feedback', 'consideracoes'];
+  'impactoDesafios', 'impactoEconomico', 'evolucao', 'feedback', 'consideracoes'];
 const CHAVES_SEMESTRAL = ['introducao', 'atendimentos', 'encaminhamentos', 'visitas', 'outrasAcoes', 'empoderamento', 'consideracoes'];
 const CAMPOS_IDENTIFICACAO = ['nome', 'responsavel', 'cpf', 'nis', 'contato', 'endereco'];
 
@@ -175,9 +176,12 @@ async function gerarIndividual(req, acompanhamentoId) {
   const local = lerTextoCurto(corpo.local, 'local', 80, 'São Paulo/SP');
   const u = req.usuario;
 
+  const tabelaEvolucao = evolucaoRel.tabelaEvolucaoXml(d.evolucao);
   const buffer = docx.renderizar('individual', {
     ...ident,
     ...Object.fromEntries(CHAVES_INDIVIDUAL.map((c) => [c, paragrafos(t[c])])),
+    temEvolucao: !!tabelaEvolucao || paragrafos(t.evolucao).length > 0,
+    evolucaoTabela: tabelaEvolucao,
     localData: localData(local, data),
     assinaturaNome: u.nome,
     assinaturaCargo: cargoAssinatura(u.perfil, 'individual'),

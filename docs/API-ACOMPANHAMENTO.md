@@ -49,7 +49,7 @@ anulação vai para a auditoria. Mesmas permissões do `PUT`. Devolve o mesmo fo
 ## Linha do tempo
 
 ### `GET /api/familias/acompanhamentos/:id/linha-do-tempo?tipos=&pagina=&tamanho=`
-`tipos`: lista separada por vírgula entre `INICIO, QUESTIONARIO, REGISTRO, ATENDIMENTO, ENCAMINHAMENTO, PESQUISA, PRAZO, ENCERRAMENTO`
+`tipos`: lista separada por vírgula entre `INICIO, QUESTIONARIO, REGISTRO, ATENDIMENTO, ENCAMINHAMENTO, PESQUISA, META, PRAZO, ENCERRAMENTO`
 (inválido ⇒ `400`). `tamanho` padrão 30, máx. 100. Do mais novo ao mais antigo.
 ```json
 { "acompanhamentoId": 3, "textoRestrito": false, "total": 9, "pagina": 1, "tamanho": 30,
@@ -65,6 +65,7 @@ anulação vai para a auditoria. Mesmas permissões do `PUT`. Devolve o mesmo fo
 | `ATENDIMENTO` | atendimentos do **responsável** (os demais membros não são `pessoa`) em unidades **permitidas ao usuário**; `antesDoInicio: true` se anteriores ao início |
 | `ENCAMINHAMENTO` | encaminhamentos do atendimento (um evento por atendimento, na mesma data) |
 | `PESQUISA` | pesquisa de satisfação concluída ou recusada (F3), para todo perfil com acesso ao acompanhamento |
+| `META` | plano de metas (F4): meta definida e meta encerrada; o `REGISTRO` lista as metas tratadas (`docs/API-METAS.md`) |
 | `PRAZO` | virtual: `data_prevista_final` enquanto não houver questionário final (`futuro`/`vencido`) |
 | `ENCERRAMENTO` | `CONCLUIDO` ou `DESLIGADO`, com as observações |
 
