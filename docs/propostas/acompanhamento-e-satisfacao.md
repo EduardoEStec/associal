@@ -123,7 +123,7 @@ Cada evento devolve `{ data, tipo, titulo, resumo, autor, referencia: { tipo, id
 - **Atendimentos de outra unidade nunca aparecem** (a mesma regra de CONVENCOES §2.3: nem como contador). O `JOIN` leva `clausulaUnidades(req, 'a.unidade_id')`.
 - Atendimentos anteriores ao início do acompanhamento aparecem agrupados como "Antes do acompanhamento" (contexto), os de depois entram na cronologia.
 - Limitação conhecida: **atendimentos de outros membros da família não entram**, porque só o responsável é `pessoa` com CPF. Aceitável na v1; a evolução natural é permitir vincular um membro a uma `pessoa` (fora desta proposta).
-- Para ASSISTENTE: família da(s) sua(s) unidade(s). COORDENADOR: todas. ADMIN: ver decisão D11 (recomendação: sem acesso aos textos livres).
+- Para ASSISTENTE: família da(s) sua(s) unidade(s). COORDENADOR: todas. ADMIN: igual ao COORDENADOR (D11 revista em 21/10/2026, seção 10.3).
 
 ### Tela
 Na ficha da família (hoje `familias/detalhe.js`), virar abas: **Resumo · Linha do tempo · Registros · Metas · Indicadores · Questionários**. No celular, abas roláveis na horizontal; a linha do tempo é uma lista vertical com marcador por tipo (ícone SVG existente no `layout.js`: `check`, `relogio`, `alerta`, `editar`…, mais 3 ou 4 novos).
@@ -294,7 +294,7 @@ Público-alvo: o **responsável adulto** de cada família em acompanhamento (D2)
 
 Salvaguardas:
 - **Aviso falado antes da primeira pergunta** (texto fixo na tela): para que serve a pesquisa, que a resposta fica registrada junto da ficha da família, quem pode ver, que responder ou não responder **não muda o atendimento nem o acompanhamento**, e que a família pode pedir para apagar. O aviso deve ser aprovado pelo jurídico/encarregado (D12).
-- **Quem vê (D11 ajustada):** ASSISTENTE vê as respostas das famílias da própria unidade (ela mesma registrou); COORDENADOR vê tudo, inclusive comentários, e pode ocultar um comentário dos relatórios; **ADMIN não vê respostas individuais nem comentários**, só configuração e números agregados.
+- **Quem vê (D11 ajustada):** ASSISTENTE vê as respostas das famílias da própria unidade (ela mesma registrou); COORDENADOR vê tudo, inclusive comentários, e pode ocultar um comentário dos relatórios; ~~ADMIN não vê respostas individuais nem comentários~~ — **revisto em 21/10/2026: o ADMIN lê como a coordenação (seção 10.3)**.
 - **Nos agregados** (painel e relatórios) mostra-se sempre o n; percentuais e NPS só aparecem com **n ≥ 5** no recorte (`pesquisa_n_minimo`), porque abaixo disso o número é instável. Aqui a razão é estatística, não de sigilo.
 - **Comentários nos relatórios** só passam pela coordenação: nunca com o nome da família; a coordenação escolhe os trechos e pode editá-los.
 - **Apagar a pedido** da família: o COORDENADOR pode anular uma resposta com motivo (sai dos números e dos relatórios; a trilha de auditoria fica).
@@ -365,14 +365,14 @@ As faixas `082`–`084` seguem a ordem das etapas; ajustar o número quando a et
 
 | Rota | Perfis | Observação |
 |---|---|---|
-| `GET/POST /api/familias/acompanhamentos/:id/registros` · `PUT …/registros/:registroId` | leitura: todos da unidade; escrita: ASSISTENTE, COORDENADOR | ADMIN: ver D11 |
+| `GET/POST /api/familias/acompanhamentos/:id/registros` · `PUT …/registros/:registroId` | leitura: todos da unidade; escrita: ASSISTENTE, COORDENADOR, ADMIN | ADMIN: como a coordenação (seção 10.3) |
 | `GET /api/familias/acompanhamentos/:id/linha-do-tempo?tipos=&antes=&limite=` | idem leitura | consulta `UNION ALL`, paginada |
 | `GET/POST/PUT /api/familias/acompanhamentos/:id/metas` | idem | |
 | `GET /api/familias/acompanhamentos/:id/indicadores` | idem leitura | pontos e dimensões, semáforo |
 | `GET /api/painel/progresso?inicio=&fim=&unidadeId=` | COORDENADOR, ADMIN | % melhoraram, cobertura, desligamentos |
 | `GET /api/painel/satisfacao?inicio=&fim=&unidadeId=` | COORDENADOR, ADMIN | NPS, índice, n mínimo aplicado |
 | `GET /api/painel/alertas` | (existente, ampliado) | novos itens da seção 7.3 |
-| `GET/POST/PUT /api/familias/acompanhamentos/:id/pesquisas` | ASSISTENTE, COORDENADOR (leitura: perfis da unidade, exceto ADMIN) | cria, salva rascunho e conclui a pesquisa da família |
+| `GET/POST/PUT /api/familias/acompanhamentos/:id/pesquisas` | ASSISTENTE, COORDENADOR, ADMIN (leitura: perfis com acesso à unidade) | cria, salva rascunho e conclui a pesquisa da família |
 | `GET/PUT /api/pesquisas/modelo` | COORDENADOR (edita), ADMIN | editor do instrumento |
 
 Documentar em `docs/API-ACOMPANHAMENTO.md` e `docs/API-PESQUISA.md` no mesmo formato de `API-FAMILIAS.md`.
@@ -445,7 +445,7 @@ Intervalo mínimo entre contatos para o alerta: (a) **30 dias. (recomendada)** (
 **D10 — Cálculo do índice e instrumento.**
 (a) **Aprovar a regra da seção 5.2 (4 dimensões, renda per capita por faixa de salário mínimo, tolerância de 5 pontos, itens de percepção com peso reduzido no inicial) sem alterar o questionário. (recomendada)** (b) Aprovar a regra e, em paralelo, propor uma "versão 2" do questionário que corrija L5 (perguntas de estado no lugar das de "melhorou?" e 2 a 3 itens de autonomia), com aval do Termo. (c) Usar só contagem de itens que melhoraram (sem índice).
 
-**D11 — Quem vê o quê (privacidade).** *(ajustada para a pesquisa identificada; ver seção 10)*
+**D11 — Quem vê o quê (privacidade).** *(ajustada para a pesquisa identificada e revista em 21/10/2026 para o ADMIN ler como a coordenação; ver seções 10 e 10.3)*
 (a) **ASSISTENTE: registros, metas, linha do tempo e índices das famílias da própria unidade; satisfação só agregada (n ≥ 5) e sem comentários. COORDENADOR: tudo, incluindo comentários. ADMIN: configuração e dados agregados, sem texto livre de registros nem comentários. (recomendada)** (b) Como hoje: ADMIN lê tudo que lê de famílias. (c) Assistente também vê os comentários da própria unidade.
 
 **D12 — LGPD e retenção.** *(em aberto; bloqueia só a F3 em produção)*
@@ -469,7 +469,7 @@ Resposta do usuário à lista da seção 9. Onde não houver ressalva, vale a re
 | D3 | **Pesquisa identificada**, ligada à família, não anônima | Resposta guarda `acompanhamento_id`; sem tabela de convite nem token; seção 6.5 reescrita |
 | D4 | A **assistente social aplica pessoalmente**, no celular dela, fazendo as perguntas e registrando as respostas. **Sem link público; F7 cancelada** | Um único canal; nenhuma rota sem sessão; seção 6.4 reescrita; sem pré-requisito de TI |
 | D8 | "Não tenho certeza, coloque todas as opções": tipos de contato = **visita domiciliar, atendimento no Armazém, telefone, WhatsApp e outro**; alerta de **30 dias editável** | `tipo_contato` semeado com as 5 opções (a lista continua editável pelo ADMIN, que pode desativar as que a prática descartar); `alerta_sem_contato_dias` = 30 em Configurações |
-| D11 | Ajustada à pesquisa identificada | ASSISTENTE vê registros, metas, linha do tempo, índices **e as pesquisas das famílias da própria unidade**; COORDENADOR vê tudo; ADMIN não vê texto livre (registros, comentários) nem respostas individuais |
+| D11 | Ajustada à pesquisa identificada; **revista em 21/10/2026 (V12, seção 10.3)** | ASSISTENTE vê registros, metas, linha do tempo, índices **e as pesquisas das famílias da própria unidade**; COORDENADOR e ADMIN veem tudo, inclusive texto livre, respostas e comentários |
 | D2, D5, D7, D9, D10, D13, D14 | Seguem a recomendação | Responsável adulto das famílias em acompanhamento; pesquisa no final e a cada semestre; metas opcionais com alerta em 30 dias; reavaliação na metade do prazo; regra do índice sem alterar o questionário oficial; limiares provisórios editáveis; unidade-piloto |
 | D6 | **Em aberto**: formato exigido pelo Termo de Colaboração | Bloqueia a F3 **em produção**, não o desenvolvimento |
 | D12 | **Em aberto**: LGPD (base legal, aviso, retenção) | Bloqueia a F3 **em produção**, não o desenvolvimento |
@@ -490,7 +490,14 @@ Escopo imediato: **F2**, abaixo.
 - Tela passo a passo aplicada pela assistente: aviso para ler à família, 9 perguntas (uma por tela, botões grandes), "prefere não responder", revisão, agradecimento; salva rascunho a cada passo e retoma. Os 5 rostos desenhados da seção 6.2 **não** entraram: cada opção traz o texto escrito, e o desenho fica para quando a coordenação aprovar o instrumento (D6).
 - Momentos: ao encerrar (pesquisa final) e semestral para quem segue em andamento, com **pendência na ficha e na tela Início**; avulsa a qualquer momento.
 - Resultado: cartão na aba Acompanhamento, "Ver respostas" e evento na linha do tempo. A pesquisa aplicada (ou recusada) conta como contato no alerta "sem contato".
-- Privacidade (D11): ADMIN sem respostas nem comentários; coordenação oculta comentário dos relatórios; auditoria sem respostas. A visão agregada (NPS e satisfação por unidade e período) fica para a **F6**. Contrato: `docs/API-PESQUISA.md`.
+- Privacidade (D11, revista na seção 10.3): coordenação e ADMIN leem respostas e comentários e ocultam comentário dos relatórios; auditoria sem respostas. A visão agregada (NPS e satisfação por unidade e período) fica para a **F6**. Contrato: `docs/API-PESQUISA.md`.
+
+### 10.3 V12 — o ADMIN opera como a coordenação (decisão do usuário, 21/10/2026)
+
+- **Escrita:** o perfil ADMIN cria e edita atendimentos, pessoas, famílias (inclusive o prazo do questionário final), questionários, registros de contato, pesquisas de satisfação e ações, e vê todas as unidades, exatamente como o COORDENADOR. A administração (usuários, unidades, listas, auditoria) continua só do ADMIN; as configurações já eram dos dois.
+- **Leitura (D11 revista):** como o ADMIN agora registra contatos e aplica pesquisas, mantê-lo sem acesso a texto livre e a respostas seria incoerente. Ele passa a ler registros, resumos de atendimento, observações de encerramento, respostas e comentários da pesquisa, como a coordenação. O campo `textoRestrito` das APIs foi removido.
+- **Auditoria:** inalterada. Cada criação, alteração e anulação grava o `usuario_id` de quem fez (inclusive o ADMIN); a auditoria da pesquisa continua sem o conteúdo das respostas.
+- **Atenção ao D12 (LGPD):** o aviso de consentimento provisório diz que as respostas "só podem ser vistas pela equipe do Serviço Social e pela coordenação". Se o ADMIN for a TI e não fizer parte da coordenação, o jurídico/encarregado deve confirmar essa redação e a base legal do acesso.
 
 ---
 

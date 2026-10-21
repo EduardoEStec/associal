@@ -50,7 +50,7 @@ export async function renderLista({ usuario, conteudo, apoio }) {
   conteudo.replaceChildren(
     h('div', { class: 'pagina-titulo' },
       h('h1', {}, 'Atendimentos'),
-      usuario.perfil !== 'ADMIN' ? h('a', { class: 'btn', href: '#novo' }, '+ Novo atendimento') : null),
+      h('a', { class: 'btn', href: '#novo' }, '+ Novo atendimento')),
     formFiltros,
     resultado,
   );

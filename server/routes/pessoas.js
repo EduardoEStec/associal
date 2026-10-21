@@ -43,7 +43,7 @@ router.get('/buscar', async (req, res) => {
 });
 
 // POST /api/pessoas
-router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) => {
+router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const { dados, problemas } = svc.validarDadosPessoa(req.body);
   await svc.validarApoioPessoa(dados, problemas);
   lancarSeErros(problemas);
@@ -61,7 +61,7 @@ router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) =>
 });
 
 // PUT /api/pessoas/:id — só dados pessoais; pessoa em unidade permitida ou recém-localizada por CPF
-router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) => {
+router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const id = inteiroPositivo(req.params.id);
   if (!id) throw erros.naoEncontrado();
   const existe = await consultarUm('SELECT id FROM pessoa WHERE id = @id', { id });

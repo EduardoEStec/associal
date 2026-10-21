@@ -9,6 +9,7 @@ const {
   requirePerfil, clausulaUnidades, resolverUnidade, exigirUnidade,
 } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
+const { ehCoordenacao } = require('../lib/dominios');
 const { registrarAuditoria } = require('../lib/auditoria');
 const {
   lancarSeErros, inteiroPositivo, normalizarData, normalizarCpf, texto,
@@ -20,7 +21,7 @@ const router = express.Router();
 const PRAZO_AUTOR_MS = 24 * 60 * 60 * 1000;
 
 const podeExcluir = (usuario, atendimento) =>
-  usuario.perfil === 'COORDENADOR' || usuario.perfil === 'ADMIN'
+  ehCoordenacao(usuario)
   || (atendimento.usuarioId === usuario.id && Date.now() - new Date(atendimento.criadoEm).getTime() <= PRAZO_AUTOR_MS);
 
 // Carrega um atendimento restrito às unidades permitidas (404 se de outra unidade).
@@ -137,7 +138,7 @@ router.get('/:id', async (req, res) => {
     pessoa,
     historico,
     podeExcluir: podeExcluir(req.usuario, atendimento),
-    podeEditar: req.usuario.perfil !== 'ADMIN',
+    podeEditar: true,
   });
 });
 
@@ -167,7 +168,7 @@ async function resolverPessoa(req, tx, dados, pessoaIdInformada) {
 }
 
 // POST /api/atendimentos
-router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) => {
+router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const { dados, problemas } = svc.validarCorpo(req.body);
   await svc.validarApoio(dados, problemas);
   lancarSeErros(problemas);
@@ -194,7 +195,7 @@ router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) =>
 });
 
 // PUT /api/atendimentos/:id — substitui os dados (inclui dados pessoais da pessoa vinculada)
-router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR'), async (req, res) => {
+router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const id = inteiroPositivo(req.params.id);
   if (!id) throw erros.naoEncontrado();
   const atual = await carregar(req, id);

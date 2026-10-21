@@ -186,14 +186,14 @@ test('calcularPendencia: final com questionário final concluído, ou concluído
 // Linha do tempo
 // ---------------------------------------------------------------------------
 
-test('montarEventos: pesquisa concluída aparece com nota e comentários; recusada sem conteúdo; texto restrito oculta comentários', () => {
+test('montarEventos: pesquisa concluída aparece com nota e comentários; recusada sem conteúdo', () => {
   const ac = { id: 100, status: 'EM_ANDAMENTO', dataInicio: new Date(`${dias(-40)}T00:00:00Z`), dataPrevistaFinal: null, dataEncerramento: null, observacoes: null };
   const pesquisas = [
     { id: 1, momento: 'SEMESTRAL', dataAplicacao: new Date(`${dias(-5)}T00:00:00Z`), situacao: 'CONCLUIDA', criadoEm: new Date(), autorNome: 'Ana',
       resumo: { nps: 9, categoriaNps: 'PROMOTORA', indice: 83 }, comentarios: [{ codigo: 'T1', texto: 'Preço bom' }, { codigo: 'T2', texto: 'Mais horários' }] },
     { id: 2, momento: 'FINAL', dataAplicacao: new Date(`${dias(-2)}T00:00:00Z`), situacao: 'RECUSADA', criadoEm: new Date(), autorNome: 'Ana', resumo: null, comentarios: [] },
   ];
-  const e = registros.montarEventos({ ac, hoje, textoRestrito: false, registros: [], atendimentos: [], questionarios: [], pesquisas });
+  const e = registros.montarEventos({ ac, hoje, registros: [], atendimentos: [], questionarios: [], pesquisas });
   const concl = e.find((x) => x.referencia.id === 1);
   assert.equal(concl.tipo, 'PESQUISA');
   assert.match(concl.detalhe, /Nota geral: 9 de 10/);
@@ -203,8 +203,6 @@ test('montarEventos: pesquisa concluída aparece com nota e comentários; recusa
   const rec = e.find((x) => x.referencia.id === 2);
   assert.match(rec.titulo, /preferiu não responder/);
   assert.equal(rec.resumo, null);
-  const r = registros.montarEventos({ ac, hoje, textoRestrito: true, registros: [], atendimentos: [], questionarios: [], pesquisas });
-  assert.equal(r.find((x) => x.referencia.id === 1).resumo, null);
 });
 
 // ---------------------------------------------------------------------------
@@ -241,19 +239,28 @@ test('assistente de outra unidade recebe 404 em todas as rotas da pesquisa', asy
   } finally { await srv.fechar(); }
 });
 
-test('ADMIN: lista vem sem respostas, detalhe e escrita são recusados', async () => {
-  handlers = baseHandlers();
+test('ADMIN opera como a coordenação: lê a lista, aplica a pesquisa e a auditoria registra quem foi (V12)', async () => {
+  handlers = baseHandlers({}, [
+    { teste: /FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [] },
+    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
+    { teste: /INSERT INTO pesquisa_resposta \(/, resp: () => [{ id: 56 }] },
+    { teste: /DELETE FROM pesquisa_resposta_item/, resp: () => [] },
+    { teste: /INSERT INTO pesquisa_resposta_item/, resp: () => [] },
+  ]);
+  chamadas.length = 0;
   const srv = await iniciar(admin);
   try {
     const r = await srv.chamar('GET', '/acompanhamentos/100/pesquisas');
     assert.equal(r.status, 200);
-    assert.equal(r.corpo.textoRestrito, true);
-    assert.deepEqual(r.corpo.pesquisas, []);
-    assert.ok(!chamadas.slice(-6).some((c) => /pesquisa_resposta_item/.test(c.sql)), 'nem consulta os itens');
-    assert.equal((await srv.chamar('GET', '/acompanhamentos/100/pesquisas/1')).status, 403);
-    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/pesquisas', completa())).status, 403);
-    assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/pesquisas/1', completa())).status, 403);
-    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/pesquisas/1/anular', { motivo: 'x' })).status, 403);
+    assert.equal(r.corpo.textoRestrito, undefined);
+    assert.ok(chamadas.some((c) => /FROM pesquisa_resposta r/.test(c.sql)), 'consulta as respostas');
+    const c = await srv.chamar('POST', '/acompanhamentos/100/pesquisas', completa());
+    assert.equal(c.status, 201);
+    const ins = chamadas.find((x) => /INSERT INTO pesquisa_resposta \(/.test(x.sql));
+    assert.equal(ins.params.usuario, 30, 'a resposta fica no nome de quem aplicou');
+    const aud = chamadas.find((x) => /INSERT INTO auditoria/.test(x.sql) && x.params.tabela === 'pesquisa_resposta');
+    assert.ok(aud, 'auditoria registrada');
+    assert.equal(aud.params.usuarioId, 30);
   } finally { await srv.fechar(); }
 });
 
@@ -344,7 +351,7 @@ test('editar e anular: só o autor ou a coordenação; concluída não é editá
   } finally { await srv.fechar(); }
 });
 
-test('ocultar comentário: só COORDENADOR', async () => {
+test('ocultar comentário: só COORDENADOR e ADMIN', async () => {
   handlers = baseHandlers({}, [
     { teste: /FROM pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao = 'CONCLUIDA'/, resp: () => [{ id: 9 }] },
     { teste: /UPDATE pesquisa_resposta/, resp: () => [] },
@@ -357,6 +364,10 @@ test('ocultar comentário: só COORDENADOR', async () => {
   srv = await iniciar(coordenador);
   try {
     assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/pesquisas/9/comentario-oculto', { oculto: 'sim' })).status, 400);
+    assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/pesquisas/9/comentario-oculto', { oculto: true })).status, 200);
+  } finally { await srv.fechar(); }
+  srv = await iniciar(admin);
+  try {
     assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/pesquisas/9/comentario-oculto', { oculto: true })).status, 200);
   } finally { await srv.fechar(); }
 });

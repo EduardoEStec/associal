@@ -2,12 +2,13 @@
 
 // F3 — Pesquisa de satisfação do projeto, IDENTIFICADA (ligada ao acompanhamento da família) e aplicada pessoalmente
 // pela assistente. Escopo de unidade: tudo passa por carregarAcompanhamento (outra unidade => 404).
-// Privacidade (D11): ADMIN não lê respostas individuais nem comentários (a lista chega vazia e o detalhe dá 403);
-// ASSISTENTE vê as pesquisas das famílias das suas unidades; COORDENADOR vê tudo e pode ocultar o comentário dos relatórios.
+// Privacidade (D11, revista em 21/10/2026): ASSISTENTE vê as pesquisas das famílias das suas unidades; COORDENADOR e ADMIN
+// (que opera como a coordenação) veem tudo e podem ocultar o comentário dos relatórios.
 // Respostas concluídas não são editáveis: corrigir = anular (com motivo) e aplicar de novo.
 
 const { consultar, consultarUm, transacao, tipos } = require('../db');
 const { erros } = require('../lib/erros');
+const { ehCoordenacao } = require('../lib/dominios');
 const { registrarAuditoria } = require('../lib/auditoria');
 const { texto, inteiroPositivo, lancarSeErros } = require('../lib/validacao');
 const familias = require('./familias');
@@ -15,14 +16,8 @@ const regras = require('./pesquisa-regras');
 
 const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) : null);
 const paramData = (v) => [tipos.Date, v ?? null];
-const restrito = (req) => req.usuario.perfil === 'ADMIN';
-
-function exigirNaoAdmin(req) {
-  if (restrito(req)) throw erros.proibido('Seu perfil não tem acesso às respostas da pesquisa de satisfação.');
-}
-
 function exigirAutorOuCoordenacao(req, resposta) {
-  if (resposta.usuarioId !== req.usuario.id && req.usuario.perfil !== 'COORDENADOR') {
+  if (resposta.usuarioId !== req.usuario.id && !ehCoordenacao(req.usuario)) {
     throw erros.proibido('Somente quem aplicou a pesquisa ou a coordenação pode alterá-la.');
   }
 }
@@ -95,23 +90,21 @@ async function listar(req, acompanhamentoId) {
   const hoje = familias.hojeIso();
   const [modelo, pendencia, cfg] = await Promise.all([carregarModelo({ consultar, consultarUm }), regras.lerPendencia(ac, hoje), regras.lerConfig()]);
   const base = {
-    acompanhamentoId: ac.id, status: ac.status, textoRestrito: restrito(req),
+    acompanhamentoId: ac.id, status: ac.status,
     modelo: modeloPublico(modelo), pendencia, intervaloDias: cfg.intervaloDias, pesquisas: [],
   };
-  if (restrito(req)) return base;
   const linhas = await consultar(
     `${SELECT_RESPOSTA} WHERE r.acompanhamento_id = @id AND r.situacao <> 'ANULADA' ORDER BY r.data_aplicacao DESC, r.id DESC`, { id: ac.id });
   const itens = await itensDe({ consultar }, linhas.filter((l) => l.situacao === 'CONCLUIDA').map((l) => l.id));
   return {
     ...base,
     pesquisas: linhas.map((l) => formatarResposta(l, itens.get(l.id) || [])).map((p, i) => ({
-      ...p, podeAlterar: linhas[i].usuarioId === req.usuario.id || req.usuario.perfil === 'COORDENADOR',
+      ...p, podeAlterar: linhas[i].usuarioId === req.usuario.id || ehCoordenacao(req.usuario),
     })),
   };
 }
 
 async function obter(req, acompanhamentoId, respostaId) {
-  exigirNaoAdmin(req);
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
   const id = inteiroPositivo(respostaId);
   const r = id && await consultarUm(`${SELECT_RESPOSTA} WHERE r.id = @id AND r.acompanhamento_id = @ac AND r.situacao <> 'ANULADA'`, { id, ac: ac.id });
@@ -121,7 +114,7 @@ async function obter(req, acompanhamentoId, respostaId) {
   return {
     ...formatarResposta(r, itens, { comItens: true }),
     modelo: modeloPublico(modelo),
-    podeAlterar: r.usuarioId === req.usuario.id || req.usuario.perfil === 'COORDENADOR',
+    podeAlterar: r.usuarioId === req.usuario.id || ehCoordenacao(req.usuario),
   };
 }
 
@@ -247,11 +240,10 @@ async function definirComentarioOculto(req, acompanhamentoId, respostaId, oculto
 }
 
 // ---------------------------------------------------------------------------
-// Para a linha do tempo: pesquisas CONCLUIDA/RECUSADA com o resumo (nunca para ADMIN)
+// Para a linha do tempo: pesquisas CONCLUIDA/RECUSADA com o resumo (todos os perfis com acesso ao acompanhamento)
 // ---------------------------------------------------------------------------
 
 async function paraLinhaDoTempo(req, acId) {
-  if (restrito(req)) return [];
   const linhas = await consultar(
     `${SELECT_RESPOSTA} WHERE r.acompanhamento_id = @id AND r.situacao IN ('CONCLUIDA', 'RECUSADA')`, { id: acId });
   const itens = await itensDe({ consultar }, linhas.filter((l) => l.situacao === 'CONCLUIDA').map((l) => l.id));

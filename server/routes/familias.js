@@ -14,8 +14,8 @@ const pesquisa = require('../services/pesquisa');
 
 const router = express.Router();
 
-// Escrita: assistentes e coordenação (ADMIN é TI e não opera dados de famílias).
-const escrita = requirePerfil('ASSISTENTE', 'COORDENADOR');
+// Escrita: assistentes, coordenação e ADMIN (V12: o ADMIN opera como a coordenação).
+const escrita = requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN');
 
 // ----- rotas fixas (antes de /:id) -----
 
@@ -100,7 +100,7 @@ router.post('/acompanhamentos/:id/pesquisas/:pesquisaId/anular', escrita, async 
   res.json(await pesquisa.listar(req, req.params.id));
 });
 
-router.put('/acompanhamentos/:id/pesquisas/:pesquisaId/comentario-oculto', requirePerfil('COORDENADOR'), async (req, res) => {
+router.put('/acompanhamentos/:id/pesquisas/:pesquisaId/comentario-oculto', requirePerfil('COORDENADOR', 'ADMIN'), async (req, res) => {
   await pesquisa.definirComentarioOculto(req, req.params.id, req.params.pesquisaId, req.body?.oculto);
   res.json(await pesquisa.listar(req, req.params.id));
 });

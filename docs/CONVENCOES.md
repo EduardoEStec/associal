@@ -96,7 +96,7 @@ Regras:
 
 ### Perfis
 
-`requirePerfil('COORDENADOR', 'ADMIN')` restringe a rota (ou `router.use(...)` o módulo inteiro). O front também esconde itens de menu por perfil (`ITENS_MENU` em `layout.js`), mas **o back-end é quem decide**.
+`requirePerfil('COORDENADOR', 'ADMIN')` restringe a rota (ou `router.use(...)` o módulo inteiro). **Desde a V12 o `ADMIN` opera como a coordenação** (cria, edita, lê textos e respostas, vê todas as unidades): nas rotas de escrita de atendimentos, pessoas, famílias e ações liste os três perfis; use `ehCoordenacao(usuario)` (`server/lib/dominios.js`) para as regras "autor ou coordenação". O que continua só do ADMIN é a administração de usuários, unidades, listas e auditoria. O front também esconde itens de menu por perfil (`ITENS_MENU` em `layout.js`), mas **o back-end é quem decide**.
 
 ## 2. Filtro por unidade (obrigatório — LGPD)
 

@@ -2,7 +2,7 @@
 import { api, ErroApi } from '../api.js';
 import { icone } from '../layout.js';
 import { h, toast, abrirModal, formatarData, mostrarErrosCampos, hojeIso } from '../ui.js';
-import { campo, textoOuTraco } from './util.js';
+import { campo, textoOuTraco, ehCoordenacao } from './util.js';
 import { ROTULO_MOMENTO, ROTULO_LIKERT, ROTULO_MODO } from './pesquisa.js';
 
 export const ROTULO_SITUACAO = { MELHORANDO: 'Melhorando', IGUAL: 'Igual', PIORANDO: 'Piorando', NAO_SEI: 'Sem avaliação' };
@@ -230,7 +230,7 @@ async function abrirRespostas({ id, pesquisa, usuario, aoMudar }) {
     h('p', { class: 'texto-pequeno texto-suave' }, `${formatarData(p.dataAplicacao)} · pesquisa ${ROTULO_PESQ_MOMENTO[p.momento]} · aplicada por ${p.autor.nome} · ${ROTULO_MODO[p.modo] || ''}`),
     r ? h('p', {}, h('strong', {}, `Nota geral ${r.nps ?? '—'} de 10`), ` · concordância ${r.concordancia ?? '—'}% · satisfação ${r.indice ?? '—'}%`) : null,
     h('ul', { class: 'pesq-rev' }, linhas),
-    usuario.perfil === 'COORDENADOR'
+    ehCoordenacao(usuario)
       ? h('label', { class: 'opcao pesq-oculto' },
         h('input', {
           type: 'checkbox', checked: p.comentarioOculto,
@@ -269,7 +269,6 @@ function abrirAnularPesquisa({ id, pesquisa, aoMudar, rotulo = 'Anular pesquisa'
 }
 
 function cartaoPesquisa({ id, p, escrita, usuario, aoMudar }) {
-  if (p.textoRestrito) return h('div', { class: 'aviso' }, 'As respostas da pesquisa de satisfação não são exibidas para o seu perfil.');
   const pend = p.pendencia;
   const rascunho = p.pesquisas.find((x) => x.situacao === 'RASCUNHO');
   const momentoBotao = rascunho ? rascunho.momento : (pend ? pend.momento : 'AVULSA');
@@ -338,7 +337,6 @@ export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNo
   return [
     cartaoResumo(r, encerrado),
     h('div', { class: 'fam-secao-pesquisa' }, cartaoPesquisa({ id, p: pesq, escrita, usuario, aoMudar: recarregar })),
-    r.textoRestrito ? h('div', { class: 'aviso' }, 'Os textos dos registros não são exibidos para o seu perfil.') : null,
     topo,
     lista,
   ];

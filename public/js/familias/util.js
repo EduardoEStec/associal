@@ -12,7 +12,9 @@ export async function carregarApoio() {
 export const ROTULO_STATUS = { EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluído', DESLIGADO: 'Desligado' };
 export const CLASSE_STATUS = { EM_ANDAMENTO: 'badge-info', CONCLUIDO: 'badge-sucesso', DESLIGADO: 'badge' };
 
-export const podeEscrever = (usuario) => usuario.perfil === 'ASSISTENTE' || usuario.perfil === 'COORDENADOR';
+export const podeEscrever = (usuario) => ['ASSISTENTE', 'COORDENADOR', 'ADMIN'].includes(usuario.perfil);
+// V12: o ADMIN opera como a coordenação
+export const ehCoordenacao = (usuario) => usuario.perfil === 'COORDENADOR' || usuario.perfil === 'ADMIN';
 
 export function seloStatus(status) {
   return h('span', { class: `badge ${CLASSE_STATUS[status] || 'badge'}` }, ROTULO_STATUS[status] || status);

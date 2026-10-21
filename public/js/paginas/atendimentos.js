@@ -22,9 +22,9 @@ async function rotear() {
   const hash = location.hash.replace(/^#/, '');
   window.scrollTo(0, 0);
   try {
-    if (hash === 'novo' && usuario.perfil !== 'ADMIN') await renderForm(ctx);
+    if (hash === 'novo') await renderForm(ctx);
     else if (/^\d+$/.test(hash)) await renderDetalhe(ctx, Number(hash));
-    else if (/^\d+\/editar$/.test(hash) && usuario.perfil !== 'ADMIN') await renderForm(ctx, Number(hash.split('/')[0]));
+    else if (/^\d+\/editar$/.test(hash)) await renderForm(ctx, Number(hash.split('/')[0]));
     else await renderLista(ctx);
   } catch (e) {
     conteudo.replaceChildren(

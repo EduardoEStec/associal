@@ -202,6 +202,23 @@ async function teste(nome, fn) {
     usuario = { id: 10, perfil: 'ASSISTENTE', unidades: [UNIDADE_A] };
   });
 
+  await teste('ADMIN opera como a coordenação (V12): cria atendimento; usuarioId fica no nome dele', async () => {
+    usuario = { id: 7, perfil: 'ADMIN', unidades: [UNIDADE_A] };
+    respostas = [
+      { casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
+      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
+      { casa: /FROM faixa_etaria/, linhas: FAIXAS },
+      { casa: /INSERT INTO pessoa/, linhas: [{ id: 78 }] },
+      { casa: /INSERT INTO atendimento \(/, linhas: [{ id: 502 }] },
+    ];
+    const r = await chamar('POST', '/api/atendimentos', corpoValido());
+    assert.equal(r.status, 201, JSON.stringify(r.corpo));
+    assert.equal(log.find((l) => /INSERT INTO atendimento \(/.test(l.texto)).params.usuarioId, 7);
+    const aud = log.find((l) => /INSERT INTO auditoria/.test(l.texto));
+    assert.ok(aud, 'auditoria registrada');
+    usuario = { id: 10, perfil: 'ASSISTENTE', unidades: [UNIDADE_A] };
+  });
+
   await teste('pessoas/buscar?cpf: inválido 400; não achada; achada devolve só dados pessoais', async () => {
     assert.equal((await chamar('GET', '/api/pessoas/buscar?cpf=123')).status, 400);
     respostas = [];

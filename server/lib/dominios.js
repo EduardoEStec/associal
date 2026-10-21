@@ -5,6 +5,8 @@
 // Listas que o ADMIN pode editar (demandas, temas...) NÃO estão aqui: vêm das tabelas de apoio.
 
 const PERFIS = Object.freeze({ ASSISTENTE: 'ASSISTENTE', COORDENADOR: 'COORDENADOR', ADMIN: 'ADMIN' });
+// V12: o ADMIN opera como a coordenação (escreve, lê textos e respostas, vê todas as unidades).
+const ehCoordenacao = (usuario) => usuario?.perfil === PERFIS.COORDENADOR || usuario?.perfil === PERFIS.ADMIN;
 
 const STATUS_ACAO = Object.freeze(['PLANEJADA', 'REALIZADA', 'CANCELADA']);
 const STATUS_ACOMPANHAMENTO = Object.freeze(['EM_ANDAMENTO', 'CONCLUIDO', 'DESLIGADO']);
@@ -33,5 +35,5 @@ const TABELAS_APOIO = Object.freeze([
 ]);
 
 module.exports = {
-  PERFIS, STATUS_ACAO, STATUS_ACOMPANHAMENTO, TIPO_QUESTIONARIO, QUESTIONARIO, TABELAS_APOIO,
+  PERFIS, ehCoordenacao, STATUS_ACAO, STATUS_ACOMPANHAMENTO, TIPO_QUESTIONARIO, QUESTIONARIO, TABELAS_APOIO,
 };

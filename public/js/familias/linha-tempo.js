@@ -49,7 +49,6 @@ export async function renderLinhaTempo({ id }) {
       if (zerar) lista.replaceChildren();
       lista.append(...r.itens.map(itemLinha));
       aviso.replaceChildren(
-        r.textoRestrito ? h('div', { class: 'aviso' }, 'Os textos dos registros e dos atendimentos não são exibidos para o seu perfil.') : '',
         r.total === 0 ? h('div', { class: 'card card-vazio' }, h('p', {}, 'Nenhum evento para este filtro.')) : '');
       const mostrados = (estado.pagina - 1) * TAMANHO + r.itens.length;
       rodape.replaceChildren(r.total > mostrados

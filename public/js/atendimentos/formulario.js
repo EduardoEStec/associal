@@ -8,7 +8,7 @@ import { h, toast, abrirModal, formatarCpf } from '../ui.js';
 import { guardarRetorno, guardarPreCadastro } from '../retorno-atendimento.js';
 
 const FAMILIAS = '/familias.html';
-const podeEscrever = (usuario) => usuario.perfil === 'ASSISTENTE' || usuario.perfil === 'COORDENADOR';
+const podeEscrever = (usuario) => ['ASSISTENTE', 'COORDENADOR', 'ADMIN'].includes(usuario.perfil);
 
 // Acompanhamento do CPF visível ao usuário (em andamento primeiro; senão o mais recente encerrado)
 async function acompanhamentoDoCpf(cpf) {

@@ -1,11 +1,13 @@
 # API Acompanhamento — registros de contato e linha do tempo (F2)
 
 Complementa `docs/API-FAMILIAS.md`. Todos os `:id` são o **`acompanhamentoId`**. Mesmas regras de unidade (outra unidade ⇒ `404`),
-de perfil (escrita só `ASSISTENTE` e `COORDENADOR`; `ADMIN` apenas lê) e de erro (CONVENCOES §4). Proposta e decisões:
+de perfil (escrita: `ASSISTENTE`, `COORDENADOR` e `ADMIN`; o `ADMIN` opera como a coordenação, ver abaixo) e de erro (CONVENCOES §4). Proposta e decisões:
 `docs/propostas/acompanhamento-e-satisfacao.md`.
 
-**Privacidade (decisão D11):** para `ADMIN`, todo texto livre (`resumo` de registros e de atendimentos, observações do encerramento)
-chega `null` e a resposta traz `textoRestrito: true`.
+**Privacidade (D11, revista em 21/10/2026 — V12):** o `ADMIN` passou a operar como a coordenação: vê todas as unidades, lê todo texto
+livre (`resumo` de registros e de atendimentos, observações do encerramento) e escreve como ela. Antes, o texto chegava `null` para ele com
+`textoRestrito: true`; **esse campo foi removido** das respostas de `/registros` e `/linha-do-tempo`. A auditoria continua registrando
+quem fez cada coisa (`usuario_id` do ADMIN).
 
 ## Registros de acompanhamento
 
@@ -38,7 +40,7 @@ Registros anulados não aparecem. Ordem: data e id decrescentes. `tiposContato` 
 - `400` com `detalhes` por campo; `409` se o acompanhamento está encerrado.
 
 ### `PUT /api/familias/acompanhamentos/:id/registros/:registroId`
-Mesmo corpo; devolve o mesmo formato do `GET`. Só o **autor** ou o **COORDENADOR** (`403`); registro anulado ⇒ `404`.
+Mesmo corpo; devolve o mesmo formato do `GET`. Só o **autor**, o **COORDENADOR** ou o **ADMIN** (`403`); registro anulado ⇒ `404`.
 
 ### `POST /api/familias/acompanhamentos/:id/registros/:registroId/anular`
 `{ "motivo": "…" }` (obrigatório, até 200). O registro sai da lista e dos números; linha e motivo ficam no banco, e a
@@ -62,7 +64,7 @@ anulação vai para a auditoria. Mesmas permissões do `PUT`. Devolve o mesmo fo
 | `REGISTRO` | registros de contato (tentativas incluídas, `situacao` null) |
 | `ATENDIMENTO` | atendimentos do **responsável** (os demais membros não são `pessoa`) em unidades **permitidas ao usuário**; `antesDoInicio: true` se anteriores ao início |
 | `ENCAMINHAMENTO` | encaminhamentos do atendimento (um evento por atendimento, na mesma data) |
-| `PESQUISA` | pesquisa de satisfação concluída ou recusada (F3); nunca aparece para `ADMIN` |
+| `PESQUISA` | pesquisa de satisfação concluída ou recusada (F3), para todo perfil com acesso ao acompanhamento |
 | `PRAZO` | virtual: `data_prevista_final` enquanto não houver questionário final (`futuro`/`vencido`) |
 | `ENCERRAMENTO` | `CONCLUIDO` ou `DESLIGADO`, com as observações |
 

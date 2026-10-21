@@ -319,17 +319,24 @@ const iso = (v) => String(v).slice(0, 10);
       assert.strictEqual(linha.anuladoPor, idA);
     });
 
-    await teste('ADMIN: lê sem textos livres e não escreve', async () => {
+    await teste('ADMIN (V12): opera como a coordenação — lê os textos, vê todas as unidades, registra contato e a auditoria guarda quem foi', async () => {
       const base = `/api/familias/acompanhamentos/${acId}`;
       const lista = await adm.req('GET', `${base}/registros`);
       assert.strictEqual(lista.status, 200);
-      assert.strictEqual(lista.corpo.textoRestrito, true);
-      assert.ok(lista.corpo.registros.every((x) => x.resumo === null));
+      assert.strictEqual(lista.corpo.textoRestrito, undefined);
+      assert.ok(lista.corpo.registros.some((x) => x.resumo), 'o ADMIN lê os textos dos registros');
+      assert.ok(lista.corpo.registros.every((x) => x.podeAlterar), 'como a coordenação, pode alterar registros de outros');
       const tl = await adm.req('GET', `${base}/linha-do-tempo`);
-      assert.ok(tl.corpo.itens.every((e) => !e.resumo));
-      assert.ok(!JSON.stringify(tl.corpo).includes('Atendimento na unidade A'));
+      assert.ok(JSON.stringify(tl.corpo).includes('Atendimento na unidade A'), 'lê o texto do atendimento');
+      assert.strictEqual(tl.corpo.itens.filter((e) => e.tipo === 'ATENDIMENTO').length, 2, 'vê as duas unidades');
       const tipos = lista.corpo.tiposContato;
-      assert.strictEqual((await adm.req('POST', `${base}/registros`, { dataRegistro: hoje, tipoContatoId: tipos[0].id, houveContato: false })).status, 403);
+      const novo = await adm.req('POST', `${base}/registros`, { dataRegistro: hoje, tipoContatoId: tipos[0].id, houveContato: false, resumo: 'Tentativa do admin' });
+      assert.strictEqual(novo.status, 201, JSON.stringify(novo.corpo));
+      const [reg] = await db.consultar('SELECT r.usuario_id, u.login FROM acompanhamento_registro r JOIN usuario u ON u.id = r.usuario_id WHERE r.id = @id', { id: novo.corpo.id });
+      assert.strictEqual(reg.login, 'f2_admin', 'o registro fica no nome de quem fez');
+      const [aud] = await db.consultar("SELECT COUNT(*) AS n FROM auditoria WHERE tabela = 'acompanhamento_registro' AND registro_id = @id AND acao = 'CRIAR' AND usuario_id = @u", { id: String(novo.corpo.id), u: reg.usuarioId });
+      assert.strictEqual(aud.n, 1, 'auditoria com o usuário ADMIN');
+      assert.strictEqual((await adm.req('POST', `${base}/registros/${novo.corpo.id}/anular`, { motivo: 'Teste do admin' })).status, 200);
     });
 
     await teste('configuração: coordenação altera o limite (alerta muda) e valores inválidos são recusados', async () => {

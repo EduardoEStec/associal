@@ -5,9 +5,10 @@ dela: ela lê as perguntas, a família responde, ela registra. Sem link público
 `docs/propostas/acompanhamento-e-satisfacao.md` (seções 6 e 10). Mesmas regras de unidade (outra unidade ⇒ `404`), de erro
 (CONVENCOES §4) e de auditoria (a auditoria registra o fato, **nunca** respostas nem comentários). Todos os `:id` são o `acompanhamentoId`.
 
-**Privacidade (D11 ajustada):** `ASSISTENTE` vê as pesquisas das famílias das suas unidades; `COORDENADOR` vê todas e pode ocultar o
-comentário dos relatórios; `ADMIN` **não** vê respostas individuais nem comentários (a lista vem vazia com `textoRestrito: true`,
-o detalhe responde `403` e a pesquisa não aparece na linha do tempo). Escrita: `ASSISTENTE` e `COORDENADOR`.
+**Privacidade (D11 ajustada; revista em 21/10/2026 — V12):** `ASSISTENTE` vê as pesquisas das famílias das suas unidades; `COORDENADOR`
+e `ADMIN` (que opera como a coordenação) veem todas, leem respostas e comentários e podem ocultar o comentário dos relatórios.
+Escrita: `ASSISTENTE`, `COORDENADOR` e `ADMIN`. Antes da V12 o `ADMIN` recebia lista vazia com `textoRestrito: true`, `403` no detalhe e
+nada na linha do tempo; **o campo `textoRestrito` foi removido**. A auditoria registra o fato e o usuário (inclusive o ADMIN), nunca o conteúdo.
 
 ## Modelo de perguntas versionado
 
@@ -36,7 +37,7 @@ o que faz de melhor / o que precisa melhorar).
 Não traz as anuladas. `situacao`: `RASCUNHO | CONCLUIDA | RECUSADA`. `resumo` só na `CONCLUIDA`.
 
 ### `GET /api/familias/acompanhamentos/:id/pesquisas/:pesquisaId`
-O mesmo item, com `itens: [{ codigo, tipo, valorNum, valorTexto, preferNaoResponder }]` e o `modelo` **da resposta**. `403` para `ADMIN`.
+O mesmo item, com `itens: [{ codigo, tipo, valorNum, valorTexto, preferNaoResponder }]` e o `modelo` **da resposta**. Só quem tem acesso ao acompanhamento (outra unidade ⇒ `404`).
 
 ### `POST /api/familias/acompanhamentos/:id/pesquisas` → `201 { id, situacao }`
 ```json
@@ -55,14 +56,14 @@ O mesmo item, com `itens: [{ codigo, tipo, valorNum, valorTexto, preferNaoRespon
 - `dataAplicacao` (padrão hoje): não futura e não anterior ao início do acompanhamento.
 
 ### `PUT /api/familias/acompanhamentos/:id/pesquisas/:pesquisaId` → `{ id, situacao }`
-Só `RASCUNHO` (concluída ⇒ `409`: anule e aplique de novo). Só o autor ou o `COORDENADOR` (`403`). Mesmo corpo do `POST` (o `momento` não muda).
+Só `RASCUNHO` (concluída ⇒ `409`: anule e aplique de novo). Só o autor, o `COORDENADOR` ou o `ADMIN` (`403`). Mesmo corpo do `POST` (o `momento` não muda).
 
 ### `POST …/pesquisas/:pesquisaId/anular`
 `{ "motivo": "…" }` (obrigatório, até 200). Sai da lista, da linha do tempo e dos números; linha e motivo ficam no banco e a anulação vai para a
-auditoria. Também descarta rascunho. Autor ou `COORDENADOR`. Devolve a lista (mesmo formato do `GET`).
+auditoria. Também descarta rascunho. Autor, `COORDENADOR` ou `ADMIN`. Devolve a lista (mesmo formato do `GET`).
 
 ### `PUT …/pesquisas/:pesquisaId/comentario-oculto`
-`{ "oculto": true }` — só `COORDENADOR`; o comentário deixa de poder aparecer nos relatórios (F6). Devolve a lista.
+`{ "oculto": true }` — só `COORDENADOR` e `ADMIN`; o comentário deixa de poder aparecer nos relatórios (F6). Devolve a lista.
 
 ## Pendência e alertas
 

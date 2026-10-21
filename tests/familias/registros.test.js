@@ -142,7 +142,7 @@ const acBase = { id: 100, status: 'EM_ANDAMENTO', dataInicio: new Date('2026-03-
 
 test('montarEventos: ordem do mais novo ao mais antigo, com todos os tipos', () => {
   const eventos = registros.montarEventos({
-    ac: acBase, hoje: '2026-04-20', textoRestrito: false, familiaNome: 'Maria',
+    ac: acBase, hoje: '2026-04-20', familiaNome: 'Maria',
     registros: [{ id: 1, dataRegistro: new Date('2026-04-10'), criadoEm: new Date('2026-04-10T15:00:00Z'), tipoContatoNome: 'Telefone', houveContato: true, situacao: 'IGUAL', resumo: 'Tudo certo', proximoContatoEm: new Date('2026-05-10'), autorNome: 'Ana' },
       { id: 2, dataRegistro: new Date('2026-04-15'), criadoEm: new Date('2026-04-15T15:00:00Z'), tipoContatoNome: 'Visita domiciliar', houveContato: false, situacao: null, resumo: null, autorNome: 'Ana' }],
     atendimentos: [{ id: 7, dataAtendimento: new Date('2026-04-12'), criadoEm: new Date('2026-04-12T12:00:00Z'), unidadeSigla: 'BRA', resumo: 'Orientação', demandas: 'Saúde', encaminhamentos: 'CRAS, UBS', autorNome: 'Bia' },
@@ -168,20 +168,20 @@ test('montarEventos: ordem do mais novo ao mais antigo, com todos os tipos', () 
   assert.equal(tentativa.situacao, null);
 });
 
-test('montarEventos: encerramento aparece, prazo some; perfil restrito (ADMIN) não vê textos livres', () => {
+test('montarEventos: encerramento aparece, prazo some; textos livres aparecem para todos os perfis com acesso (V12)', () => {
   const encerrado = { ...acBase, status: 'CONCLUIDO', dataEncerramento: new Date('2026-05-20'), observacoes: 'Motivo sigiloso' };
-  const comTudo = registros.montarEventos({ ac: encerrado, hoje: '2026-06-01', textoRestrito: false, registros: [], atendimentos: [], questionarios: [{ id: 4, tipo: 'FINAL', dataAplicacao: new Date('2026-05-19'), criadoEm: new Date('2026-05-19T10:00:00Z'), autorNome: 'Ana' }] });
+  const comTudo = registros.montarEventos({ ac: encerrado, hoje: '2026-06-01', registros: [], atendimentos: [], questionarios: [{ id: 4, tipo: 'FINAL', dataAplicacao: new Date('2026-05-19'), criadoEm: new Date('2026-05-19T10:00:00Z'), autorNome: 'Ana' }] });
   assert.equal(comTudo[0].tipo, 'ENCERRAMENTO');
   assert.equal(comTudo[0].resumo, 'Motivo sigiloso');
   assert.ok(!comTudo.some((e) => e.tipo === 'PRAZO'));
-  const restrito = registros.montarEventos({
-    ac: encerrado, hoje: '2026-06-01', textoRestrito: true,
+  const abertos = registros.montarEventos({
+    ac: encerrado, hoje: '2026-06-01',
     registros: [{ id: 1, dataRegistro: new Date('2026-04-10'), criadoEm: new Date('2026-04-10T15:00:00Z'), tipoContatoNome: 'Telefone', houveContato: true, situacao: 'IGUAL', resumo: 'Segredo', autorNome: 'Ana' }],
     atendimentos: [{ id: 7, dataAtendimento: new Date('2026-04-12'), criadoEm: new Date('2026-04-12T12:00:00Z'), unidadeSigla: 'BRA', resumo: 'Segredo 2', demandas: 'Saúde', encaminhamentos: null, autorNome: 'Bia' }],
     questionarios: [],
   });
-  assert.ok(restrito.every((e) => !e.resumo), 'nenhum resumo de texto livre');
-  assert.ok(!JSON.stringify(restrito).includes('Segredo'));
+  assert.ok(JSON.stringify(abertos).includes('Segredo'));
+  assert.ok(JSON.stringify(abertos).includes('Segredo 2'));
 });
 
 // ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ test('assistente de outra unidade recebe 404 em todas as rotas de registro e lin
   } finally { await srv.fechar(); }
 });
 
-test('ADMIN não escreve registros (403) e não recebe textos livres', async () => {
+test('ADMIN opera como a coordenação: lê os textos, altera registros de outros e a validação roda (V12)', async () => {
   handlers = [
     ...baseHandlers(),
     { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
@@ -229,15 +229,14 @@ test('ADMIN não escreve registros (403) e não recebe textos livres', async () 
   ];
   const srv = await iniciar(admin);
   try {
-    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros', valido)).status, 403);
-    assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/registros/1', valido)).status, 403);
-    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros/1/anular', { motivo: 'x' })).status, 403);
+    // chega à validação (400), não é barrado por perfil (403)
+    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros', { houveContato: true })).status, 400);
+    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros/1/anular', {})).status, 400);
     const r = await srv.chamar('GET', '/acompanhamentos/100/registros');
     assert.equal(r.status, 200);
-    assert.equal(r.corpo.textoRestrito, true);
-    assert.equal(r.corpo.registros[0].resumo, null);
-    assert.equal(r.corpo.registros[0].podeAlterar, false);
-    assert.ok(!JSON.stringify(r.corpo).includes('confidencial'));
+    assert.equal(r.corpo.textoRestrito, undefined);
+    assert.equal(r.corpo.registros[0].resumo, 'Texto confidencial');
+    assert.equal(r.corpo.registros[0].podeAlterar, true, 'registro de outro autor (usuarioId 10): ADMIN pode, como a coordenação');
   } finally { await srv.fechar(); }
 });
 

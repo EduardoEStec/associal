@@ -149,12 +149,13 @@ test('listagem: calcula selo do questionário final (vencido / vencendo / em dia
   } finally { await srv.fechar(); }
 });
 
-test('criar: ADMIN não escreve (403); validações em português com chaves por campo', async () => {
+test('criar: ADMIN passa pelo perfil como a coordenação (V12); validações em português com chaves por campo', async () => {
   handlers = baseHandlers();
   let srv = await iniciar(admin);
   try {
-    const r = await srv.chamar('POST', '/', { responsavel: { cpf: '52998224725', nome: 'Maria' }, unidadeId: 1 });
-    assert.equal(r.status, 403);
+    const r = await srv.chamar('POST', '/', { responsavel: { cpf: '11111111111', nome: '' }, unidadeId: 1 });
+    assert.equal(r.status, 400, 'não é 403: o ADMIN chega à validação');
+    assert.equal(r.corpo.erro.detalhes['responsavel.cpf'], 'CPF inválido.');
   } finally { await srv.fechar(); }
 
   srv = await iniciar(assistenteA);

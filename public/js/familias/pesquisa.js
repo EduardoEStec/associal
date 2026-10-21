@@ -23,7 +23,7 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
   const voltar = `#/a/${acId}/acompanhamento`;
   const cabecalho = cabecalhoPagina('Pesquisa de satisfação', { voltar: { href: voltar, texto: ficha.responsavel.nome } });
 
-  if (!podeEscrever(usuario) || lista.textoRestrito) {
+  if (!podeEscrever(usuario)) {
     montar(conteudo, cabecalho, h('div', { class: 'aviso aviso-aviso' }, 'Seu perfil não pode aplicar a pesquisa de satisfação.'),
       h('a', { class: 'btn', href: voltar }, 'Voltar'));
     return;

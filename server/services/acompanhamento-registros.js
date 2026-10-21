@@ -3,11 +3,12 @@
 // F2 — Registros de acompanhamento (contato/visita) e linha do tempo da família.
 // Regras de unidade: tudo passa por carregarAcompanhamento (outra unidade => 404); a linha do tempo só
 // mostra atendimentos de unidades permitidas ao usuário (CONVENCOES §2.3).
-// Privacidade (decisão D11): o perfil ADMIN (TI) não lê texto livre — resumos chegam como null.
+// Privacidade (D11, revista em 21/10/2026): o ADMIN opera como a coordenação e lê os textos livres como ela.
 
 const { consultar, consultarUm, transacao, tipos } = require('../db');
 const { clausulaUnidades } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
+const { ehCoordenacao } = require('../lib/dominios');
 const { registrarAuditoria } = require('../lib/auditoria');
 const { normalizarData, texto, inteiroPositivo, lancarSeErros } = require('../lib/validacao');
 const familias = require('./familias');
@@ -21,8 +22,6 @@ const PESO = Object.freeze({ PRAZO: 7, ENCERRAMENTO: 6, QUESTIONARIO: 4, REGISTR
 
 const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) : null);
 const paramData = (v) => [tipos.Date, v ?? null];
-const restrito = (req) => req.usuario.perfil === 'ADMIN';
-const ocultar = (req, valor) => (restrito(req) ? null : valor ?? null);
 
 // ---------------------------------------------------------------------------
 // Validação (pura, exportada para teste)
@@ -90,13 +89,13 @@ const formatarRegistro = (req, r) => ({
   tipoContatoOutro: r.tipoContatoOutro,
   houveContato: !!r.houveContato,
   situacao: r.situacao,
-  resumo: ocultar(req, r.resumo),
+  resumo: r.resumo ?? null,
   proximoContatoEm: r.proximoContatoEm,
   autor: { id: r.usuarioId, nome: r.autorNome },
   criadoEm: r.criadoEm,
   alteradoEm: r.alteradoEm,
-  // quem pode editar/anular: o autor ou a coordenação (a rota ainda confere)
-  podeAlterar: !restrito(req) && (r.usuarioId === req.usuario.id || req.usuario.perfil === 'COORDENADOR'),
+  // quem pode editar/anular: o autor ou a coordenação/ADMIN (a rota ainda confere)
+  podeAlterar: r.usuarioId === req.usuario.id || ehCoordenacao(req.usuario),
 });
 
 async function listarRegistros(req, acompanhamentoId) {
@@ -119,7 +118,6 @@ async function listarRegistros(req, acompanhamentoId) {
   return {
     acompanhamentoId: ac.id,
     status: ac.status,
-    textoRestrito: restrito(req),
     semContatoDias: config.semContatoDias,
     resumo: await contato.lerResumoContato(ac, hoje, config.semContatoDias),
     tiposContato: tiposContato.map((t) => ({ id: t.id, nome: t.nome, exigeTexto: !!t.exigeTexto })),
@@ -144,7 +142,7 @@ async function carregarRegistro(executor, acId, registroId) {
 }
 
 function exigirAutorOuCoordenacao(req, registro) {
-  if (registro.usuarioId !== req.usuario.id && req.usuario.perfil !== 'COORDENADOR') {
+  if (registro.usuarioId !== req.usuario.id && !ehCoordenacao(req.usuario)) {
     throw erros.proibido('Somente quem fez o registro ou a coordenação pode alterá-lo.');
   }
 }
@@ -237,9 +235,9 @@ const TITULO_QUESTIONARIO = {
 };
 
 // Pura: transforma as linhas lidas em eventos {data, momento, tipo, titulo, ...}. Exportada para teste.
-function montarEventos({ ac, hoje, textoRestrito, registros, atendimentos, questionarios, familiaNome, pesquisas = [] }) {
+function montarEventos({ ac, hoje, registros, atendimentos, questionarios, familiaNome, pesquisas = [] }) {
   const eventos = [];
-  const txt = (v) => (textoRestrito ? null : v || null);
+  const txt = (v) => v || null;
   const inicio = isoData(ac.dataInicio);
 
   eventos.push({
@@ -387,13 +385,13 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
   ]);
 
   let eventos = montarEventos({
-    ac: { ...ac, assistenteNome: assistente?.nome }, hoje, textoRestrito: restrito(req), registros, atendimentos, questionarios,
+    ac: { ...ac, assistenteNome: assistente?.nome }, hoje, registros, atendimentos, questionarios,
     familiaNome: familia?.nome, pesquisas,
   });
   if (filtroTipos) eventos = eventos.filter((e) => filtroTipos.has(e.tipo));
   const total = eventos.length;
   const itens = eventos.slice((pagina - 1) * tamanho, pagina * tamanho);
-  return { acompanhamentoId: ac.id, textoRestrito: restrito(req), itens, total, pagina, tamanho };
+  return { acompanhamentoId: ac.id, itens, total, pagina, tamanho };
 }
 
 module.exports = {

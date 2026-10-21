@@ -6,7 +6,7 @@ import {
   mostrarErrosCampos, comEspera,
 } from '../ui.js';
 import { consumirPreCadastro, vincularRetorno } from '../retorno-atendimento.js';
-import { carregarApoio, cabecalhoPagina, campo, selectApoio, isoDia, montar } from './util.js';
+import { carregarApoio, cabecalhoPagina, campo, selectApoio, isoDia, montar, ehCoordenacao } from './util.js';
 
 function entrada(attrs) {
   return h('input', { class: 'input', ...attrs });
@@ -85,7 +85,7 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
       selUnidade ? campo({ id: 'unidadeId', rotulo: 'Unidade', obrigatorio: true, controle: selUnidade }) : null,
       campo({ id: 'dataInicio', rotulo: 'Data de início', obrigatorio: true,
         ajuda: 'O prazo do questionário final é calculado a partir desta data.', controle: dataInicio })));
-  if (edicao && usuario.perfil === 'COORDENADOR') {
+  if (edicao && ehCoordenacao(usuario)) {
     const prazo = entrada({ type: 'date', id: 'dataPrevistaFinal', name: 'dataPrevistaFinal', value: isoDia(atual.dataPrevistaFinal) });
     secAcomp.append(campo({ id: 'dataPrevistaFinal', rotulo: 'Prazo do questionário final', ajuda: 'Somente a coordenação altera o prazo.', controle: prazo }));
   }

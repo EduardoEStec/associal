@@ -244,14 +244,26 @@ const config = {};
       assert.strictEqual(so.itens.length, 1);
     });
 
-    await teste('ADMIN: lista vazia e restrita, detalhe 403, escrita 403, linha do tempo sem pesquisa', async () => {
+    await teste('ADMIN (V12): como a coordenação — lê respostas e comentários, aplica, anula e oculta comentário; auditoria guarda quem foi', async () => {
       const l = await lista(adm);
-      assert.strictEqual(l.textoRestrito, true);
-      assert.deepStrictEqual(l.pesquisas, []);
-      assert.strictEqual((await adm.req('GET', `${base()}/pesquisas/${rascunhoId}`)).status, 403);
-      assert.strictEqual((await adm.req('POST', `${base()}/pesquisas`, corpo({ momento: 'AVULSA' }))).status, 403);
+      assert.strictEqual(l.textoRestrito, undefined);
+      assert.ok(l.pesquisas.length > 0, 'vê as pesquisas');
+      const det = await adm.req('GET', `${base()}/pesquisas/${rascunhoId}`);
+      assert.strictEqual(det.status, 200);
+      assert.ok(det.corpo.itens.some((i) => i.valorTexto === 'Preço bom e atendimento atencioso'), 'lê o comentário');
+      assert.strictEqual(det.corpo.podeAlterar, true);
       const tl = JSON.stringify((await adm.req('GET', `${base()}/linha-do-tempo`)).corpo);
-      assert.ok(!tl.includes('PESQUISA') && !tl.includes('Preço bom'));
+      assert.ok(tl.includes('PESQUISA') && tl.includes('Preço bom'));
+      const nova = await adm.req('POST', `${base()}/pesquisas`, corpo({ momento: 'AVULSA' }));
+      assert.strictEqual(nova.status, 201, JSON.stringify(nova.corpo));
+      const [reg] = await db.consultar('SELECT u.login, r.usuario_id FROM pesquisa_resposta r JOIN usuario u ON u.id = r.usuario_id WHERE r.id = @id', { id: nova.corpo.id });
+      assert.strictEqual(reg.login, 'f3_admin');
+      const [aud] = await db.consultar("SELECT COUNT(*) AS n FROM auditoria WHERE tabela = 'pesquisa_resposta' AND registro_id = @id AND acao = 'CRIAR' AND usuario_id = @u", { id: String(nova.corpo.id), u: reg.usuarioId });
+      assert.strictEqual(aud.n, 1, 'auditoria com o usuário ADMIN');
+      assert.strictEqual((await adm.req('POST', `${base()}/pesquisas/${nova.corpo.id}/anular`, { motivo: 'Teste do admin' })).status, 200);
+      const antes = det.corpo.comentarioOculto;
+      assert.strictEqual((await adm.req('PUT', `${base()}/pesquisas/${rascunhoId}/comentario-oculto`, { oculto: !antes })).status, 200);
+      assert.strictEqual((await adm.req('PUT', `${base()}/pesquisas/${rascunhoId}/comentario-oculto`, { oculto: antes })).status, 200);
     });
 
     await teste('isolamento por unidade: assistente de outra unidade recebe 404 em tudo', async () => {

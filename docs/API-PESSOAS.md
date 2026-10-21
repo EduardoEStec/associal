@@ -28,13 +28,13 @@ Aceita CPF com ou sem máscara. CPF inválido → `400 VALIDACAO`.
 Mínimo 3 letras (`400` se menos). Até 20 resultados, ordem alfabética: `{ "pessoas": [ pessoa, ... ] }`.
 Só devolve pessoas que tenham atendimento **ou** acompanhamento (como responsável familiar) em unidade permitida ao usuário.
 
-## `POST /api/pessoas` (ASSISTENTE, COORDENADOR)
+## `POST /api/pessoas` (ASSISTENTE, COORDENADOR, ADMIN)
 
 Corpo: campos de `pessoa` sem `id` (`nome` obrigatório; `cpf` opcional, mas, se informado, válido).
 - `201 { "id": 13 }`
 - `409 CONFLITO` se o CPF já existe (use `buscar?cpf=` antes e reaproveite a pessoa).
 
-## `PUT /api/pessoas/:id` (ASSISTENTE, COORDENADOR)
+## `PUT /api/pessoas/:id` (ASSISTENTE, COORDENADOR, ADMIN)
 
 Substitui os dados pessoais (mesmo corpo do POST; campo omitido vira `null`). Permitido se a pessoa tem
 atendimento/acompanhamento em unidade permitida **ou** foi localizada por CPF/criada pelo usuário na sessão atual;

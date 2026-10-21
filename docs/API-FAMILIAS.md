@@ -2,7 +2,7 @@
 
 Módulo 3 — Acompanhamento Familiar. Exige sessão. **LGPD:** família só é exposta através de um *acompanhamento* de unidade
 permitida ao usuário (outra unidade ⇒ `404`). Erros no formato padrão (CONVENCOES §4). Escritas exigem `X-Requested-With: fetch`
-e perfil `ASSISTENTE` ou `COORDENADOR` (ADMIN apenas lê). Datas `AAAA-MM-DD`; colunas DATE chegam como `…T00:00:00.000Z`.
+e perfil `ASSISTENTE`, `COORDENADOR` ou `ADMIN` (V12: o ADMIN opera como a coordenação). Datas `AAAA-MM-DD`; colunas DATE chegam como `…T00:00:00.000Z`.
 
 Conceitos: **família** = responsável (pessoa por CPF) + membros; **acompanhamento** = família numa unidade, com `status`
 `EM_ANDAMENTO | CONCLUIDO | DESLIGADO`. Um acompanhamento tem no máximo um questionário `INICIAL` e um `FINAL`. Todos os `:id`
