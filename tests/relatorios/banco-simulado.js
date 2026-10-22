@@ -72,8 +72,16 @@ const visiveis = (linhas, p) => {
   return linhas.filter((l) => perm.includes(l.unidadeId) && (sel.length === 0 || sel.includes(l.unidadeId)));
 };
 
+// Perguntas extras (P2): respostas por dono e os donos (registros) do período, preenchidos pelos testes que precisam delas
+const respostasExtra = []; // { donoId, perguntaId, opcaoId, valorTexto, valorNum }
+const donosExtra = { ATENDIMENTO: [], QUESTIONARIO: [], PESQUISA: [] }; // { donoId, data, unidadeId, momento }
+
 function responder(sql, p = {}) {
   const s = sql.replace(/\s+/g, ' ');
+  if (/AS dono_id, .* AS data, /.test(s)) {
+    const formulario = /FROM atendimento a/.test(s) ? 'ATENDIMENTO' : /FROM questionario q/.test(s) ? 'QUESTIONARIO' : 'PESQUISA';
+    return visiveis(donosExtra[formulario], p);
+  }
   const exigeUnidade = /unidade_id IN \(@un0/.test(s);
   if (/\bFROM (atendimento|acao_visita|acompanhamento|questionario|familia)\b/.test(s) && !exigeUnidade && !/FROM familia f JOIN pessoa|FROM familia_membro|FROM questionario WHERE acompanhamento_id|FROM questionario_(beneficio|destino)|INSERT INTO auditoria/.test(s)) {
     consultasUnidade.push(`SEM FILTRO DE UNIDADE: ${s.slice(0, 80)}`);
@@ -175,6 +183,10 @@ function responder(sql, p = {}) {
   if (/FROM acompanhamento ac JOIN familia f JOIN pessoa/.test(s) || /SELECT TOP 200 ac\.id/.test(s)) {
     return visiveis(ACOMPANHAMENTOS, p).map((a) => ({ id: a.id, dataInicio: a.dataInicio, status: a.status, unidadeSigla: a.unidadeSigla, responsavelNome: 'Fulana', temInicial: 1, temFinal: 1 }));
   }
+  if (/FROM resposta_extra WHERE (questionario_id|atendimento_id|pesquisa_resposta_id) IN/.test(s)) {
+    const ids = Object.entries(p).filter(([k]) => /^d\d+$/.test(k)).map(([, v]) => v);
+    return respostasExtra.filter((r) => ids.includes(r.donoId));
+  }
   throw new Error(`Consulta não prevista no banco simulado: ${s.slice(0, 160)}`);
 }
 
@@ -193,4 +205,4 @@ function instalar() {
   };
 }
 
-module.exports = { instalar, UNIDADES, consultasUnidade };
+module.exports = { instalar, UNIDADES, consultasUnidade, respostasExtra, donosExtra };

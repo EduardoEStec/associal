@@ -1,20 +1,23 @@
-// Administração: abas Usuários · Unidades · Listas · Configurações · Auditoria.
+// Administração: abas Usuários · Unidades · Listas · Perguntas e opções · Configurações · Auditoria.
 import { iniciarPagina } from '../layout.js';
 import { h } from '../ui.js';
 import { montarUsuarios } from '../admin/usuarios.js';
 import { montarUnidades } from '../admin/unidades.js';
 import { montarListas } from '../admin/listas.js';
+import { montarPerguntas } from '../admin/perguntas.js';
 import { montarConfiguracoes } from '../admin/configuracoes.js';
 import { montarAuditoria } from '../admin/auditoria.js';
 
 const { usuario, conteudo } = await iniciarPagina('admin');
 
-// O COORDENADOR só enxerga Configurações (prazo do questionário final); o servidor também restringe.
+// ADMIN vê tudo. O COORDENADOR gerencia tudo menos as contas de usuário e a auditoria (o servidor também restringe).
+const GESTAO = ['ADMIN', 'COORDENADOR'];
 const todas = [
   { chave: 'usuarios', rotulo: 'Usuários', montar: montarUsuarios, perfis: ['ADMIN'] },
-  { chave: 'unidades', rotulo: 'Unidades', montar: montarUnidades, perfis: ['ADMIN'] },
-  { chave: 'listas', rotulo: 'Listas', montar: montarListas, perfis: ['ADMIN'] },
-  { chave: 'configuracoes', rotulo: 'Configurações', montar: montarConfiguracoes, perfis: ['ADMIN', 'COORDENADOR'] },
+  { chave: 'unidades', rotulo: 'Unidades', montar: montarUnidades, perfis: GESTAO },
+  { chave: 'listas', rotulo: 'Listas', montar: montarListas, perfis: GESTAO },
+  { chave: 'perguntas', rotulo: 'Perguntas e opções', montar: montarPerguntas, perfis: GESTAO },
+  { chave: 'configuracoes', rotulo: 'Configurações', montar: montarConfiguracoes, perfis: GESTAO },
   { chave: 'auditoria', rotulo: 'Auditoria', montar: montarAuditoria, perfis: ['ADMIN'] },
 ];
 const abas = todas.filter((a) => a.perfis.includes(usuario.perfil));

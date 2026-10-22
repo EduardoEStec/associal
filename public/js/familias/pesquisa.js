@@ -31,12 +31,15 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
 
   const modelo = lista.modelo;
   const perguntas = modelo.perguntas;
+  const extrasPesq = modelo.extras || []; // perguntas adicionais da coordenação: sempre opcionais, depois das oficiais
   const NP = perguntas.length;
-  const PASSO_REVISAO = NP + 1;
-  const PASSO_FIM = NP + 2;
+  const NE = extrasPesq.length;
+  const PASSO_REVISAO = NP + NE + 1;
+  const PASSO_FIM = NP + NE + 2;
 
   // ---- estado (retoma o rascunho do mesmo momento, se houver) ----
   const resp = {}; // codigo -> { valorNum, valorTexto, preferNaoResponder }
+  const extrasResp = {}; // código da pergunta adicional -> valor (texto, número, true/false, código da opção ou lista de códigos)
   let rascunhoId = null;
   let modo = null;
   let data = hojeIso();
@@ -48,8 +51,9 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
     const cheia = await api.get(`/api/familias/acompanhamentos/${acId}/pesquisas/${rascunho.id}`);
     rascunhoId = cheia.id; modo = cheia.modo; data = String(cheia.dataAplicacao).slice(0, 10); consentimento = cheia.consentimentoLido;
     for (const it of cheia.itens) resp[it.codigo] = { valorNum: it.valorNum, valorTexto: it.valorTexto, preferNaoResponder: it.preferNaoResponder };
+    Object.assign(extrasResp, cheia.extras);
     const primeira = perguntas.findIndex((p) => !resposta(p.codigo, p.tipo));
-    passo = consentimento ? (primeira === -1 ? PASSO_REVISAO : primeira + 1) : 0;
+    passo = consentimento ? (primeira === -1 ? NP + 1 : primeira + 1) : 0;
   }
 
   function resposta(codigo, tipo) {
@@ -78,7 +82,7 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
   // ---- salvar ----
   let salvando = Promise.resolve();
   function corpoRascunho() {
-    return { momento, situacao: 'RASCUNHO', consentimentoLido: true, dataAplicacao: data, modo, itens: itensParaEnviar() };
+    return { momento, situacao: 'RASCUNHO', consentimentoLido: true, dataAplicacao: data, modo, itens: itensParaEnviar(), extras: extrasResp };
   }
   async function salvarRascunho() {
     salvando = salvando.catch(() => {}).then(async () => {
@@ -165,7 +169,59 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
       campoEl);
   }
 
+  // Pergunta adicional (opcional): a assistente lê em voz alta e marca ou escreve o que a família disse
+  function telaExtra(d) {
+    const nome = `x-${d.codigo}`;
+    const ler = () => extrasResp[d.codigo];
+    const definir = (v) => { if (v === null || v === '' || (Array.isArray(v) && !v.length)) delete extrasResp[d.codigo]; else extrasResp[d.codigo] = v; };
+    let campoEl;
+    if (d.tipo === 'TEXTO') {
+      campoEl = h('textarea', { class: 'textarea pesq-texto', rows: 5, maxlength: 1000, 'aria-label': d.texto, placeholder: 'Escreva o que a família disse (opcional)' });
+      campoEl.value = ler() || '';
+      campoEl.addEventListener('input', () => definir(campoEl.value.trim() || null));
+    } else if (d.tipo === 'NUMERO') {
+      campoEl = h('input', { class: 'input', type: 'number', step: 'any', inputmode: 'decimal', 'aria-label': d.texto, name: nome });
+      campoEl.value = ler() ?? '';
+      campoEl.addEventListener('input', () => definir(campoEl.value === '' ? null : campoEl.value));
+    } else if (d.tipo === 'SIM_NAO') {
+      campoEl = h('div', { class: 'opcoes', role: 'radiogroup', 'aria-label': d.texto },
+        [[true, 'Sim'], [false, 'Não']].map(([v, rotulo]) => h('label', { class: 'opcao q-opcao' },
+          h('input', { type: 'radio', name: nome, value: String(v), checked: ler() === v, onchange: () => definir(v) }), h('span', {}, rotulo))));
+    } else if (d.tipo === 'ESCOLHA') {
+      campoEl = h('div', { class: 'opcoes', role: 'radiogroup', 'aria-label': d.texto },
+        d.opcoes.filter((o) => o.ativa !== false || ler() === o.valor).map((o) => h('label', { class: 'opcao q-opcao' },
+          h('input', { type: 'radio', name: nome, value: o.valor, checked: ler() === o.valor, onchange: () => definir(o.valor) }), h('span', {}, o.rotulo))));
+    } else {
+      const marcados = new Set(ler() || []);
+      campoEl = h('div', { class: 'opcoes', role: 'group', 'aria-label': d.texto },
+        d.opcoes.filter((o) => o.ativa !== false || marcados.has(o.valor)).map((o) => {
+          const entrada = h('input', { type: 'checkbox', name: nome, value: o.valor, checked: marcados.has(o.valor) });
+          entrada.addEventListener('change', () => { if (entrada.checked) marcados.add(o.valor); else marcados.delete(o.valor); definir([...marcados]); });
+          return h('label', { class: 'opcao q-opcao' }, entrada, h('span', {}, o.rotulo));
+        }));
+    }
+    botaoAvancar.disabled = false;
+    return h('div', { class: 'card pesq-cartao' },
+      h('p', { class: 'pesq-instrucao' }, 'Leia a pergunta em voz alta:'),
+      h('p', { class: 'pesq-pergunta' }, d.texto),
+      d.ajuda ? h('p', { class: 'texto-pequeno texto-suave' }, d.ajuda) : null,
+      h('div', { class: 'pesq-campo' }, campoEl),
+      h('p', { class: 'texto-pequeno texto-suave' }, 'Pode deixar em branco se a família não quiser responder.'));
+  }
+
+  function respostaExtraLegivel(d) {
+    const v = extrasResp[d.codigo];
+    if (v === undefined) return '(sem resposta)';
+    if (d.tipo === 'SIM_NAO') return v ? 'Sim' : 'Não';
+    if (d.tipo === 'ESCOLHA') return d.opcoes.find((o) => o.valor === v)?.rotulo || '';
+    if (d.tipo === 'MULTIPLA') return v.map((c) => d.opcoes.find((o) => o.valor === c)?.rotulo).filter(Boolean).join('; ');
+    return String(v);
+  }
+
   function telaRevisao() {
+    const itensExtras = extrasPesq.map((d, i) => h('li', { class: 'pesq-rev-item' },
+      h('button', { type: 'button', class: 'pesq-rev-botao', onclick: () => irPara(NP + i + 1), 'aria-label': `Corrigir: ${d.texto}` },
+        h('span', { class: 'pesq-rev-pergunta' }, d.texto), h('strong', { class: 'pesq-rev-valor' }, respostaExtraLegivel(d)))));
     const itens = perguntas.map((p, i) => {
       const r = resp[p.codigo];
       let valor;
@@ -176,7 +232,7 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
       return h('li', { class: 'pesq-rev-item' },
         h('button', { type: 'button', class: 'pesq-rev-botao', onclick: () => irPara(i + 1), 'aria-label': `Corrigir: ${p.texto}` },
           h('span', { class: 'pesq-rev-pergunta' }, p.texto), h('strong', { class: 'pesq-rev-valor' }, valor)));
-    });
+    }).concat(itensExtras);
     const dataEl = h('input', { class: 'input', type: 'date', id: 'pq-data', name: 'dataAplicacao', max: hojeIso(), value: data });
     dataEl.addEventListener('input', () => { data = dataEl.value || hojeIso(); });
     const grupoModo = h('div', { class: 'opcoes', role: 'radiogroup', 'aria-labelledby': 'pq-modo-rotulo' },
@@ -212,8 +268,12 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
       titulo.textContent = 'Antes de começar';
       area.replaceChildren(telaAviso());
     } else if (passo <= NP) {
-      titulo.textContent = `Pergunta ${passo} de ${NP}`;
+      titulo.textContent = `Pergunta ${passo} de ${NP + NE}`;
       area.replaceChildren(telaPergunta(perguntas[passo - 1], passo - 1));
+      botaoAvancar.textContent = 'Próxima →';
+    } else if (passo <= NP + NE) {
+      titulo.textContent = `Pergunta ${passo} de ${NP + NE}`;
+      area.replaceChildren(telaExtra(extrasPesq[passo - NP - 1]));
       botaoAvancar.textContent = 'Próxima →';
     } else if (passo === PASSO_REVISAO) {
       titulo.textContent = 'Revisão';
@@ -238,7 +298,7 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
     try { await salvarRascunho(); toast.sucesso('Rascunho salvo. Você pode continuar depois.'); navegar(voltar); } catch (e) { toast.erro(e.message); }
   });
   botaoAvancar.addEventListener('click', async () => {
-    if (passo <= NP) {
+    if (passo <= NP + NE) {
       botaoAvancar.disabled = true;
       try { await salvarRascunho(); } catch (e) { toast.erro(e.message); botaoAvancar.disabled = false; return; }
       irPara(passo + 1);
@@ -254,8 +314,9 @@ export async function renderPesquisa({ usuario, conteudo, navegar }, acId, momen
     } catch (e) {
       if (e instanceof ErroApi && e.status === 400 && e.detalhes) {
         const faltou = perguntas.findIndex((p) => e.detalhes[`itens.${p.codigo}`]);
+        const invalida = extrasPesq.findIndex((d) => e.detalhes[`extras.${d.codigo}`]);
         toast.erro(faltou >= 0 ? `Falta responder a pergunta ${faltou + 1}.` : (Object.values(e.detalhes)[0] || e.message));
-        if (faltou >= 0) irPara(faltou + 1);
+        if (faltou >= 0) irPara(faltou + 1); else if (invalida >= 0) irPara(NP + invalida + 1);
       } else toast.erro(e.message);
       botaoAvancar.disabled = false;
     }

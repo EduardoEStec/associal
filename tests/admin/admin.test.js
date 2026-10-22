@@ -53,6 +53,14 @@ async function consultar(sql, p = {}) {
   if (s.startsWith('SELECT chave, valor FROM configuracao')) return p.chave in estado.config ? [{ chave: p.chave, valor: estado.config[p.chave] }] : [];
   if (s.startsWith('SELECT chave, valor, descricao')) return Object.entries(estado.config).map(([chave, valor]) => ({ chave, valor, descricao: null, alteradoEm: null }));
   if (s.startsWith('UPDATE configuracao')) { estado.config[p.chave] = p.valor; return []; }
+  // P1/P2: unidades, listas de apoio e catálogo de perguntas (a coordenação também acessa)
+  if (s.includes('FROM unidade ORDER BY ativo DESC')) return estado.unidades.map((u) => ({ ...u, nome: u.sigla, endereco: null, ativo: 1, ordem: 0 }));
+  if (s.startsWith('SELECT 1 AS x FROM unidade WHERE sigla')) return estado.unidades.filter((u) => u.sigla === p.sigla && u.id !== p.id).map(() => ({ x: 1 }));
+  if (s.startsWith('INSERT INTO unidade')) { const id = estado.unidades.length + 1; estado.unidades.push({ id, sigla: p.sigla }); return [{ id }]; }
+  if (/^SELECT .* FROM demanda t ORDER BY/.test(s)) return [{ id: 1, nome: 'Demanda', ordem: 0, ativo: 1, exigeTexto: 0, emUso: 1 }];
+  if (s.startsWith('SELECT 1 AS x FROM demanda WHERE nome')) return [];
+  if (s.startsWith('INSERT INTO demanda')) return [{ id: 50 }];
+  if (s.includes('FROM catalogo_pergunta p WHERE p.formulario') || s.includes('FROM catalogo_opcao o')) return [];
   if (s.includes('COUNT(*) AS total FROM auditoria')) return [{ total: 0 }];
   if (s.includes('FROM auditoria a LEFT JOIN')) { estado.sqlAuditoria = s; estado.paramsAuditoria = p; return []; }
   throw new Error(`SQL não previsto no mock: ${s.slice(0, 120)}`);
@@ -95,26 +103,52 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
   await new Promise((r) => servidor.once('listening', r));
 
   usuarioAtual = ASSIST;
-  await teste('assistente é barrado em tudo (403)', async () => {
-    assert.strictEqual((await chamar('GET', '/usuarios')).status, 403);
-    assert.strictEqual((await chamar('GET', '/auditoria')).status, 403);
-    assert.strictEqual((await chamar('GET', '/configuracoes')).status, 403);
+  await teste('P1: assistente é barrado em TUDO da Administração (403): contas, apoio, unidades, configurações, perguntas, auditoria', async () => {
+    for (const [m, u, c] of [['GET', '/usuarios'], ['GET', '/auditoria'], ['GET', '/auditoria/opcoes'], ['GET', '/configuracoes'], ['GET', '/apoio'],
+      ['GET', '/apoio/demanda'], ['GET', '/unidades'], ['GET', '/perguntas?formulario=QUESTIONARIO'],
+      ['POST', '/usuarios', { login: 'zz', nome: 'z', perfil: 'ADMIN' }], ['POST', '/apoio/demanda', { nome: 'x' }], ['PUT', '/apoio/demanda/1', { nome: 'x' }],
+      ['DELETE', '/apoio/demanda/1'], ['POST', '/unidades', { sigla: 'ZZ', nome: 'z' }], ['PATCH', '/unidades/1/ativo', { ativo: false }],
+      ['PUT', '/configuracoes/upload_max_mb', { valor: '5' }], ['POST', '/perguntas', { formulario: 'ATENDIMENTO', tipo: 'TEXTO', texto: 'abcdef' }],
+      ['PUT', '/perguntas/ordem', { formulario: 'ATENDIMENTO', ids: [] }], ['PATCH', '/perguntas/1/ativa', { ativa: false }]]) {
+      assert.strictEqual((await chamar(m, u, c)).status, 403, `${m} ${u}`);
+    }
   });
 
   usuarioAtual = COORD;
-  await teste('coordenador não acessa usuários nem auditoria', async () => {
-    assert.strictEqual((await chamar('GET', '/usuarios')).status, 403);
-    assert.strictEqual((await chamar('GET', '/auditoria')).status, 403);
+  await teste('P1: coordenador NÃO mexe em contas de usuário nem vê a auditoria (403)', async () => {
+    for (const [m, u, c] of [['GET', '/usuarios'], ['GET', '/usuarios/2'], ['POST', '/usuarios', { login: 'novo', nome: 'N', perfil: 'ASSISTENTE', unidadeIds: [1] }],
+      ['PUT', '/usuarios/2', { nome: 'M', perfil: 'ADMIN' }], ['PATCH', '/usuarios/2/ativo', { ativo: false }], ['POST', '/usuarios/2/redefinir-senha'],
+      ['GET', '/auditoria'], ['GET', '/auditoria/opcoes']]) {
+      assert.strictEqual((await chamar(m, u, c)).status, 403, `${m} ${u}`);
+    }
+    assert.ok(!estado.usuarios.some((u) => u.login === 'novo'), 'a conta não pode ter sido criada');
   });
-  await teste('coordenador vê só as configs editáveis por ele e altera o prazo', async () => {
+  await teste('P1: coordenador acessa e gerencia apoio, unidades e perguntas (200/201)', async () => {
+    assert.strictEqual((await chamar('GET', '/apoio')).status, 200);
+    assert.strictEqual((await chamar('GET', '/apoio/demanda')).status, 200);
+    assert.strictEqual((await chamar('POST', '/apoio/demanda', { nome: 'Nova demanda' })).status, 201);
+    assert.strictEqual((await chamar('GET', '/unidades')).status, 200);
+    assert.strictEqual((await chamar('POST', '/unidades', { sigla: 'ZZ', nome: 'Unidade ZZ' })).status, 201);
+    for (const f of ['QUESTIONARIO', 'PESQUISA', 'ATENDIMENTO']) assert.strictEqual((await chamar('GET', `/perguntas?formulario=${f}`)).status, 200, f);
+    assert.strictEqual((await chamar('GET', '/perguntas?formulario=XYZ')).status, 400);
+    // validação de pergunta extra (sem tocar no banco): tipo inválido e escolha com uma opção só
+    let r = await chamar('POST', '/perguntas', { formulario: 'ATENDIMENTO', tipo: 'ABC', texto: 'Pergunta nova' });
+    assert.strictEqual(r.status, 400); assert.ok(r.corpo.erro.detalhes.tipo);
+    r = await chamar('POST', '/perguntas', { formulario: 'ATENDIMENTO', tipo: 'ESCOLHA', texto: 'Pergunta nova', opcoes: ['só uma'] });
+    assert.strictEqual(r.status, 400); assert.ok(r.corpo.erro.detalhes.opcoes);
+  });
+  await teste('P1: coordenador vê e edita TODAS as configurações (inclusive as que eram só do ADMIN)', async () => {
     const l = await chamar('GET', '/configuracoes');
-    assert.deepStrictEqual(l.corpo.map((c) => c.chave), ['prazo_questionario_final_dias']);
+    assert.deepStrictEqual(l.corpo.map((c) => c.chave).sort(), ['prazo_questionario_final_dias', 'upload_max_mb']);
+    assert.ok(l.corpo.every((c) => c.editavel));
     const r = await chamar('PUT', '/configuracoes/prazo_questionario_final_dias', { valor: '120' });
     assert.strictEqual(r.status, 200);
     assert.strictEqual(estado.config.prazo_questionario_final_dias, '120');
+    assert.strictEqual((await chamar('PUT', '/configuracoes/upload_max_mb', { valor: '5' })).status, 200);
+    assert.strictEqual(estado.config.upload_max_mb, '5');
+    estado.config.upload_max_mb = '10';
   });
-  await teste('coordenador não altera config de admin (403) e valor inválido dá 400', async () => {
-    assert.strictEqual((await chamar('PUT', '/configuracoes/upload_max_mb', { valor: '5' })).status, 403);
+  await teste('configuração: valor inválido dá 400 e chave inexistente 404', async () => {
     for (const v of ['abc', '-3', '0', '1.5', '']) {
       const r = await chamar('PUT', '/configuracoes/prazo_questionario_final_dias', { valor: v });
       assert.strictEqual(r.status, 400, `valor ${v}`);

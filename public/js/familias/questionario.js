@@ -33,7 +33,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
   const jaConcluido = dados.concluido;
   const autosalvar = editavel && !jaConcluido; // concluído é validado por inteiro: só salva manualmente
 
-  const resp = { ...dados.respostas };
+  const resp = { ...dados.respostas, extras: { ...dados.extras } }; // extras: respostas às perguntas adicionais (código -> valor)
   resp.dataAplicacao = isoDia(dados.dataAplicacao) || dados.sugestoes.dataAplicacao;
   if (resp.qtdMembrosFamilia === null) resp.qtdMembrosFamilia = dados.sugestoes.qtdMembrosFamilia;
 
@@ -91,8 +91,11 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     await descarregar();
   };
 
+  // Perguntas adicionais (criadas pela coordenação) têm campo "extras.<código>" e guardam a resposta em resp.extras
+  const ehExtra = (campo) => campo.startsWith('extras.');
+  const ler = (campo) => (ehExtra(campo) ? resp.extras[campo.slice(7)] : resp[campo]);
   function definir(campo, valor) {
-    resp[campo] = valor;
+    if (ehExtra(campo)) resp.extras[campo.slice(7)] = valor; else resp[campo] = valor;
     delete errosPendentes[campo];
     agendar();
   }
@@ -103,7 +106,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
 
   function envolver(p, filhos, { grupo = false } = {}) {
     const idRotulo = novoId('rotulo');
-    const rotulo = h('span', { class: 'rotulo q-texto', id: idRotulo }, h('span', { class: 'q-codigo' }, `${p.codigo}.`), ` ${p.texto}`);
+    const rotulo = h('span', { class: 'rotulo q-texto', id: idRotulo }, p.extra ? null : h('span', { class: 'q-codigo' }, `${p.codigo}.`), p.extra ? p.texto : ` ${p.texto}`);
     return h('div', { class: 'campo q-pergunta', role: grupo ? 'group' : null, 'aria-labelledby': grupo ? idRotulo : null },
       rotulo, p.ajuda ? h('span', { class: 'ajuda' }, p.ajuda) : null, filhos);
   }
@@ -118,10 +121,10 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
   function campoNumero(p) {
     const moeda = p.tipo === 'moeda';
     const id = novoId(p.campo);
-    const valor = resp[p.campo];
+    const valor = ler(p.campo);
     const input = h('input', {
       class: 'input q-input', id, name: p.campo, type: moeda ? 'text' : 'number',
-      inputmode: moeda ? 'decimal' : 'numeric', min: p.min, max: p.max, autocomplete: 'off',
+      inputmode: moeda || p.extra ? 'decimal' : 'numeric', min: p.min, max: p.max, step: p.extra ? 'any' : null, autocomplete: 'off',
       placeholder: moeda ? 'R$ 0,00' : null,
     });
     input.value = moeda && valor !== null && valor !== '' && !Number.isNaN(Number(valor))
@@ -131,20 +134,37 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
   }
 
   function campoBooleano(p, aoMudar) {
-    const v = resp[p.campo];
+    const v = ler(p.campo);
     return h('div', { class: 'opcoes q-sim-nao' },
       opcaoRadio(p.campo, 'true', 'Sim', v === true, () => { definir(p.campo, true); aoMudar?.(true); }),
       opcaoRadio(p.campo, 'false', 'Não', v === false, () => { definir(p.campo, false); aoMudar?.(false); }));
   }
 
+  // Opção desativada pela coordenação só aparece para quem já tinha respondido com ela
   function campoEscolha(p) {
     return h('div', { class: 'opcoes' },
-      p.opcoes.map((o) => opcaoRadio(p.campo, o.valor, o.rotulo, resp[p.campo] === o.valor, (x) => definir(p.campo, x))));
+      p.opcoes.filter((o) => o.ativa !== false || ler(p.campo) === o.valor)
+        .map((o) => opcaoRadio(p.campo, o.valor, o.rotulo, ler(p.campo) === o.valor, (x) => definir(p.campo, x))));
+  }
+
+  // Pergunta adicional de várias opções (códigos das opções do catálogo)
+  function campoMultiplaExtra(p) {
+    const marcados = new Set(ler(p.campo) || []);
+    const caixas = p.opcoes.filter((o) => o.ativa !== false || marcados.has(o.valor)).map((o) => {
+      const input = h('input', { type: 'checkbox', name: p.campo, value: o.valor });
+      input.checked = marcados.has(o.valor);
+      input.addEventListener('change', () => {
+        if (input.checked) marcados.add(o.valor); else marcados.delete(o.valor);
+        definir(p.campo, [...marcados]);
+      });
+      return h('label', { class: 'opcao q-opcao' }, input, h('span', {}, o.rotulo));
+    });
+    return h('div', { class: 'opcoes' }, caixas);
   }
 
   function campoTexto(p) {
     const area = h('textarea', { class: 'textarea q-input', id: novoId(p.campo), name: p.campo, rows: 4, maxlength: 4000 });
-    area.value = paraTexto(resp[p.campo]);
+    area.value = paraTexto(ler(p.campo));
     area.addEventListener('input', () => definir(p.campo, area.value));
     return area;
   }
@@ -208,6 +228,8 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
         detalhe.hidden = resp[p.campo] !== true;
         return envolver(p, [campoBooleano(p, (v) => { detalhe.hidden = !v; }), detalhe], { grupo: true });
       }
+      case 'multipla-extra':
+        return envolver(p, campoMultiplaExtra(p), { grupo: true });
       case 'multipla':
         return envolver(p, campoMultipla({ campo: p.campo, apoioNome: p.apoio, campoOutro: p.campoOutro, rotuloOutro: 'Qual outro destino?' }), { grupo: true });
       default: return null;

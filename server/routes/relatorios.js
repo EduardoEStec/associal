@@ -8,7 +8,7 @@
 //   GET  /semestral/previa                    números, relatos e fotos candidatos
 //   POST /semestral                           gera o .docx
 //   GET  /foto/:id                            miniatura de foto (autenticada, com checagem de unidade)
-//   GET  /exportar/atendimentos.csv | acoes.csv | progresso.csv | satisfacao.csv   (os dois últimos: COORDENADOR/ADMIN)
+//   GET  /exportar/atendimentos.csv | acoes.csv | progresso.csv | satisfacao.csv | perguntas-extras.csv   (os três últimos: COORDENADOR/ADMIN)
 
 const express = require('express');
 const { erros } = require('../lib/erros');
@@ -97,5 +97,7 @@ router.get('/exportar/acoes.csv', (req, res) => exportar(req, res, servico.csvAc
 const soCoordenacao = (req, res, next) => (['COORDENADOR', 'ADMIN'].includes(req.usuario.perfil) ? next() : next(erros.proibido('Somente a coordenação exporta estes dados.')));
 router.get('/exportar/progresso.csv', soCoordenacao, (req, res) => exportar(req, res, servico.csvProgresso, 'progresso'));
 router.get('/exportar/satisfacao.csv', soCoordenacao, (req, res) => exportar(req, res, servico.csvSatisfacao, 'satisfacao'));
+// P2: respostas às perguntas adicionais criadas pela coordenação (texto livre das famílias: só coordenação e ADMIN)
+router.get('/exportar/perguntas-extras.csv', soCoordenacao, (req, res) => exportar(req, res, servico.csvPerguntasExtras, 'perguntas_extras'));
 
 module.exports = router;

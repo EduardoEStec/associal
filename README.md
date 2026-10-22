@@ -78,7 +78,7 @@ Quem criar scripts novos usa o próximo número (`003_...sql`), com `IF NOT EXIS
 3. Para redefinir a senha de qualquer usuário pelo servidor: `npm run admin:senha -- <login> [novaSenha]` (sem senha informada, gera uma aleatória). Em Docker: `docker compose exec app npm run admin:senha -- admin`.
 4. Depois do primeiro login: cadastrar usuários, vincular assistentes às unidades (módulo Administração — T7).
 
-Perfis: **ASSISTENTE** (somente as unidades vinculadas), **COORDENADOR** (todas as unidades), **ADMIN** (TI).
+Perfis: **ASSISTENTE** (somente as unidades vinculadas), **COORDENADOR** (todas as unidades; gerencia listas, unidades, configurações e as perguntas dos formulários, mas não as contas de usuário), **ADMIN** (TI: tudo, e é o único que gerencia contas de usuário e vê a auditoria). O catálogo de perguntas e opções configurável está em [docs/API-CATALOGO.md](docs/API-CATALOGO.md).
 
 ## Segurança e LGPD (resumo)
 

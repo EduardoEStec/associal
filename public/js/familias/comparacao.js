@@ -101,6 +101,20 @@ export async function renderComparacao({ conteudo }, acId) {
             h('td', { 'data-rotulo': 'Resultado' }, seloTendencia(i.tendencia, i), variacao(i))))))));
   }
 
+  // perguntas adicionais criadas pela coordenação: lado a lado, sem indicador de melhora
+  if ((c.extras || []).length) {
+    secoes.push(
+      h('h2', {}, 'Perguntas adicionais'),
+      h('div', { class: 'tabela-wrap' },
+        h('table', { class: 'tabela tabela-responsiva cmp-tabela' },
+          h('caption', { class: 'sr-only' }, 'Perguntas adicionais'),
+          h('thead', {}, h('tr', {}, h('th', {}, 'Pergunta'), h('th', {}, `Inicial (${formatarData(c.inicial.dataAplicacao)})`), h('th', {}, `Final (${formatarData(c.final.dataAplicacao)})`))),
+          h('tbody', {}, c.extras.map((x) => h('tr', {},
+            h('td', { 'data-rotulo': 'Pergunta' }, x.pergunta),
+            h('td', { 'data-rotulo': 'Inicial' }, x.inicial || '—'),
+            h('td', { 'data-rotulo': 'Final' }, x.final || '—')))))));
+  }
+
   montar(conteudo, 
     cabecalhoPagina(`Comparação — ${c.responsavel.nome}`, {
       voltar,

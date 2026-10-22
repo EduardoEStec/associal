@@ -17,3 +17,16 @@
 }
 .admin-paginacao { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-top: var(--esp-4); flex-wrap: wrap; }
 .auditoria-detalhes { font-family: ui-monospace, Consolas, monospace; font-size: var(--texto-xs); word-break: break-all; }
+
+/* Aba Perguntas e opções */
+.perg-secao { margin-bottom: var(--esp-4); }
+.perg-secao-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-3); margin-bottom: var(--esp-3); }
+.perg-secao-topo h2 { margin: 0; }
+.perg-lista, .perg-lista-opcoes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-3); }
+.perg-item { padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio); background: var(--cor-fundo); }
+.perg-selos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-2); }
+.perg-texto { margin: var(--esp-2) 0; font-weight: 600; }
+.perg-opcoes { margin-top: var(--esp-3); padding-top: var(--esp-3); border-top: 1px dashed var(--cor-borda); }
+.perg-lista-opcoes { margin: var(--esp-3) 0; gap: var(--esp-2); }
+.perg-opcao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-2); padding: var(--esp-2) var(--esp-3); background: var(--cor-fundo-suave); border-radius: var(--raio); }
+.perg-opcao-texto { flex: 1 1 14rem; min-width: 0; }

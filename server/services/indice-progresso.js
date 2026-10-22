@@ -7,7 +7,7 @@
 // Mudou a fórmula? Aumente VERSAO_REGRA: o instantâneo (acompanhamento_indice) guarda a versão com que cada
 // número foi calculado e `scripts/recalcular-indices.js` refaz os já gravados.
 
-const { ESCALAS } = require('./questionario');
+const estado = require('./catalogo-estado');
 
 const VERSAO_REGRA = 1;
 const TOLERANCIA_PADRAO = 5;
@@ -62,9 +62,9 @@ function pontuarItem(item, r, { salarioMinimo }) {
   const v = r[item.campo];
   switch (item.tipo) {
     case 'escala': {
-      const escala = ESCALAS[item.campo];
-      const i = escala.indexOf(v);
-      return i < 0 ? null : (i / (escala.length - 1)) * 100;
+      // posição na escala oficial; opção acrescentada vale como a base indicada, e "não pontua" fica de fora (como não respondida)
+      const pos = estado.posicaoNaEscala(item.campo, v);
+      return pos ? (pos.indice / (pos.total - 1)) * 100 : null;
     }
     case 'sim':
       return v === true ? 100 : v === false ? 0 : null;

@@ -3,26 +3,18 @@
 // Questionário familiar (INICIAL / FINAL): modelo das perguntas, validação das respostas e
 // comparação inicial × final. Tudo aqui é puro (sem acesso a banco) para ser testável.
 //
-// Fonte única das perguntas: a tela busca o modelo em GET /api/familias/questionario/modelo,
-// então texto, ordem e opções vivem só neste arquivo (+ server/lib/dominios.js).
+// Fonte única das perguntas: a tela busca o modelo em GET /api/familias/questionario/modelo. O esqueleto (campos, tipos, ordem,
+// regras) vive neste arquivo; textos, opções e perguntas extras vêm do catálogo configurável (./catalogo-estado.js).
 
-const { QUESTIONARIO } = require('../lib/dominios');
 const { normalizarData, texto } = require('../lib/validacao');
+const estado = require('./catalogo-estado');
+
+// Escalas, rótulos e textos vêm do catálogo (P2: a coordenação renomeia e acrescenta opções); sem catálogo carregado valem as
+// definições padrão de ./catalogo-estado.js, que são as oficiais.
+const { ESCALAS } = estado;
 
 const MAX_TEXTO = 4000;
 const MAX_TEXTO_CURTO = 200;
-
-// Ordem das opções do PIOR para o MELHOR (usada na comparação e na ordem exibida invertida).
-const ESCALAS = Object.freeze({
-  acessoAlimentosInNatura: ['NAO_TINHA', 'SEMANAL_1_2', 'SEMANAL_2_3', 'DIARIO'],
-  frequenciaFrutasVerduras: ['UMA_DUAS', 'TRES_QUATRO', 'CINCO_OU_MAIS'],
-  qualidadeAlimentacao: ['PIOROU', 'NAO_MELHOROU', 'MELHOROU_POUCO', 'MELHOROU_MUITO'],
-  saudeNutricional: ['NENHUMA', 'PEQUENA_MELHORIA', 'GRANDE_MELHORIA'],
-  economiaMensalFaixa: ['ATE_100', 'DE_101_200', 'DE_201_300', 'ACIMA_300'],
-  capacidadePoupanca: ['NAO_CONSEGUE', 'AS_VEZES', 'REGULARMENTE'],
-  gestaoFinanceira: ['PIOROU', 'SEM_MUDANCA', 'MELHOROU'],
-  avaliacaoArmazem: ['RUIM', 'REGULAR', 'BOA', 'OTIMA'],
-});
 
 // Faixas de economia: limite superior (inclusive) e inferior (exclusive) em R$.
 const LIMITES_FAIXA = Object.freeze({
@@ -222,34 +214,60 @@ const CAMPOS_BOOLEANOS = ['recebeAuxilio', 'conseguePoupar', 'empoderadaDecisoes
 const CAMPOS_ESCOLHA = Object.keys(ESCALAS);
 const CAMPOS_TEXTO = ['contribuicaoAutonomia', 'impactoComunidade', 'oQueMelhorar', 'principalBeneficio'];
 
-// Modelo entregue à tela: textos conforme o tipo (INICIAL "como está" / FINAL "hoje").
+// Tipo da pergunta extra (catálogo) -> tipo usado pelas telas do questionário
+const TIPO_EXTRA = Object.freeze({ TEXTO: 'texto', NUMERO: 'numero', SIM_NAO: 'booleano', ESCOLHA: 'escolha', MULTIPLA: 'multipla-extra' });
+
+// Pergunta extra (definição do catálogo) no formato do modelo. `campo` = "extras.<código>" (as respostas vão em `extras`).
+function perguntaExtraDoModelo(def, final) {
+  return {
+    campo: `extras.${def.codigo}`,
+    codigo: def.codigo,
+    extra: true,
+    tipo: TIPO_EXTRA[def.tipo],
+    texto: final ? (def.textoFinal || def.texto) : def.texto,
+    ajuda: def.ajuda || null,
+    obrigatoria: !!def.obrigatoria,
+    ...(def.tipo === 'ESCOLHA' || def.tipo === 'MULTIPLA'
+      ? { opcoes: [...def.opcoes].sort((a, b) => a.ordem - b.ordem || a.id - b.id).map((o) => ({ valor: o.codigo, rotulo: final ? (o.textoFinal || o.texto) : o.texto, ativa: o.ativa })) }
+      : {}),
+  };
+}
+
+// Modelo entregue à tela: textos conforme o tipo (INICIAL "como está" / FINAL "hoje"). Textos e opções vêm do catálogo;
+// as perguntas extras entram no fim da seção escolhida (a reavaliação rápida não tem extras).
 function montarModelo(tipo) {
   const reavaliacao = tipo === 'REAVALIACAO';
   const final = tipo === 'FINAL' || reavaliacao;
+  const extras = reavaliacao ? [] : estado.extras('QUESTIONARIO');
   return {
     tipo,
     blocos: BLOCOS.map((b) => ({
       numero: b.numero,
       titulo: b.titulo,
-      perguntas: b.perguntas.filter((p) => !reavaliacao || PERGUNTAS_REAVALIACAO.includes(p.campo)).map((p) => {
-        const saida = {
-          campo: p.campo,
-          codigo: p.codigo,
-          tipo: p.tipo,
-          texto: final ? p.textoFinal : p.textoInicial,
-          ajuda: final ? null : p.ajudaInicial || null,
-          min: p.min,
-          max: p.max,
-          apoio: p.apoio,
-          campoOutro: p.campoOutro,
-          detalhe: p.detalhe,
-        };
-        if (p.tipo === 'escolha') {
-          const rotulos = { ...QUESTIONARIO[p.campo], ...(final ? p.rotulosFinal : null) };
-          saida.opcoes = ESCALAS[p.campo].map((valor) => ({ valor, rotulo: rotulos[valor] }));
-        }
-        return saida;
-      }),
+      perguntas: [
+        ...b.perguntas.filter((p) => !reavaliacao || PERGUNTAS_REAVALIACAO.includes(p.campo)).map((p) => {
+          const ov = estado.textoPergunta(p.campo);
+          const saida = {
+            campo: p.campo,
+            codigo: p.codigo,
+            tipo: p.tipo,
+            texto: ov ? (final ? ov.textoFinal || ov.texto : ov.texto) : (final ? p.textoFinal : p.textoInicial),
+            ajuda: final ? null : (ov ? ov.ajuda : p.ajudaInicial) || null,
+            min: p.min,
+            max: p.max,
+            apoio: p.apoio,
+            campoOutro: p.campoOutro,
+            detalhe: p.detalhe,
+          };
+          if (p.tipo === 'escolha') {
+            saida.opcoes = estado.opcoesDe(p.campo).map((o) => ({
+              valor: o.codigo, rotulo: final && o.textoFinal ? o.textoFinal : o.texto, ativa: o.ativa,
+            }));
+          }
+          return saida;
+        }),
+        ...extras.filter((d) => d.secao === b.numero).map((d) => perguntaExtraDoModelo(d, final)),
+      ],
     })).filter((b) => b.perguntas.length > 0),
   };
 }
@@ -325,7 +343,7 @@ function validarRespostas(corpo, { concluir, hoje, tipo }) {
   for (const campo of CAMPOS_ESCOLHA) {
     const x = origem[campo];
     if (x === undefined || x === null || x === '') v[campo] = null;
-    else if (!ESCALAS[campo].includes(x)) erros[campo] = 'Opção inválida.';
+    else if (!estado.ehCodigoValido(campo, x)) erros[campo] = 'Opção inválida.';
     else v[campo] = x;
   }
 
@@ -341,8 +359,8 @@ function validarRespostas(corpo, { concluir, hoje, tipo }) {
   if (destinoEconomiaIds === null) erros.destinoEconomiaIds = 'Seleção inválida.';
 
   // Coerência economia: valor × faixa
-  if (!erros.economiaMensalValor && v.economiaMensalValor !== null && v.economiaMensalFaixa && !erros.economiaMensalFaixa) {
-    const [min, max] = LIMITES_FAIXA[v.economiaMensalFaixa];
+  if (!erros.economiaMensalValor && v.economiaMensalValor !== null && LIMITES_FAIXA[v.economiaMensalFaixa] && !erros.economiaMensalFaixa) {
+    const [min, max] = LIMITES_FAIXA[v.economiaMensalFaixa]; // opção acrescentada pela coordenação não tem limite conhecido
     if (v.economiaMensalValor <= min || v.economiaMensalValor > max) {
       erros.economiaMensalValor = 'O valor informado não corresponde à faixa de economia escolhida.';
     }
@@ -409,15 +427,17 @@ const TENDENCIA = Object.freeze({
 
 function rotuloEscolha(p, valor, tipo) {
   if (valor === null || valor === undefined) return null;
-  const extra = tipo === 'FINAL' ? p.rotulosFinal : null;
-  return (extra && extra[valor]) || QUESTIONARIO[p.campo][valor] || valor;
+  return estado.rotuloOpcao(p.campo, valor, tipo);
 }
 
 function compararValores(p, antes, depois) {
   if (antes === null || antes === undefined || depois === null || depois === undefined) return TENDENCIA.SEM_DADOS;
   if (p.tipo === 'escolha') {
-    const escala = ESCALAS[p.campo];
-    const d = escala.indexOf(depois) - escala.indexOf(antes);
+    // opção acrescentada vale como a opção base indicada; "não pontua" fica fora da comparação
+    const a = estado.posicaoNaEscala(p.campo, antes);
+    const b = estado.posicaoNaEscala(p.campo, depois);
+    if (!a || !b) return TENDENCIA.SEM_DADOS;
+    const d = b.indice - a.indice;
     return d > 0 ? TENDENCIA.MELHOROU : d < 0 ? TENDENCIA.PIOROU : TENDENCIA.IGUAL;
   }
   if (p.tipo === 'texto' || p.tipo === 'multipla') return TENDENCIA.NEUTRO;
@@ -533,16 +553,19 @@ function consolidarComparacao(pares, nomesApoio = {}) {
     }
 
     if (p.tipo === 'escolha') {
+      // opções desativadas só aparecem se alguém respondeu com elas
+      const usadas = new Set(pares.flatMap((par) => [par.inicial[p.campo], par.final[p.campo]]).filter((x) => x !== null && x !== undefined));
+      const codigos = estado.opcoesDe(p.campo).filter((o) => o.ativa || usadas.has(o.codigo)).map((o) => o.codigo);
       const distribuicao = (lado, tipo) => {
-        const cont = Object.fromEntries(ESCALAS[p.campo].map((c) => [c, 0]));
+        const cont = Object.fromEntries(codigos.map((c) => [c, 0]));
         let semResposta = 0;
         for (const par of pares) {
           const valor = par[lado][p.campo];
           if (valor === null || valor === undefined) semResposta += 1;
-          else cont[valor] += 1;
+          else if (valor in cont) cont[valor] += 1;
         }
         return {
-          opcoes: ESCALAS[p.campo].map((c) => ({
+          opcoes: codigos.map((c) => ({
             valor: c, rotulo: rotuloEscolha(p, c, tipo), familias: cont[c],
             percentual: total ? arredondar((cont[c] / total) * 100) : 0,
           })),
@@ -638,6 +661,7 @@ module.exports = {
   PERGUNTAS,
   PERGUNTAS_REAVALIACAO,
   ESCALAS,
+  TIPO_EXTRA,
   COLUNAS,
   TENDENCIA,
   montarModelo,

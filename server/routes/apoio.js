@@ -9,6 +9,8 @@ const express = require('express');
 const { consultar } = require('../db');
 const { erros } = require('../lib/erros');
 const { TABELAS_APOIO } = require('../lib/dominios');
+const estado = require('../services/catalogo-estado');
+const extras = require('../services/extras');
 
 const router = express.Router();
 
@@ -25,6 +27,13 @@ router.get('/', async (req, res) => {
   const dados = Object.fromEntries(entradas.map(([t, linhas]) => [t.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), linhas]));
   dados.unidades = req.usuario.unidades;
   res.json(dados);
+});
+
+// GET /api/apoio/perguntas/:formulario (QUESTIONARIO | PESQUISA | ATENDIMENTO) — perguntas extras ATIVAS criadas pela coordenação (P2)
+router.get('/perguntas/:formulario', (req, res) => {
+  const formulario = String(req.params.formulario).toUpperCase();
+  if (!estado.FORMULARIOS.includes(formulario)) throw erros.naoEncontrado('Formulário inexistente.');
+  res.json(estado.extras(formulario).map((d) => extras.definicaoPublica(d, formulario === 'PESQUISA' ? { obrigatoria: false } : undefined)));
 });
 
 router.get('/:tabela', async (req, res) => {

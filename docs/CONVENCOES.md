@@ -96,7 +96,7 @@ Regras:
 
 ### Perfis
 
-`requirePerfil('COORDENADOR', 'ADMIN')` restringe a rota (ou `router.use(...)` o módulo inteiro). **Desde a V12 o `ADMIN` opera como a coordenação** (cria, edita, lê textos e respostas, vê todas as unidades): nas rotas de escrita de atendimentos, pessoas, famílias e ações liste os três perfis; use `ehCoordenacao(usuario)` (`server/lib/dominios.js`) para as regras "autor ou coordenação". O que continua só do ADMIN é a administração de usuários, unidades, listas e auditoria. O front também esconde itens de menu por perfil (`ITENS_MENU` em `layout.js`), mas **o back-end é quem decide**.
+`requirePerfil('COORDENADOR', 'ADMIN')` restringe a rota (ou `router.use(...)` o módulo inteiro). **Desde a V12 o `ADMIN` opera como a coordenação** (cria, edita, lê textos e respostas, vê todas as unidades): nas rotas de escrita de atendimentos, pessoas, famílias e ações liste os três perfis; use `ehCoordenacao(usuario)` (`server/lib/dominios.js`) para as regras "autor ou coordenação". **Administração (P1):** o módulo inteiro (`/api/admin`) exige `COORDENADOR` ou `ADMIN`; as **contas de usuário** (`/usuarios`, redefinição de senha) e a **auditoria** continuam só do `ADMIN`, e o COORDENADOR gerencia o resto (listas de apoio, unidades, configurações, perguntas e opções). O ASSISTENTE recebe 403 em tudo de `/api/admin`. O front também esconde itens de menu por perfil (`ITENS_MENU` em `layout.js`), mas **o back-end é quem decide**.
 
 ## 2. Filtro por unidade (obrigatório — LGPD)
 

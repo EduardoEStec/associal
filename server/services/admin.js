@@ -60,27 +60,27 @@ async function sqlEmUso(tabela, alias) {
 
 // ---------- Configurações ----------
 
-// tipo: 'inteiro' (faixa min..max) ou 'texto'. `coordenador`: COORDENADOR também pode editar.
+// tipo: 'inteiro' (faixa min..max) ou 'texto'. Coordenação e ADMIN editam todas (P1).
 const CONFIG_REGRAS = Object.freeze({
-  prazo_questionario_final_dias: { tipo: 'inteiro', min: 1, max: 3650, coordenador: true, rotulo: 'Prazo do questionário final (dias)' },
-  alerta_questionario_final_dias_antes: { tipo: 'inteiro', min: 1, max: 365, coordenador: true, rotulo: 'Alerta antes do vencimento (dias)' },
-  alerta_sem_contato_dias: { tipo: 'inteiro', min: 1, max: 365, coordenador: true, rotulo: 'Alerta de família sem contato (dias)' },
-  alerta_sem_meta_dias: { tipo: 'inteiro', min: 7, max: 365, coordenador: true, rotulo: 'Alerta de família sem meta (dias)' },
-  pesquisa_intervalo_dias: { tipo: 'inteiro', min: 30, max: 730, coordenador: true, rotulo: 'Intervalo da pesquisa de satisfação (dias)' },
-  pesquisa_prazo_final_dias: { tipo: 'inteiro', min: 7, max: 365, coordenador: true, rotulo: 'Prazo da pesquisa final após concluir (dias)' },
-  pesquisa_n_minimo: { tipo: 'inteiro', min: 1, max: 100, coordenador: true, rotulo: 'Mínimo de respostas para exibir percentuais' },
-  semaforo_progresso_verde_pct: { tipo: 'inteiro', min: 1, max: 100, coordenador: true, rotulo: 'Semáforo do progresso: verde a partir de (% que melhoraram)' },
-  semaforo_progresso_amarelo_pct: { tipo: 'inteiro', min: 0, max: 100, coordenador: true, rotulo: 'Semáforo do progresso: amarelo a partir de (% que melhoraram)' },
-  semaforo_nps_verde: { tipo: 'inteiro', min: 0, max: 100, coordenador: true, rotulo: 'Semáforo da satisfação: verde a partir da nota geral (NPS)' },
-  semaforo_nps_amarelo: { tipo: 'inteiro', min: 0, max: 100, coordenador: true, rotulo: 'Semáforo da satisfação: amarelo a partir da nota geral (NPS)' },
-  semaforo_concordancia_verde: { tipo: 'inteiro', min: 1, max: 100, coordenador: true, rotulo: 'Semáforo da satisfação: verde a partir de (% de concordância)' },
-  semaforo_concordancia_amarelo: { tipo: 'inteiro', min: 0, max: 100, coordenador: true, rotulo: 'Semáforo da satisfação: amarelo a partir de (% de concordância)' },
-  indice_tolerancia_pontos: { tipo: 'inteiro', min: 1, max: 50, coordenador: true, rotulo: 'Tolerância do semáforo do índice de progresso (pontos)' },
-  salario_minimo_referencia: { tipo: 'inteiro', min: 1, max: 100000, coordenador: true, rotulo: 'Salário mínimo de referência (R$)' },
-  reavaliacao_dias: { tipo: 'inteiro', min: 7, max: 730, coordenador: true, rotulo: 'Dias até a reavaliação rápida' },
-  upload_max_mb: { tipo: 'inteiro', min: 1, max: 50, coordenador: false, rotulo: 'Tamanho máximo de foto (MB)' },
-  nome_entidade: { tipo: 'texto', max: 150, coordenador: false, rotulo: 'Nome da entidade' },
-  termo_colaboracao: { tipo: 'texto', max: 200, coordenador: false, rotulo: 'Termo de colaboração' },
+  prazo_questionario_final_dias: { tipo: 'inteiro', min: 1, max: 3650, rotulo: 'Prazo do questionário final (dias)' },
+  alerta_questionario_final_dias_antes: { tipo: 'inteiro', min: 1, max: 365, rotulo: 'Alerta antes do vencimento (dias)' },
+  alerta_sem_contato_dias: { tipo: 'inteiro', min: 1, max: 365, rotulo: 'Alerta de família sem contato (dias)' },
+  alerta_sem_meta_dias: { tipo: 'inteiro', min: 7, max: 365, rotulo: 'Alerta de família sem meta (dias)' },
+  pesquisa_intervalo_dias: { tipo: 'inteiro', min: 30, max: 730, rotulo: 'Intervalo da pesquisa de satisfação (dias)' },
+  pesquisa_prazo_final_dias: { tipo: 'inteiro', min: 7, max: 365, rotulo: 'Prazo da pesquisa final após concluir (dias)' },
+  pesquisa_n_minimo: { tipo: 'inteiro', min: 1, max: 100, rotulo: 'Mínimo de respostas para exibir percentuais' },
+  semaforo_progresso_verde_pct: { tipo: 'inteiro', min: 1, max: 100, rotulo: 'Semáforo do progresso: verde a partir de (% que melhoraram)' },
+  semaforo_progresso_amarelo_pct: { tipo: 'inteiro', min: 0, max: 100, rotulo: 'Semáforo do progresso: amarelo a partir de (% que melhoraram)' },
+  semaforo_nps_verde: { tipo: 'inteiro', min: 0, max: 100, rotulo: 'Semáforo da satisfação: verde a partir da nota geral (NPS)' },
+  semaforo_nps_amarelo: { tipo: 'inteiro', min: 0, max: 100, rotulo: 'Semáforo da satisfação: amarelo a partir da nota geral (NPS)' },
+  semaforo_concordancia_verde: { tipo: 'inteiro', min: 1, max: 100, rotulo: 'Semáforo da satisfação: verde a partir de (% de concordância)' },
+  semaforo_concordancia_amarelo: { tipo: 'inteiro', min: 0, max: 100, rotulo: 'Semáforo da satisfação: amarelo a partir de (% de concordância)' },
+  indice_tolerancia_pontos: { tipo: 'inteiro', min: 1, max: 50, rotulo: 'Tolerância do semáforo do índice de progresso (pontos)' },
+  salario_minimo_referencia: { tipo: 'inteiro', min: 1, max: 100000, rotulo: 'Salário mínimo de referência (R$)' },
+  reavaliacao_dias: { tipo: 'inteiro', min: 7, max: 730, rotulo: 'Dias até a reavaliação rápida' },
+  upload_max_mb: { tipo: 'inteiro', min: 1, max: 50, rotulo: 'Tamanho máximo de foto (MB)' },
+  nome_entidade: { tipo: 'texto', max: 150, rotulo: 'Nome da entidade' },
+  termo_colaboracao: { tipo: 'texto', max: 200, rotulo: 'Termo de colaboração' },
 });
 
 // Devolve { valor } normalizado ou { erro } em português.

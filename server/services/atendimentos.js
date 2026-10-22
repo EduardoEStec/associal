@@ -5,6 +5,8 @@
 const { consultar, tipos } = require('../db');
 const { normalizarData, calcularIdade, texto, inteiroPositivo } = require('../lib/validacao');
 const pessoas = require('./pessoas');
+const estado = require('./catalogo-estado');
+const extras = require('./extras');
 
 // Tabela N:N -> { tabela de apoio, coluna da relação, campo da lista no corpo, campo do texto "outra" }
 const LISTAS = Object.freeze({
@@ -89,6 +91,20 @@ async function validarApoio(dados, problemas, { somenteAtivas = true, executor =
   }
 }
 
+// Perguntas extras do formulário (P2). Obrigatórias valem sempre ao salvar. `extras` ausente na edição = não mexe nas respostas
+// (as obrigatórias são conferidas contra o que já está gravado). Devolve o resultado a gravar ou null.
+async function validarExtras(corpo, atendimentoId, problemas, executor = { consultar }) {
+  const defs = estado.extras('ATENDIMENTO');
+  if (!defs.length) return null;
+  const informado = corpo.extras !== undefined;
+  const entrada = informado ? corpo.extras
+    : (atendimentoId ? (await extras.carregarRespostas(executor, 'ATENDIMENTO', atendimentoId)).mapa : {});
+  const atuais = await extras.opcoesAtuais(executor, 'ATENDIMENTO', atendimentoId);
+  const r = extras.validarExtras(defs, entrada, { concluir: true, atuais });
+  Object.assign(problemas, r.erros);
+  return informado ? r : null;
+}
+
 // Faixa etária calculada na data do atendimento; sem nascimento usa a escolhida (ou "Outra").
 async function definirFaixaEtaria(dados, executor = { consultar }) {
   const faixas = await executor.consultar(
@@ -131,5 +147,5 @@ const paramsAtendimento = (dados, faixaEtariaId) => ({
 });
 
 module.exports = {
-  LISTAS, validarCorpo, validarApoio, definirFaixaEtaria, escolherFaixa, gravarListas, paramsAtendimento,
+  LISTAS, validarCorpo, validarApoio, validarExtras, definirFaixaEtaria, escolherFaixa, gravarListas, paramsAtendimento,
 };

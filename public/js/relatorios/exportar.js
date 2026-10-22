@@ -43,6 +43,8 @@ export function montarExportar(raiz, opcoes) {
         'Famílias que melhoraram, ficaram iguais ou pioraram no índice de progresso, geral e por dimensão, no total e por unidade. Abaixo do n mínimo não há percentual. Não contém dados pessoais.'),
       botao('Satisfação das famílias (CSV)', '/api/relatorios/exportar/satisfacao.csv',
         'Respostas e recusas da pesquisa de satisfação, nota geral (NPS), satisfação, concordância, taxas e situação do semáforo, no total e por unidade. Não contém comentários nem dados pessoais.'),
+      botao('Perguntas adicionais (CSV)', '/api/relatorios/exportar/perguntas-extras.csv',
+        'Respostas às perguntas criadas pela coordenação no questionário, na pesquisa de satisfação e no atendimento: uma linha por resposta, com data, unidade e momento. Não identifica a pessoa nem a família, mas pode conter texto livre.'),
     ]),
   );
 }

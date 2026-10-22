@@ -57,6 +57,7 @@ export async function renderDetalhe({ usuario, conteudo, apoio }, id) {
         ...par('Vulnerabilidades/riscos', listaComOutra(apoio.vulnerabilidade, a.vulnerabilidades, a.vulnerabilidadeOutra)),
         ...par('Encaminhamentos', listaComOutra(apoio.encaminhamento, a.encaminhamentos, a.encaminhamentoOutro)),
         ...par('Resumo do atendimento', a.resumo),
+        ...(a.respostasExtras || []).flatMap((x) => par(x.pergunta, x.resposta)), // perguntas adicionais da coordenação
       ),
       h('div', { class: 'barra-acoes' },
         botaoFormulario({ usuario, atendimento: a }),

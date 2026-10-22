@@ -27,7 +27,7 @@ fs.writeFileSync(path.join(UPLOADS, 'acoes', 'foto2.png'), Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABvrngfAAAAEklEQVR4nGP8z8Dwn4EIwDiqEAC8BQPQ1QvYjAAAAABJRU5ErkJggg==', 'base64'));
 fs.writeFileSync(path.join(UPLOADS, 'acoes', 'foto3.webp'), Buffer.from('RIFF....WEBPVP8 ', 'latin1'));
 
-const { instalar, UNIDADES, consultasUnidade } = require('./banco-simulado');
+const { instalar, UNIDADES, consultasUnidade, respostasExtra, donosExtra } = require('./banco-simulado');
 instalar();
 
 // ---------- app de teste ----------
@@ -395,6 +395,39 @@ async function main() {
     assert.match(texto, /Em andamento/);
     assert.match(texto, /Guardar R\$ 20 por semana/);
     assert.ok(!/\{|\}|undefined|NaN/.test(texto), 'sem tags soltas');
+  });
+
+  await teste('P2: perguntas adicionais entram no relatório individual e no CSV de perguntas extras (só coordenação, sem identificar)', async () => {
+    const estado = require(path.join(RAIZ, 'server/services/catalogo-estado.js'));
+    const def = (id, codigo, tipo, texto, opcoes = []) => ({ id, formulario: 'QUESTIONARIO', codigo, secao: 4, tipo, texto, textoFinal: null, ajuda: null, obrigatoria: false, ordem: id, ativa: true, opcoes });
+    estado.definir({ extras: { QUESTIONARIO: [
+      def(7, 'E0001', 'TEXTO', 'O que mudou na rotina?'),
+      def(8, 'E0002', 'ESCOLHA', 'Onde compra frutas?', [{ id: 80, codigo: 'OP01', texto: 'Feira', textoFinal: null, ordem: 10, ativa: true }]),
+    ] } });
+    respostasExtra.push(
+      { donoId: 101, perguntaId: 7, opcaoId: null, valorTexto: 'Almoço juntos todo dia', valorNum: null },
+      { donoId: 102, perguntaId: 8, opcaoId: 80, valorTexto: null, valorNum: null });
+    donosExtra.QUESTIONARIO.push(
+      { donoId: 101, data: new Date('2026-02-10T00:00:00Z'), unidadeId: 1, momento: 'INICIAL' },
+      { donoId: 102, data: new Date('2026-05-12T00:00:00Z'), unidadeId: 1, momento: 'FINAL' });
+    try {
+      const j = await (await chamar('/individual/10/previa')).json();
+      assert.match(j.textos.diagnostico, /Perguntas adicionais do questionário inicial:\nO que mudou na rotina\? Almoço juntos todo dia/);
+      assert.match(j.textos.feedback, /Perguntas adicionais do questionário final:\nOnde compra frutas\? Feira/);
+      const csv = await chamar('/exportar/perguntas-extras.csv?dataInicio=2026-01-01&dataFim=2026-06-30', { usuario: 'coordenador' });
+      assert.equal(csv.status, 200);
+      assert.match(csv.headers.get('content-type'), /text\/csv/);
+      const t = await csv.text();
+      assert.match(t, /FORMULÁRIO;DATA;UNIDADE;Nº DO REGISTRO;MOMENTO;CÓDIGO DA PERGUNTA;PERGUNTA;RESPOSTA/);
+      assert.match(t, /Questionário familiar;10\/02\/2026;BRA;101;Inicial;E0001;O que mudou na rotina\?;Almoço juntos todo dia/);
+      assert.match(t, /Questionário familiar;12\/05\/2026;BRA;102;Final;E0002;Onde compra frutas\?;Feira/);
+      assert.doesNotMatch(t, /Maria da Silva|529\.982/, 'sem nome nem CPF');
+      assert.equal((await chamar('/exportar/perguntas-extras.csv')).status, 403, 'assistente não exporta');
+    } finally {
+      estado.restaurarPadrao();
+      respostasExtra.length = 0;
+      donosExtra.QUESTIONARIO.length = 0;
+    }
   });
 
   await teste('toda consulta por unidade carregou o filtro de unidade', async () => {

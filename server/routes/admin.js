@@ -1,8 +1,10 @@
 'use strict';
 
-// Administração: usuários, unidades, tabelas de apoio, configurações e auditoria.
-// Montado em /api/admin. ADMIN em tudo, exceto as configurações marcadas `coordenador`
-// (prazo do questionário final e alerta), que o COORDENADOR também edita.
+// Administração: usuários, unidades, tabelas de apoio, configurações, perguntas e opções (P2) e auditoria.
+// Montado em /api/admin. Permissões (P1):
+//   ADMIN        tudo, e é o ÚNICO que mexe em CONTAS de usuário (criar, editar perfil, desativar, redefinir senha) e vê a auditoria;
+//   COORDENADOR  gerencia todo o resto: listas de apoio, unidades, configurações, perguntas e opções;
+//   ASSISTENTE   nada aqui (403).
 
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -13,9 +15,12 @@ const { registrarAuditoria } = require('../lib/auditoria');
 const { PERFIS, TABELAS_APOIO } = require('../lib/dominios');
 const { texto, lancarSeErros, normalizarData, inteiroPositivo } = require('../lib/validacao');
 const svc = require('../services/admin');
+const catalogoAdmin = require('../services/catalogo-admin');
 
 const router = express.Router();
 const soAdmin = requirePerfil(PERFIS.ADMIN);
+const gestao = requirePerfil(PERFIS.COORDENADOR, PERFIS.ADMIN);
+router.use(gestao); // o assistente social não entra na Administração; contas e auditoria ainda exigem `soAdmin`
 const ehVerdadeiro = (v) => v === true || v === 1 || v === '1' || v === 'true';
 
 function idDaRota(req) {
@@ -233,11 +238,11 @@ function validarUnidade(corpo) {
 
 const SQL_UNIDADES = 'SELECT id, sigla, nome, endereco, ativo, ordem FROM unidade';
 
-router.get('/unidades', soAdmin, async (req, res) => {
+router.get('/unidades', async (req, res) => {
   res.json(await consultar(`${SQL_UNIDADES} ORDER BY ativo DESC, ordem, sigla`));
 });
 
-router.post('/unidades', soAdmin, async (req, res) => {
+router.post('/unidades', async (req, res) => {
   const d = validarUnidade(req.body || {});
   const id = await transacao(async (tx) => {
     const [dup] = await tx.consultar('SELECT 1 AS x FROM unidade WHERE sigla = @sigla', { sigla: d.sigla });
@@ -251,7 +256,7 @@ router.post('/unidades', soAdmin, async (req, res) => {
   res.status(201).json({ id });
 });
 
-router.put('/unidades/:id', soAdmin, async (req, res) => {
+router.put('/unidades/:id', async (req, res) => {
   const id = idDaRota(req);
   const d = validarUnidade(req.body || {});
   await transacao(async (tx) => {
@@ -267,7 +272,7 @@ router.put('/unidades/:id', soAdmin, async (req, res) => {
   res.json(await consultarUm(`${SQL_UNIDADES} WHERE id = @id`, { id }));
 });
 
-router.patch('/unidades/:id/ativo', soAdmin, async (req, res) => {
+router.patch('/unidades/:id/ativo', async (req, res) => {
   const id = idDaRota(req);
   const ativo = ehVerdadeiro(req.body?.ativo);
   const r = await consultar(
@@ -320,15 +325,15 @@ async function listarApoio(tabela, id) {
     id ? { id } : {});
 }
 
-router.get('/apoio', soAdmin, (req, res) => {
+router.get('/apoio', (req, res) => {
   res.json(TABELAS_APOIO);
 });
 
-router.get('/apoio/:tabela', soAdmin, async (req, res) => {
+router.get('/apoio/:tabela', async (req, res) => {
   res.json(await listarApoio(tabelaApoio(req)));
 });
 
-router.post('/apoio/:tabela', soAdmin, async (req, res) => {
+router.post('/apoio/:tabela', async (req, res) => {
   const tabela = tabelaApoio(req);
   const d = validarApoio(tabela, req.body || {});
   const id = await transacao(async (tx) => {
@@ -343,7 +348,7 @@ router.post('/apoio/:tabela', soAdmin, async (req, res) => {
   res.status(201).json({ id });
 });
 
-router.put('/apoio/:tabela/:id', soAdmin, async (req, res) => {
+router.put('/apoio/:tabela/:id', async (req, res) => {
   const tabela = tabelaApoio(req);
   const id = idDaRota(req);
   const d = validarApoio(tabela, req.body || {});
@@ -360,7 +365,7 @@ router.put('/apoio/:tabela/:id', soAdmin, async (req, res) => {
   res.json((await listarApoio(tabela, id))[0]);
 });
 
-router.patch('/apoio/:tabela/:id/ativo', soAdmin, async (req, res) => {
+router.patch('/apoio/:tabela/:id/ativo', async (req, res) => {
   const tabela = tabelaApoio(req);
   const id = idDaRota(req);
   const ativo = ehVerdadeiro(req.body?.ativo);
@@ -371,7 +376,7 @@ router.patch('/apoio/:tabela/:id/ativo', soAdmin, async (req, res) => {
 });
 
 // Exclui só se ninguém referencia; senão 409 orientando a desativar.
-router.delete('/apoio/:tabela/:id', soAdmin, async (req, res) => {
+router.delete('/apoio/:tabela/:id', async (req, res) => {
   const tabela = tabelaApoio(req);
   const id = idDaRota(req);
   const [item] = await listarApoio(tabela, id);
@@ -388,28 +393,26 @@ router.delete('/apoio/:tabela/:id', soAdmin, async (req, res) => {
 // Configurações
 // =====================================================================
 
-const podeEditarConfig = (perfil, chave) => perfil === PERFIS.ADMIN || (perfil === PERFIS.COORDENADOR && !!svc.CONFIG_REGRAS[chave]?.coordenador);
-const configPublica = (c, perfil) => ({
+// Coordenação e ADMIN veem e editam todas as configurações (P1).
+const configPublica = (c) => ({
   chave: c.chave,
   valor: c.valor,
   descricao: c.descricao,
   rotulo: svc.CONFIG_REGRAS[c.chave]?.rotulo || c.chave,
   tipo: svc.CONFIG_REGRAS[c.chave]?.tipo || 'texto',
-  editavel: podeEditarConfig(perfil, c.chave),
+  editavel: true,
   alteradoEm: c.alteradoEm,
 });
 
-router.get('/configuracoes', requirePerfil(PERFIS.ADMIN, PERFIS.COORDENADOR), async (req, res) => {
+router.get('/configuracoes', async (req, res) => {
   const linhas = await consultar('SELECT chave, valor, descricao, alterado_em FROM configuracao ORDER BY chave');
-  const perfil = req.usuario.perfil;
-  res.json(linhas.map((c) => configPublica(c, perfil)).filter((c) => perfil === PERFIS.ADMIN || c.editavel));
+  res.json(linhas.map(configPublica));
 });
 
-router.put('/configuracoes/:chave', requirePerfil(PERFIS.ADMIN, PERFIS.COORDENADOR), async (req, res) => {
+router.put('/configuracoes/:chave', async (req, res) => {
   const chave = String(req.params.chave);
   const atual = await consultarUm('SELECT chave, valor FROM configuracao WHERE chave = @chave', { chave });
   if (!atual) throw erros.naoEncontrado('Configuração não encontrada.');
-  if (!podeEditarConfig(req.usuario.perfil, chave)) throw erros.proibido('Somente o administrador pode alterar esta configuração.');
   const r = svc.validarConfig(chave, req.body?.valor);
   if (r.erro) throw erros.validacao({ valor: r.erro });
   await consultar(
@@ -417,6 +420,65 @@ router.put('/configuracoes/:chave', requirePerfil(PERFIS.ADMIN, PERFIS.COORDENAD
     { chave, valor: r.valor, por: req.usuario.id });
   await registrarAuditoria(req, 'ALTERAR', 'configuracao', chave, { de: atual.valor, para: r.valor });
   res.json({ chave, valor: r.valor });
+});
+
+// =====================================================================
+// Perguntas e opções (P2) — coordenação e ADMIN. Contrato: docs/API-CATALOGO.md
+// =====================================================================
+
+// As rotas fixas (/ordem) vêm antes das com :id.
+router.get('/perguntas', async (req, res) => {
+  res.json(await catalogoAdmin.listar(req.query.formulario));
+});
+
+router.post('/perguntas', async (req, res) => {
+  res.status(201).json(await catalogoAdmin.criarPergunta(req, req.body || {}));
+});
+
+router.put('/perguntas/ordem', async (req, res) => {
+  await catalogoAdmin.ordenarPerguntas(req, req.body || {});
+  res.status(204).end();
+});
+
+router.put('/perguntas/:id', async (req, res) => {
+  res.json(await catalogoAdmin.atualizarPergunta(req, idDaRota(req), req.body || {}));
+});
+
+router.patch('/perguntas/:id/ativa', async (req, res) => {
+  res.json(await catalogoAdmin.definirAtiva(req, idDaRota(req), ehVerdadeiro(req.body?.ativa)));
+});
+
+router.delete('/perguntas/:id', async (req, res) => {
+  await catalogoAdmin.excluirPergunta(req, idDaRota(req));
+  res.status(204).end();
+});
+
+router.post('/perguntas/:id/opcoes', async (req, res) => {
+  res.status(201).json(await catalogoAdmin.criarOpcao(req, idDaRota(req), req.body || {}));
+});
+
+router.put('/perguntas/:id/opcoes/ordem', async (req, res) => {
+  await catalogoAdmin.ordenarOpcoes(req, idDaRota(req), req.body || {});
+  res.status(204).end();
+});
+
+router.put('/perguntas/:id/opcoes/:opcaoId', async (req, res) => {
+  const opcaoId = inteiroPositivo(req.params.opcaoId);
+  if (!opcaoId) throw erros.naoEncontrado();
+  res.json(await catalogoAdmin.atualizarOpcao(req, idDaRota(req), opcaoId, req.body || {}));
+});
+
+router.patch('/perguntas/:id/opcoes/:opcaoId/ativa', async (req, res) => {
+  const opcaoId = inteiroPositivo(req.params.opcaoId);
+  if (!opcaoId) throw erros.naoEncontrado();
+  res.json(await catalogoAdmin.definirOpcaoAtiva(req, idDaRota(req), opcaoId, ehVerdadeiro(req.body?.ativa)));
+});
+
+router.delete('/perguntas/:id/opcoes/:opcaoId', async (req, res) => {
+  const opcaoId = inteiroPositivo(req.params.opcaoId);
+  if (!opcaoId) throw erros.naoEncontrado();
+  await catalogoAdmin.excluirOpcao(req, idDaRota(req), opcaoId);
+  res.status(204).end();
 });
 
 // =====================================================================

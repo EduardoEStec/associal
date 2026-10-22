@@ -14,6 +14,11 @@ const {
   COLUNAS, validarRespostas, montarRespostas, compararFamilia, consolidarComparacao,
 } = require('./questionario');
 const indice = require('./indice-dados');
+const estado = require('./catalogo-estado');
+const extras = require('./extras');
+
+// Campos de escolha fechada com opções configuráveis (colunas de dbo.questionario)
+const CAMPOS_ESCOLHA = Object.keys(estado.ESCALAS);
 
 const CAMPOS_DECIMAIS = new Set(['rendaMensalMedia', 'economiaMensalValor']);
 
@@ -57,6 +62,9 @@ async function obter(req, acompanhamentoId, tipoEntrada) {
   }
 
   const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM familia_membro WHERE familia_id = @f', { f: ac.familiaId });
+  // perguntas extras (P2): a reavaliação rápida não tem
+  const adicionais = tipo === 'REAVALIACAO' ? { mapa: {}, lista: [] }
+    : await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', linha?.id, { tipoQuestionario: tipo });
   return {
     acompanhamentoId: ac.id,
     tipo,
@@ -65,6 +73,8 @@ async function obter(req, acompanhamentoId, tipoEntrada) {
     concluido: linha ? !!linha.concluido : false,
     dataAplicacao: linha ? linha.dataAplicacao : null,
     respostas: montarRespostas(linha, selecoes.beneficioIds, selecoes.destinoEconomiaIds),
+    extras: adicionais.mapa,
+    respostasExtras: adicionais.lista,
     sugestoes: { dataAplicacao: hojeIso(), qtdMembrosFamilia: total + 1 },
     podeEditar: bloqueio === null,
     bloqueio,
@@ -128,6 +138,25 @@ async function salvar(req, acompanhamentoId, tipoEntrada, corpo) {
     if (!pedeOutroDestino) v.destinoEconomiaOutro = null;
     else if (concluir && !v.destinoEconomiaOutro && !problemas.destinoEconomiaOutro) problemas.destinoEconomiaOutro = 'Informe qual é o outro destino da economia.';
 
+    // Opção desativada pela coordenação só continua valendo para quem já tinha respondido com ela
+    for (const campo of CAMPOS_ESCOLHA) {
+      if (!problemas[campo] && v[campo] && !estado.opcaoAtiva(campo, v[campo]) && v[campo] !== existente?.[campo]) {
+        problemas[campo] = 'Esta opção não está mais disponível.';
+      }
+    }
+
+    // Perguntas extras (P2). `extras` ausente no corpo = não mexe nas respostas; para exigir as obrigatórias vale o que já está gravado.
+    const defsExtras = tipo === 'REAVALIACAO' ? [] : estado.extras('QUESTIONARIO');
+    let extrasValidados = null;
+    if (defsExtras.length) {
+      const informado = corpo?.extras !== undefined;
+      const entrada = informado ? corpo.extras : (await extras.carregarRespostas(tx, 'QUESTIONARIO', existente?.id, { tipoQuestionario: tipo })).mapa;
+      const atuais = await extras.opcoesAtuais(tx, 'QUESTIONARIO', existente?.id);
+      const r = extras.validarExtras(defsExtras, entrada, { concluir, atuais });
+      Object.assign(problemas, r.erros);
+      if (informado) extrasValidados = r;
+    }
+
     lancarSeErros(problemas);
 
     // Colunas escalares (nomes vêm da constante COLUNAS, nunca da entrada)
@@ -165,6 +194,8 @@ async function salvar(req, acompanhamentoId, tipoEntrada, corpo) {
     for (const id of destinoEconomiaIds) {
       await tx.consultar('INSERT INTO questionario_destino_economia (questionario_id, destino_economia_id) VALUES (@q, @d)', { q: questionarioId, d: id });
     }
+
+    if (extrasValidados) await extras.gravarExtras(tx, 'QUESTIONARIO', questionarioId, extrasValidados);
 
     // instantâneo do índice de progresso (F5): refeito a cada gravação de um questionário concluído
     if (concluir) await indice.gravarInstantaneo(tx, { acompanhamentoId: ac.id, questionarioId, tipo, dataRef: v.dataAplicacao, respostas: v });
@@ -219,7 +250,24 @@ async function comparacaoFamilia(req, acompanhamentoId) {
   ]);
   const inicial = montarRespostas(linhaI, si.beneficioIds, si.destinoEconomiaIds);
   const final = montarRespostas(linhaF, sf.beneficioIds, sf.destinoEconomiaIds);
-  return { ...base, completo: true, ...compararFamilia(inicial, final, apoio) };
+  // perguntas extras: lado a lado (a comparação numérica/índice usa só as oficiais)
+  const [ei, ef] = await Promise.all([
+    extras.carregarRespostas({ consultar }, 'QUESTIONARIO', linhaI.id, { tipoQuestionario: 'INICIAL' }),
+    extras.carregarRespostas({ consultar }, 'QUESTIONARIO', linhaF.id, { tipoQuestionario: 'FINAL' }),
+  ]);
+  const adicionais = juntarExtras(ei.lista, ef.lista);
+  return { ...base, completo: true, ...compararFamilia(inicial, final, apoio), extras: adicionais };
+}
+
+// Junta as respostas extras do inicial e do final por pergunta (a ordem é a do catálogo).
+function juntarExtras(listaInicial, listaFinal) {
+  const porCodigo = new Map();
+  for (const x of listaInicial) porCodigo.set(x.codigo, { codigo: x.codigo, pergunta: x.pergunta, tipo: x.tipo, secao: x.secao, inicial: x.resposta, final: null });
+  for (const x of listaFinal) {
+    const atual = porCodigo.get(x.codigo) || { codigo: x.codigo, pergunta: x.pergunta, tipo: x.tipo, secao: x.secao, inicial: null };
+    porCodigo.set(x.codigo, { ...atual, pergunta: x.pergunta, final: x.resposta });
+  }
+  return [...porCodigo.values()].sort((a, b) => a.secao - b.secao || a.codigo.localeCompare(b.codigo));
 }
 
 async function comparacaoConsolidada(req, consulta) {

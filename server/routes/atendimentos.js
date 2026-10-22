@@ -16,6 +16,7 @@ const {
 } = require('../lib/validacao');
 const pessoas = require('../services/pessoas');
 const svc = require('../services/atendimentos');
+const extras = require('../services/extras');
 
 const router = express.Router();
 const PRAZO_AUTOR_MS = 24 * 60 * 60 * 1000;
@@ -110,11 +111,12 @@ router.get('/:id', async (req, res) => {
   const atendimento = await carregar(req, id);
   if (!atendimento) throw erros.naoEncontrado();
 
-  const [pessoa, demandas, vulnerabilidades, encaminhamentos] = await Promise.all([
+  const [pessoa, demandas, vulnerabilidades, encaminhamentos, adicionais] = await Promise.all([
     consultarUm(`SELECT ${pessoas.COLUNAS_PESSOA} FROM pessoa p WHERE p.id = @id`, { id: atendimento.pessoaId }),
     consultar('SELECT demanda_id AS id FROM atendimento_demanda WHERE atendimento_id = @id', { id }),
     consultar('SELECT vulnerabilidade_id AS id FROM atendimento_vulnerabilidade WHERE atendimento_id = @id', { id }),
     consultar('SELECT encaminhamento_id AS id FROM atendimento_encaminhamento WHERE atendimento_id = @id', { id }),
+    extras.carregarRespostas({ consultar }, 'ATENDIMENTO', id),
   ]);
 
   const paramsHist = { pessoaId: atendimento.pessoaId, id };
@@ -135,6 +137,8 @@ router.get('/:id', async (req, res) => {
     demandas: demandas.map((d) => d.id),
     vulnerabilidades: vulnerabilidades.map((d) => d.id),
     encaminhamentos: encaminhamentos.map((d) => d.id),
+    extras: adicionais.mapa,
+    respostasExtras: adicionais.lista,
     pessoa,
     historico,
     podeExcluir: podeExcluir(req.usuario, atendimento),
@@ -171,6 +175,7 @@ async function resolverPessoa(req, tx, dados, pessoaIdInformada) {
 router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const { dados, problemas } = svc.validarCorpo(req.body);
   await svc.validarApoio(dados, problemas);
+  const adicionais = await svc.validarExtras(req.body, null, problemas);
   lancarSeErros(problemas);
   const unidadeId = resolverUnidade(req, req.body.unidadeId);
   const faixaEtariaId = await svc.definirFaixaEtaria(dados);
@@ -188,6 +193,7 @@ router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req
       { ...svc.paramsAtendimento(dados, faixaEtariaId), unidadeId, pessoaId, usuarioId: req.usuario.id },
     );
     await svc.gravarListas(tx, novo.id, dados);
+    if (adicionais) await extras.gravarExtras(tx, 'ATENDIMENTO', novo.id, adicionais);
     await registrarAuditoria(req, 'CRIAR', 'atendimento', novo.id, undefined, tx);
     return novo.id;
   });
@@ -203,6 +209,7 @@ router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (r
 
   const { dados, problemas } = svc.validarCorpo(req.body);
   await svc.validarApoio(dados, problemas, { somenteAtivas: false });
+  const adicionais = await svc.validarExtras(req.body, id, problemas);
   lancarSeErros(problemas);
   const unidadeId = req.body.unidadeId ? exigirUnidade(req, req.body.unidadeId) : atual.unidadeId;
   const faixaEtariaId = await svc.definirFaixaEtaria(dados);
@@ -226,6 +233,7 @@ router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (r
       { ...svc.paramsAtendimento(dados, faixaEtariaId), unidadeId, usuarioId: req.usuario.id, id },
     );
     await svc.gravarListas(tx, id, dados);
+    if (adicionais) await extras.gravarExtras(tx, 'ATENDIMENTO', id, adicionais);
     await registrarAuditoria(req, 'ALTERAR', 'atendimento', id, undefined, tx);
   });
   res.json({ id });

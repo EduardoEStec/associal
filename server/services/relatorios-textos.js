@@ -3,7 +3,7 @@
 // Textos padrão dos relatórios (funções puras, sem banco). Tudo aqui é apenas SUGESTÃO:
 // a tela mostra os textos para o profissional editar antes de gerar o .docx.
 
-const { QUESTIONARIO } = require('../lib/dominios');
+const estado = require('./catalogo-estado');
 const evolucaoTexto = require('./relatorios-evolucao');
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -42,7 +42,15 @@ function listaTexto(itens) {
 const minuscula = (t) => (t ? t.charAt(0).toLowerCase() + t.slice(1) : '');
 const plural = (n, singular, pluralTxt) => `${numero(n)} ${n === 1 ? singular : pluralTxt}`;
 
-const rotulo = (campo, codigo) => (codigo ? QUESTIONARIO[campo]?.[codigo] || codigo : '');
+// Rótulo da opção no catálogo (a coordenação pode renomear e acrescentar opções)
+const rotulo = (campo, codigo) => (codigo ? estado.rotuloOpcao(campo, codigo) || codigo : '');
+
+// Perguntas adicionais (P2) como linhas de texto do relatório: "Pergunta Resposta: valor."
+function linhasExtras(extras, titulo) {
+  const itens = (extras || []).filter((x) => x.resposta);
+  if (!itens.length) return [];
+  return [titulo, ...itens.map((x) => `${x.pergunta} ${x.resposta}`)];
+}
 
 // Converte um texto em lista de parágrafos (linhas em branco são descartadas).
 function paragrafos(textoLivre) {
@@ -119,7 +127,7 @@ function descreverComposicao(membros, responsavel, inicial, referencia) {
   return partes;
 }
 
-function gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio }) {
+function gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio, extrasInicial }) {
   if (!inicial) {
     return 'Questionário inicial ainda não aplicado. Descreva aqui a situação socioeconômica identificada: níveis de renda, '
       + 'acesso a alimentos e situação de trabalho da família.';
@@ -160,6 +168,7 @@ function gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, da
   const ecoTxt = eco.filter(Boolean);
   if (ecoTxt.length) linhas.push(`Quanto à situação econômica, ${listaTexto(ecoTxt)}.`);
 
+  linhas.push(...linhasExtras(extrasInicial, 'Perguntas adicionais do questionário inicial:'));
   return linhas.join('\n');
 }
 
@@ -245,7 +254,7 @@ function gerarImpacto({ inicial, final, destinosFinal }) {
   return saida;
 }
 
-function gerarFeedback({ final }) {
+function gerarFeedback({ final, extrasFinal }) {
   if (!final) {
     return 'Questionário final ainda não aplicado. Registre aqui depoimentos ou análises baseadas no feedback da família.';
   }
@@ -262,6 +271,7 @@ function gerarFeedback({ final }) {
   if (final.melhoriaPlanejamento === true) emp.push('percebeu melhoria no planejamento financeiro');
   else if (final.melhoriaPlanejamento === false) emp.push('não percebeu melhoria no planejamento financeiro');
   if (emp.length) l.push(`A família ${listaTexto(emp)}.`);
+  l.push(...linhasExtras(extrasFinal, 'Perguntas adicionais do questionário final:'));
   return l.join('\n') || 'Registre aqui depoimentos ou análises baseadas no feedback da família.';
 }
 
@@ -275,7 +285,7 @@ function gerarConsideracoesIndividual({ final }) {
 }
 
 function montarIndividual(dados) {
-  const { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal } = dados;
+  const { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal } = dados;
   const impacto = gerarImpacto({ inicial, final, destinosFinal });
   return {
     introducao: INDIVIDUAL_FIXOS.introducao,
@@ -283,10 +293,10 @@ function montarIndividual(dados) {
     metodologia: gerarMetodologia({
       unidadeNome: acompanhamento.unidadeNome, dataInicio: acompanhamento.dataInicio, inicial, final,
     }),
-    diagnostico: gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio: acompanhamento.dataInicio }),
+    diagnostico: gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio: acompanhamento.dataInicio, extrasInicial }),
     ...impacto,
     evolucao: evolucaoTexto.gerarTextoEvolucao(dados.evolucao),
-    feedback: gerarFeedback({ final }),
+    feedback: gerarFeedback({ final, extrasFinal }),
     consideracoes: gerarConsideracoesIndividual({ final }),
   };
 }

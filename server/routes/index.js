@@ -12,6 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const { requireAuth } = require('../middlewares/auth');
+const catalogo = require('../services/catalogo');
 
 const PUBLICAS = new Set(['auth']); // auth controla o próprio acesso (login é público)
 
@@ -22,7 +23,7 @@ for (const arquivo of fs.readdirSync(__dirname).sort()) {
   const nome = path.basename(arquivo, '.js');
   const modulo = require(path.join(__dirname, arquivo));
   if (PUBLICAS.has(nome)) router.use(`/${nome}`, modulo);
-  else router.use(`/${nome}`, requireAuth, modulo);
+  else router.use(`/${nome}`, requireAuth, catalogo.middleware, modulo); // catálogo de perguntas (P2) em memória e atualizado
 }
 
 module.exports = router;

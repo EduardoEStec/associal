@@ -9,9 +9,10 @@ const config = require('../config');
 const { consultar, consultarUm, tipos } = require('../db');
 const { clausulaUnidades, unidadesPermitidas } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
-const { QUESTIONARIO } = require('../lib/dominios');
 const { numero, moeda, percentual } = require('./relatorios-textos');
 const indice = require('./indice-dados');
+const estado = require('./catalogo-estado');
+const extras = require('./extras');
 
 // ---------- escopo de unidades ----------
 
@@ -146,8 +147,12 @@ async function carregarIndividual(req, acompanhamentoId) {
     )).map((l) => l.nome)
     : [];
 
+  // perguntas adicionais criadas pela coordenação (P2), respondidas no inicial e no final
+  const extrasInicial = inicial ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', inicial.id, { tipoQuestionario: 'INICIAL' })).lista : [];
+  const extrasFinal = final ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', final.id, { tipoQuestionario: 'FINAL' })).lista : [];
+
   const evolucao = await carregarEvolucao(req, acompanhamentoId);
-  return { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, evolucao };
+  return { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal, evolucao };
 }
 
 // ---------- Relatório Semestral ----------
@@ -204,7 +209,7 @@ function consolidar(pares) {
 
   const distribuicoes = [];
   for (const [campo, nome] of PERGUNTAS_FECHADAS) {
-    for (const [codigo, texto] of Object.entries(QUESTIONARIO[campo])) {
+    for (const { codigo, texto } of estado.opcoesDe(campo)) { // inclui as opções acrescentadas pela coordenação
       const ini = iniciais.filter((q) => q[campo] === codigo).length;
       const fin = finais.filter((q) => q[campo] === codigo).length;
       if (ini === 0 && fin === 0) continue;
@@ -485,6 +490,45 @@ async function resumoMensal(req, { dataInicio, dataFim, unidadeIds }) {
   return linhas;
 }
 
+// Respostas às perguntas extras (P2) no período, uma linha por resposta e SEM identificar a família ou a pessoa:
+// formulário, data, unidade, nº do registro, momento, pergunta e resposta. O escopo de unidades é o do usuário.
+async function respostasExtrasPeriodo(req, { dataInicio, dataFim, unidadeIds }) {
+  const selecionadas = resolverEscopo(req, unidadeIds);
+  const unidades = new Map((await unidadesPorId(selecionadas)).map((u) => [u.id, u.sigla]));
+  const periodo = (p) => { p.ini = [tipos.Date, dataInicio]; p.fim = [tipos.Date, dataFim]; return p; };
+  const consultas = {
+    ATENDIMENTO: (p) => `SELECT a.id AS dono_id, a.data_atendimento AS data, a.unidade_id, 'Atendimento' AS momento
+       FROM atendimento a WHERE ${filtroUnidades(req, 'a.unidade_id', selecionadas, p)} AND a.data_atendimento BETWEEN @ini AND @fim
+        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.atendimento_id = a.id)`,
+    QUESTIONARIO: (p) => `SELECT q.id AS dono_id, q.data_aplicacao AS data, ac.unidade_id, q.tipo AS momento
+       FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
+      WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND q.concluido = 1 AND q.data_aplicacao BETWEEN @ini AND @fim
+        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.questionario_id = q.id)`,
+    PESQUISA: (p) => `SELECT pr.id AS dono_id, pr.data_aplicacao AS data, ac.unidade_id, pr.momento
+       FROM pesquisa_resposta pr JOIN acompanhamento ac ON ac.id = pr.acompanhamento_id
+      WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND pr.situacao = 'CONCLUIDA' AND pr.data_aplicacao BETWEEN @ini AND @fim
+        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.pesquisa_resposta_id = pr.id)`,
+  };
+  const saida = [];
+  for (const formulario of estado.FORMULARIOS) {
+    const p = periodo({});
+    const donos = await consultar(consultas[formulario](p), p);
+    if (!donos.length) continue;
+    const linhasPorDono = await extras.linhasDeDonos({ consultar }, formulario, donos.map((d) => d.donoId));
+    for (const d of donos) {
+      const tipoQuestionario = formulario === 'QUESTIONARIO' && d.momento === 'FINAL' ? 'FINAL' : 'INICIAL';
+      const { lista } = extras.formatarRespostas(formulario, linhasPorDono.get(d.donoId) || [], { tipoQuestionario });
+      for (const x of lista) {
+        saida.push({
+          formulario, data: d.data, unidade: unidades.get(d.unidadeId) || '', registro: d.donoId, momento: d.momento,
+          codigo: x.codigo, pergunta: x.pergunta, resposta: x.resposta,
+        });
+      }
+    }
+  }
+  return saida.sort((x, y) => String(x.data).localeCompare(String(y.data)) || x.formulario.localeCompare(y.formulario) || x.registro - y.registro || x.codigo.localeCompare(y.codigo));
+}
+
 // Equivalente à aba BASE_UNICA_ACOES: uma linha por ação/visita.
 async function listaAcoes(req, { dataInicio, dataFim, unidadeIds }) {
   const selecionadas = resolverEscopo(req, unidadeIds);
@@ -512,5 +556,5 @@ module.exports = {
   listarAcompanhamentos, carregarIndividual,
   coletarSemestral, consolidar,
   carregarFotoDoUsuario, caminhoFoto,
-  resumoMensal, listaAcoes,
+  resumoMensal, listaAcoes, respostasExtrasPeriodo,
 };

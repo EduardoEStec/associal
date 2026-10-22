@@ -1,6 +1,7 @@
 // Atendimentos — formulário de novo atendimento / edição (18 campos da especificação).
 import { api, ErroApi } from '../api.js';
 import { formatarTelefone } from '../telefone.js';
+import { montarExtras } from './extras.js';
 import {
   h, toast, carregando, mostrarErrosCampos, comEspera, hojeIso, formatarCpf, formatarCep, mascarar,
   cpfValido, apenasDigitos,
@@ -69,7 +70,11 @@ function faixaCalculada(faixas, idade) {
 export async function renderForm({ usuario, conteudo, apoio }, id) {
   const editando = !!id;
   conteudo.replaceChildren(carregando());
-  const existente = editando ? await api.get(`/api/atendimentos/${id}`) : null;
+  const [existente, defsExtras] = await Promise.all([
+    editando ? api.get(`/api/atendimentos/${id}`) : null,
+    api.get('/api/apoio/perguntas/ATENDIMENTO').catch(() => []), // perguntas adicionais da coordenação (podem não existir)
+  ]);
+  const extras = montarExtras(defsExtras, existente?.extras);
   let pessoaId = existente?.pessoaId ?? null; // pessoa localizada por CPF (novo atendimento)
 
   const multiUnidade = usuario.unidades.length > 1;
@@ -162,6 +167,8 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       campo('Resumo do atendimento', entrada.resumo, { id: 'resumo' }),
       grupo('Encaminhamentos (múltipla escolha)', opcoesCheck('encaminhamentos', apoio.encaminhamento)),
       blocosOutra.encaminhamentos),
+
+    extras.secao,
   );
 
   const botaoSalvar = h('button', { type: 'submit', class: 'btn' }, editando ? 'Salvar alterações' : 'Registrar atendimento');
@@ -191,6 +198,7 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
     for (const n of [...CAMPOS_TEXTO, ...CAMPOS_SELECT]) { const el = form.elements[n]; if (el) v[n] = el.value; }
     for (const n of CAMPOS_RADIO) v[n] = form.querySelector(`input[name="${n}"]:checked`)?.value || '';
     for (const n of CAMPOS_MULTI) v[n] = [...form.querySelectorAll(`input[name="${n}"]:checked`)].map((c) => c.value);
+    v.extras = extras.ler();
     return v;
   }
 
@@ -206,6 +214,7 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       const marcados = (v[n] || []).map(String);
       form.querySelectorAll(`input[name="${n}"]`).forEach((c) => { c.checked = marcados.includes(c.value); });
     }
+    if (v.extras) extras.aplicar(v.extras);
     atualizarOutras();
     atualizarFaixa();
   }
@@ -261,7 +270,7 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       faixaEtariaId: existente.faixaEtariaId ?? '',
       demandas: existente.demandas, vulnerabilidades: existente.vulnerabilidades, encaminhamentos: existente.encaminhamentos,
       demandaOutra: existente.demandaOutra || '', vulnerabilidadeOutra: existente.vulnerabilidadeOutra || '',
-      encaminhamentoOutro: existente.encaminhamentoOutro || '', resumo: existente.resumo || '',
+      encaminhamentoOutro: existente.encaminhamentoOutro || '', resumo: existente.resumo || '', extras: existente.extras,
     });
   } else {
     atualizarFaixa();

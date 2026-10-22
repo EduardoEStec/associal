@@ -13,6 +13,8 @@ const { registrarAuditoria } = require('../lib/auditoria');
 const { texto, inteiroPositivo, lancarSeErros } = require('../lib/validacao');
 const familias = require('./familias');
 const regras = require('./pesquisa-regras');
+const estado = require('./catalogo-estado');
+const extras = require('./extras');
 
 const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) : null);
 const paramData = (v) => [tipos.Date, v ?? null];
@@ -34,12 +36,18 @@ async function carregarModelo(executor, { id = null } = {}) {
   if (!modelo) throw erros.indisponivel('O modelo da pesquisa de satisfação não está configurado.');
   const perguntas = await executor.consultar(
     'SELECT id, codigo, ordem, tipo, texto FROM pesquisa_pergunta WHERE modelo_id = @id ORDER BY ordem', { id: modelo.id });
-  return { ...modelo, perguntas };
+  // a coordenação pode renomear as perguntas oficiais (o código não muda, então as respostas seguem válidas)
+  return { ...modelo, perguntas: perguntas.map((p) => ({ ...p, texto: estado.textoPesquisa(p.codigo) ?? p.texto })) };
 }
+
+// Perguntas adicionais criadas pela coordenação (P2): vêm depois das oficiais; respostas em `extras` (código -> valor).
+// Na pesquisa são sempre opcionais (a família pode não querer responder).
+const extraPublica = (d) => extras.definicaoPublica(d, { obrigatoria: false });
 
 const modeloPublico = (m) => ({
   id: m.id, codigo: m.codigo, versao: m.versao, titulo: m.titulo, aviso: m.aviso,
   perguntas: m.perguntas.map((p) => ({ codigo: p.codigo, ordem: p.ordem, tipo: p.tipo, texto: p.texto })),
+  extras: estado.extras('PESQUISA').map(extraPublica),
 });
 
 // ---------------------------------------------------------------------------
@@ -95,11 +103,14 @@ async function listar(req, acompanhamentoId) {
   };
   const linhas = await consultar(
     `${SELECT_RESPOSTA} WHERE r.acompanhamento_id = @id AND r.situacao <> 'ANULADA' ORDER BY r.data_aplicacao DESC, r.id DESC`, { id: ac.id });
-  const itens = await itensDe({ consultar }, linhas.filter((l) => l.situacao === 'CONCLUIDA').map((l) => l.id));
+  const concluidas = linhas.filter((l) => l.situacao === 'CONCLUIDA').map((l) => l.id);
+  const itens = await itensDe({ consultar }, concluidas);
+  const linhasExtras = await extras.linhasDeDonos({ consultar }, 'PESQUISA', concluidas);
   return {
     ...base,
     pesquisas: linhas.map((l) => formatarResposta(l, itens.get(l.id) || [])).map((p, i) => ({
       ...p, podeAlterar: linhas[i].usuarioId === req.usuario.id || ehCoordenacao(req.usuario),
+      respostasExtras: extras.formatarRespostas('PESQUISA', linhasExtras.get(linhas[i].id) || []).lista,
     })),
   };
 }
@@ -111,8 +122,11 @@ async function obter(req, acompanhamentoId, respostaId) {
   if (!r) throw erros.naoEncontrado('Pesquisa não encontrada.');
   const [modelo, mapa] = await Promise.all([carregarModelo({ consultar, consultarUm }, { id: r.modeloId }), itensDe({ consultar }, [r.id])]);
   const itens = mapa.get(r.id) || [];
+  const adicionais = await extras.carregarRespostas({ consultar }, 'PESQUISA', r.id);
   return {
     ...formatarResposta(r, itens, { comItens: true }),
+    extras: adicionais.mapa,
+    respostasExtras: adicionais.lista,
     modelo: modeloPublico(modelo),
     podeAlterar: r.usuarioId === req.usuario.id || ehCoordenacao(req.usuario),
   };
@@ -164,6 +178,16 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
     const { dados, erros: problemas } = regras.validarPesquisa(
       { ...corpo, momento: existente ? existente.momento : corpo.momento },
       { hoje, dataInicio: isoData(ac.dataInicio), perguntas: modelo.perguntas });
+
+    // Perguntas adicionais (P2): sempre opcionais na pesquisa (a família pode não querer responder). `extras` ausente = não mexe.
+    const recusada = dados.situacao === 'RECUSADA';
+    const defsExtras = estado.extras('PESQUISA');
+    let extrasValidados = null;
+    if (defsExtras.length && (corpo.extras !== undefined || recusada)) {
+      const atuais = await extras.opcoesAtuais(tx, 'PESQUISA', existente?.id);
+      extrasValidados = extras.validarExtras(defsExtras, recusada ? {} : corpo.extras, { concluir: false, atuais });
+      Object.assign(problemas, extrasValidados.erros);
+    }
     lancarSeErros(problemas);
 
     if (!existente) {
@@ -197,6 +221,7 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
         { id, usuario: req.usuario.id, data: paramData(dados.dataAplicacao), modo: dados.modo, situacao: dados.situacao, consent: dados.consentimentoLido });
     }
     await gravarItens(tx, id, dados.situacao === 'RECUSADA' ? [] : dados.itens);
+    if (extrasValidados) await extras.gravarExtras(tx, 'PESQUISA', id, extrasValidados);
     // sem respostas nem comentários na auditoria (dado pessoal): só o fato
     await registrarAuditoria(req, existente ? 'ALTERAR' : 'CRIAR', 'pesquisa_resposta', id,
       { acompanhamentoId: ac.id, momento: dados.momento, situacao: dados.situacao }, tx);

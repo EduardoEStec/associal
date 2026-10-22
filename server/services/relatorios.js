@@ -355,6 +355,25 @@ async function csvAcoes(req, consulta) {
   };
 }
 
+const ROTULO_FORMULARIO_CSV = { QUESTIONARIO: 'Questionário familiar', PESQUISA: 'Pesquisa de satisfação', ATENDIMENTO: 'Atendimento' };
+const ROTULO_MOMENTO_CSV = {
+  INICIAL: 'Inicial', FINAL: 'Final', REAVALIACAO: 'Reavaliação', SEMESTRAL: 'Semestral', AVULSA: 'Avulsa', Atendimento: '',
+};
+
+// Respostas às perguntas adicionais (P2): uma linha por resposta, sem identificar a pessoa ou a família.
+async function csvPerguntasExtras(req, consulta) {
+  const periodo = lerPeriodo(consulta);
+  const linhas = await dados.respostasExtrasPeriodo(req, { ...periodo, unidadeIds: consulta.unidadeIds });
+  return {
+    periodo,
+    buffer: montarCsv(
+      ['FORMULÁRIO', 'DATA', 'UNIDADE', 'Nº DO REGISTRO', 'MOMENTO', 'CÓDIGO DA PERGUNTA', 'PERGUNTA', 'RESPOSTA'],
+      linhas.map((l) => [ROTULO_FORMULARIO_CSV[l.formulario] || l.formulario, dataBr(l.data), l.unidade, l.registro,
+        ROTULO_MOMENTO_CSV[l.momento] ?? l.momento, l.codigo, l.pergunta, l.resposta]),
+    ),
+  };
+}
+
 async function csvProgresso(req, consulta) {
   const periodo = lerPeriodo(consulta);
   const ids = dados.resolverEscopo(req, consulta.unidadeIds);
@@ -373,5 +392,5 @@ module.exports = {
   semestreAtual, lerPeriodo, hoje, enviarPara,
   previaIndividual, gerarIndividual,
   previaSemestral, gerarSemestral,
-  csvAtendimentos, csvAcoes, csvProgresso, csvSatisfacao, montarCsv,
+  csvAtendimentos, csvAcoes, csvProgresso, csvSatisfacao, csvPerguntasExtras, montarCsv,
 };

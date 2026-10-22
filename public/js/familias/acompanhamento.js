@@ -231,7 +231,8 @@ async function abrirRespostas({ id, pesquisa, usuario, aoMudar }) {
     else if (q.tipo === 'LIKERT') valor = ROTULO_LIKERT[it.valorNum] || '—';
     else valor = it.valorTexto || '(sem comentário)';
     return h('li', { class: 'pesq-rev-item' }, h('span', { class: 'pesq-rev-pergunta' }, q.texto), h('strong', { class: 'pesq-rev-valor' }, valor));
-  });
+  }).concat((p.respostasExtras || []).map((x) => // perguntas adicionais da coordenação
+    h('li', { class: 'pesq-rev-item' }, h('span', { class: 'pesq-rev-pergunta' }, x.pergunta), h('strong', { class: 'pesq-rev-valor' }, x.resposta))));
   const r = p.resumo;
   const conteudo = h('div', {},
     h('p', { class: 'texto-pequeno texto-suave' }, `${formatarData(p.dataAplicacao)} · pesquisa ${ROTULO_PESQ_MOMENTO[p.momento]} · aplicada por ${p.autor.nome} · ${ROTULO_MODO[p.modo] || ''}`),

@@ -16,9 +16,9 @@ Substitui: MS Forms de atendimento (1 por unidade/mês), Excel de controle, ques
 ## Perfis e permissões (LGPD — dados com CPF de famílias vulneráveis)
 | Perfil | Escopo |
 |---|---|
-| ASSISTENTE | Apenas a(s) unidade(s) vinculada(s) a ela (tabela usuario_unidade; normalmente 1, pode cobrir outra) |
-| COORDENADOR | Todas as unidades (Elinaldo) |
-| ADMIN | TI: gerencia usuários, unidades, tabelas de apoio e configurações |
+| ASSISTENTE | Apenas a(s) unidade(s) vinculada(s) a ela (tabela usuario_unidade; normalmente 1, pode cobrir outra). Faz todos os processos (atendimentos, ações, famílias, acompanhamentos, questionários, pesquisas, metas) nessas unidades. Não entra na Administração. |
+| COORDENADOR | Todas as unidades (Elinaldo). Gerencia **tudo o que não é conta de usuário**: listas de apoio, unidades, configurações, perguntas e opções dos formulários (P1/P2). Não mexe em contas de usuário nem vê a auditoria. |
+| ADMIN | TI: faz tudo e é o **único** que cria/edita perfil/desativa/redefine senha de CONTAS de usuário e consulta a auditoria. Opera como a coordenação nos processos (V12). |
 
 Filtro por unidade é aplicado **no back-end** em toda query — nunca confiar no front.
 Pessoa/família é única por CPF no sistema todo: assistente de outra unidade pode localizar pelo CPF e reaproveitar dados pessoais, mas **não vê atendimentos/acompanhamentos de outra unidade**.
