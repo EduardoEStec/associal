@@ -89,6 +89,7 @@
   --altura-cabecalho: 64px;
   --altura-menu-inferior: 72px;
   --largura-menu-lateral: 260px;
-  --largura-maxima: 1100px;
+  --largura-maxima: 1600px; /* conteúdo em telas grandes */
+  --largura-leitura: 56rem; /* formulários longos */
   --alvo-toque: 48px; /* tamanho mínimo de botões/campos (≥ 44px) */
 }

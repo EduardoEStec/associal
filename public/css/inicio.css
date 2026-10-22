@@ -50,6 +50,7 @@
 .atalhos { display: grid; gap: var(--esp-3); grid-template-columns: 1fr; }
 @media (min-width: 640px) { .atalhos { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .atalhos { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1400px) { .atalhos { grid-template-columns: repeat(4, 1fr); } }
 .atalho {
   display: flex; align-items: center; gap: var(--esp-4); min-height: 84px; padding: var(--esp-3) var(--esp-4);
   color: var(--cor-texto); text-decoration: none; background: var(--cor-superficie);

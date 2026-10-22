@@ -113,9 +113,15 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   .app-menu a[aria-current='page']:hover { background: var(--cor-primaria-escura); color: var(--cor-texto-inverso); }
   .app-menu a[aria-current='page'] .icone { background: none; padding: 0; width: 24px; height: 24px; color: inherit; }
   .app-menu .menu-mais-botao { display: none; }
-  .conteudo { margin-left: var(--largura-menu-lateral); max-width: none; padding: var(--esp-2) var(--esp-5) var(--esp-5); }
-  .conteudo > * { max-width: var(--largura-maxima); }
+  /* ocupa a área ao lado do menu; acima de --largura-maxima centraliza pelo padding (títulos fit-content não se movem) */
+  .conteudo {
+    margin-left: var(--largura-menu-lateral); max-width: none;
+    padding: var(--esp-2) max(var(--esp-5), calc((100vw - var(--largura-menu-lateral) - var(--largura-maxima)) / 2)) var(--esp-5);
+  }
 }
+
+/* Formulários longos: limite de leitura, campos não esticam em tela larga */
+.fam-form, .q-form, .acoes-form, .conteudo > form { max-width: var(--largura-leitura); }
 
 /* Tela de login */
 .login-tela {
