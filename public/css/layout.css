@@ -120,8 +120,12 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   }
 }
 
-/* Formulários longos: limite de leitura, campos não esticam em tela larga */
-.fam-form, .q-form, .acoes-form, .conteudo > form { max-width: var(--largura-leitura); }
+/* Formulários longos: a coluna inteira (título + form + botões) fica com largura de leitura, centralizada na área ao lado do menu e alinhada à esquerda dentro dela */
+@media (min-width: 900px) {
+  .conteudo:has(.fam-form, .q-form, .acoes-form, > form:not(.card)) {
+    padding-inline: max(var(--esp-5), calc((100vw - var(--largura-menu-lateral) - var(--largura-leitura)) / 2));
+  }
+}
 
 /* Tela de login */
 .login-tela {
