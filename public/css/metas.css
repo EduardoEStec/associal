@@ -17,9 +17,9 @@
 
 /* Metas tratadas dentro do registro de contato (formulário e lista) */
 .meta-marcar-bloco[hidden] { display: none; }
-.meta-marcar { margin-top: var(--esp-3); padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-md, 12px); }
+.meta-marcar { margin-top: var(--esp-3); padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-md, 0.75rem); }
 .meta-marcar-titulo { margin: 0 0 var(--esp-2); overflow-wrap: anywhere; }
-.meta-marcar .opcao { flex: 1 1 120px; justify-content: center; }
+.meta-marcar .opcao { flex: 1 1 7.5rem; justify-content: center; }
 .meta-tratadas { list-style: none; margin: var(--esp-2) 0 0; padding: 0; display: grid; gap: var(--esp-1); }
 .meta-tratadas li { overflow-wrap: anywhere; }
 .fam-evento-meta .fam-evento-marca { color: var(--cor-texto-primaria); border-color: var(--cor-primaria); }

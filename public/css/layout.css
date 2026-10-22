@@ -10,29 +10,29 @@
 }
 .app-marca { display: flex; align-items: center; gap: var(--esp-2); color: inherit; text-decoration: none; }
 .app-marca:hover { color: inherit; }
-.app-logo { display: block; height: 40px; width: 40px; }
+.app-logo { display: block; height: 2.5rem; width: 2.5rem; }
 .app-marca-nome { font-size: var(--texto-lg); font-weight: 800; letter-spacing: 0.02em; }
 .app-usuario { display: flex; align-items: center; gap: var(--esp-3); font-size: var(--texto-sm); }
 .app-usuario .nome { display: none; text-align: right; line-height: 1.2; font-weight: 700; }
 .app-usuario .nome small { display: block; font-weight: 500; color: var(--cor-texto-suave); }
 .app-avatar {
-  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  width: 2.75rem; height: 2.75rem; border-radius: 50%; display: grid; place-items: center; flex: none;
   color: var(--cor-texto-inverso); background: var(--cor-roxo); font-weight: 800; font-size: var(--texto-lg);
 }
 .app-usuario-botao {
-  display: flex; align-items: center; gap: var(--esp-3); min-height: 44px; padding: 0 var(--esp-1) 0 var(--esp-3); font: inherit; color: inherit;
+  display: flex; align-items: center; gap: var(--esp-3); min-height: 2.75rem; padding: 0 var(--esp-1) 0 var(--esp-3); font: inherit; color: inherit;
   background: transparent; border: 2px solid transparent; border-radius: var(--raio-pilula); cursor: pointer; transition: background 0.15s, border-color 0.15s;
 }
 .app-usuario-botao:hover { background: var(--cor-fundo-suave); }
-.app-usuario-botao:focus-visible, .app-usuario-botao[aria-expanded="true"] { outline: none; border-color: var(--cor-foco); box-shadow: 0 0 0 4px rgba(23, 57, 255, 0.18); }
-.app-usuario-seta { width: 18px; height: 18px; margin-right: var(--esp-2); color: var(--cor-texto-suave); transition: transform 0.15s; }
+.app-usuario-botao:focus-visible, .app-usuario-botao[aria-expanded="true"] { outline: none; border-color: var(--cor-foco); box-shadow: 0 0 0 0.25rem rgba(23, 57, 255, 0.18); }
+.app-usuario-seta { width: 1.125rem; height: 1.125rem; margin-right: var(--esp-2); color: var(--cor-texto-suave); transition: transform 0.15s; }
 .app-usuario-botao[aria-expanded="true"] .app-usuario-seta { transform: rotate(180deg); }
 .um-cabecalho { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-3); border-bottom: 1px solid var(--cor-borda); font-size: var(--texto-sm); color: var(--cor-texto-suave); }
 .um-cabecalho strong { color: var(--cor-texto); font-size: 1rem; overflow-wrap: anywhere; }
-.um-item { justify-content: flex-start; width: 100%; min-height: 44px; font: inherit; color: var(--cor-texto); text-align: left; background: transparent; border: 0; }
+.um-item { justify-content: flex-start; width: 100%; min-height: 2.75rem; font: inherit; color: var(--cor-texto); text-align: left; background: transparent; border: 0; }
 .um-item:focus { outline: none; }
 .um-item:focus-visible { box-shadow: inset 0 0 0 2px var(--cor-foco); }
-.um-item .icone { width: 20px; height: 20px; color: var(--cor-texto-suave); }
+.um-item .icone { width: 1.25rem; height: 1.25rem; color: var(--cor-texto-suave); }
 .um-painel .sb-lista { padding: var(--esp-1); }
 @media (max-width: 899px) { .app-usuario-botao { padding-left: var(--esp-1); } .app-usuario-botao .nome { display: none; } }
 @media (prefers-reduced-motion: reduce) { .app-usuario-botao, .app-usuario-seta { transition: none; } }
@@ -52,9 +52,9 @@
   position: fixed; z-index: 60; left: 0; right: 0; bottom: 0; display: flex; gap: 2px; overflow: hidden;
   height: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom));
   padding: var(--esp-3) var(--esp-2) env(safe-area-inset-bottom);
-  background: var(--cor-superficie); border-radius: 26px 26px 0 0; box-shadow: 0 -4px 16px rgba(20, 20, 40, 0.10);
+  background: var(--cor-superficie); border-radius: 1.625rem 1.625rem 0 0; box-shadow: 0 -0.25rem 1rem rgba(20, 20, 40, 0.10);
 }
-.app-menu::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--grad-marca); }
+.app-menu::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 0.25rem; background: var(--grad-marca); }
 .app-menu .app-menu-marca { display: none; }
 .app-menu a, .app-menu button {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -62,10 +62,10 @@
   color: var(--cor-texto-suave); background: none; border: 0; border-radius: var(--raio-medio); text-decoration: none; cursor: pointer;
 }
 .app-menu a:hover, .app-menu button:hover { background: var(--cor-primaria-clara); color: var(--cor-primaria-escura); }
-.app-menu .icone { width: 24px; height: 24px; }
+.app-menu .icone { width: 1.5rem; height: 1.5rem; }
 .app-menu a[aria-current='page'] { color: var(--cor-texto-primaria); font-weight: 800; }
 .app-menu a[aria-current='page'] .icone {
-  box-sizing: border-box; width: 56px; height: 32px; padding: 4px 16px; border-radius: 16px;
+  box-sizing: border-box; width: 3.5rem; height: 2rem; padding: 0.25rem 1rem; border-radius: 1rem;
   color: var(--cor-texto-inverso); background: var(--cor-primaria);
 }
 
@@ -87,7 +87,7 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
 .menu-mais a { display: flex; align-items: center; gap: var(--esp-3); min-height: var(--alvo-toque); padding: var(--esp-2) var(--esp-4); border-radius: var(--raio-pilula); font-weight: 700; color: var(--cor-texto); text-decoration: none; border: 2px solid var(--cor-borda); }
 .menu-mais a:hover { background: var(--cor-primaria-clara); border-color: var(--cor-primaria); }
 
-.icone { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icone { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 /* Desktop: menu lateral com logo; cabeçalho só com o usuário, ao lado do menu */
 @media (min-width: 900px) {
@@ -102,7 +102,7 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   .app-menu::before { display: none; }
   .app-menu .app-menu-marca { display: flex; flex: none; flex-direction: row; align-items: center; justify-content: flex-start; gap: var(--esp-3); min-height: 0; padding: var(--esp-1) var(--esp-3) var(--esp-5); border-radius: 0; color: var(--cor-texto-suave); font-size: var(--texto-xs); font-weight: 700; text-decoration: none; }
   .app-menu .app-menu-marca:hover { background: none; color: var(--cor-texto-suave); }
-  .app-menu-marca img { display: block; flex: none; height: 48px; width: 48px; }
+  .app-menu-marca img { display: block; flex: none; height: 3rem; width: 3rem; }
   .app-menu-marca-texto { display: flex; flex-direction: column; line-height: 1.25; }
   .app-menu-marca-texto strong { font-size: var(--texto-lg); font-weight: 800; letter-spacing: 0.02em; color: var(--cor-texto); }
   .app-menu a, .app-menu button {
@@ -111,7 +111,7 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   }
   .app-menu a[aria-current='page'] { color: var(--cor-texto-inverso); background: var(--cor-primaria); box-shadow: var(--sombra-laranja); }
   .app-menu a[aria-current='page']:hover { background: var(--cor-primaria-escura); color: var(--cor-texto-inverso); }
-  .app-menu a[aria-current='page'] .icone { background: none; padding: 0; width: 24px; height: 24px; color: inherit; }
+  .app-menu a[aria-current='page'] .icone { background: none; padding: 0; width: 1.5rem; height: 1.5rem; color: inherit; }
   .app-menu .menu-mais-botao { display: none; }
   /* ocupa a área ao lado do menu; acima de --largura-maxima centraliza pelo padding (títulos fit-content não se movem) */
   .conteudo {
@@ -132,10 +132,10 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--esp-4);
   background: var(--cor-fundo);
 }
-.login-card { position: relative; overflow: hidden; width: min(100%, 420px); padding: var(--esp-6) var(--esp-5) var(--esp-5); }
-.login-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--grad-marca); }
+.login-card { position: relative; overflow: hidden; width: min(100%, 26.25rem); padding: var(--esp-6) var(--esp-5) var(--esp-5); }
+.login-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 0.375rem; background: var(--grad-marca); }
 .login-marca { text-align: center; margin-bottom: var(--esp-5); }
-.login-marca img { display: block; height: 96px; width: 96px; margin: 0 auto var(--esp-3); }
+.login-marca img { display: block; height: 6rem; width: 6rem; margin: 0 auto var(--esp-3); }
 .login-marca h1 { margin: 0 0 var(--esp-1); font-size: var(--texto-xl); color: var(--cor-titulo); }
 
 /* Troca suave entre páginas (View Transitions entre documentos): só o conteúdo faz um fade curto; cabeçalho e menu

@@ -6,7 +6,7 @@
 }
 .aba[aria-selected="true"] { color: var(--cor-primaria-escura); border-bottom-color: var(--cor-primaria); font-weight: 600; }
 .admin-barra { display: flex; flex-wrap: wrap; gap: var(--esp-3); align-items: flex-end; margin-bottom: var(--esp-4); }
-.admin-barra .campo { margin: 0; flex: 1 1 180px; }
+.admin-barra .campo { margin: 0; flex: 1 1 11.25rem; }
 .admin-barra .btn { flex: none; }
 .admin-acoes { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
 .admin-inativo { opacity: .65; }

@@ -10,7 +10,7 @@
 
 .rel-passo-titulo { margin: 0 0 var(--esp-3); font-size: var(--texto-lg); }
 .rel-filtros .grade { align-items: end; }
-.rel-unidades { display: grid; gap: var(--esp-2); grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.rel-unidades { display: grid; gap: var(--esp-2); grid-template-columns: repeat(auto-fill, minmax(13.75rem, 1fr)); }
 
 .rel-numeros { display: grid; gap: var(--esp-3); grid-template-columns: repeat(2, 1fr); margin-bottom: var(--esp-4); }
 @media (min-width: 720px) { .rel-numeros { grid-template-columns: repeat(3, 1fr); } }
@@ -25,20 +25,20 @@
 
 .rel-texto-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-2); }
 .rel-texto-cab label { font-weight: 600; font-size: var(--texto-sm); }
-.rel-area-texto { min-height: 140px; line-height: 1.5; }
+.rel-area-texto { min-height: 8.75rem; line-height: 1.5; }
 
 .rel-relato { padding: var(--esp-3); margin-bottom: var(--esp-3); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); }
 .rel-relato:has(input[type="checkbox"]:checked) { border-color: var(--cor-primaria); background: var(--cor-primaria-clara); }
 .rel-relato-cab { display: flex; align-items: center; gap: var(--esp-3); min-height: var(--alvo-toque); cursor: pointer; font-size: var(--texto-sm); }
-.rel-relato-cab input { width: 20px; height: 20px; accent-color: var(--cor-primaria); flex: none; }
-.rel-relato textarea { margin-top: var(--esp-2); min-height: 80px; }
+.rel-relato-cab input { width: 1.25rem; height: 1.25rem; accent-color: var(--cor-primaria); flex: none; }
+.rel-relato textarea { margin-top: var(--esp-2); min-height: 5rem; }
 
-.rel-fotos { display: grid; gap: var(--esp-3); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.rel-fotos { display: grid; gap: var(--esp-3); grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr)); }
 .rel-foto { display: flex; flex-direction: column; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); overflow: hidden; cursor: pointer; }
 .rel-foto:has(input:checked) { border-color: var(--cor-primaria); box-shadow: 0 0 0 2px var(--cor-primaria-clara); }
 .rel-foto img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--cor-fundo-suave); }
 .rel-foto-info { display: flex; gap: var(--esp-2); align-items: flex-start; padding: var(--esp-2); font-size: var(--texto-xs); }
-.rel-foto-info input { width: 20px; height: 20px; accent-color: var(--cor-primaria); flex: none; }
+.rel-foto-info input { width: 1.25rem; height: 1.25rem; accent-color: var(--cor-primaria); flex: none; }
 
 .rel-lista-acompanhamentos .badge { margin-right: var(--esp-1); }
 

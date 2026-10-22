@@ -16,7 +16,7 @@ const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 's
 const SEMANA = [['D', 'domingo'], ['S', 'segunda-feira'], ['T', 'terça-feira'], ['Q', 'quarta-feira'], ['Q', 'quinta-feira'], ['S', 'sexta-feira'], ['S', 'sábado']];
 const ANO_MIN = 1900;
 const ANO_MAX = 2200;
-const LARGURA = 320;
+const LARGURA = 260;
 const FOLGA = 8;
 
 let contador = 0;

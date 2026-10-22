@@ -6,7 +6,7 @@
 
 /* Esqueleto do resumo: mesma estrutura do cartão real, para a página não pular quando o resumo chega do servidor */
 .resumo-esqueleto h2, .resumo-esqueleto p, .resumo-esqueleto strong, .resumo-esqueleto .tile-rotulo {
-  color: transparent; background: var(--cor-cinza-claro); border-radius: 8px; user-select: none;
+  color: transparent; background: var(--cor-cinza-claro); border-radius: 0.5rem; user-select: none;
 }
 .resumo-esqueleto h2 { width: 11rem; max-width: 100%; }
 .resumo-esqueleto p { width: 14rem; max-width: 100%; }
@@ -18,17 +18,17 @@
   position: relative; overflow: hidden; padding: var(--esp-4) var(--esp-4) var(--esp-5);
   color: var(--cor-texto-inverso); border-radius: var(--raio);
   background:
-    var(--grad-marca) left bottom / 100% 6px no-repeat,
+    var(--grad-marca) left bottom / 100% 0.375rem no-repeat,
     linear-gradient(135deg, var(--cor-marca) 0%, #ff8a2e 100%);
-  box-shadow: 0 10px 22px rgba(255, 117, 7, 0.3);
+  box-shadow: 0 0.625rem 1.375rem rgba(255, 117, 7, 0.3);
 }
 .heroi::before, .heroi::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
-.heroi::before { width: 150px; height: 150px; right: -40px; top: -50px; background: rgba(255, 255, 255, 0.16); }
-.heroi::after { width: 72px; height: 72px; right: -8px; bottom: -36px; background: rgba(92, 62, 235, 0.85); }
+.heroi::before { width: 9.375rem; height: 9.375rem; right: -2.5rem; top: -3.125rem; background: rgba(255, 255, 255, 0.16); }
+.heroi::after { width: 4.5rem; height: 4.5rem; right: -0.5rem; bottom: -2.25rem; background: rgba(92, 62, 235, 0.85); }
 .heroi h1 { position: relative; margin: 0; font-size: 1.75rem; color: inherit; background: none; padding: 0; width: auto; }
-.heroi-data .icone { width: 16px; height: 16px; margin-right: var(--esp-1); color: var(--cor-marca); }
+.heroi-data .icone { width: 1rem; height: 1rem; margin-right: var(--esp-1); color: var(--cor-marca); }
 .heroi-data {
-  position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 5px var(--esp-3);
+  position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 0.3125rem var(--esp-3);
   font-size: var(--texto-sm); font-weight: 800; color: var(--cor-texto-primaria);
   background: var(--cor-superficie); border-radius: var(--raio-pilula);
 }
@@ -37,10 +37,10 @@
 .resumo-inicio > p { margin-top: calc(var(--esp-2) * -1); }
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); }
 .tile {
-  display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3); min-height: 116px;
+  display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3); min-height: 7.25rem;
   color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-medio);
 }
-.tile-ic { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--esp-1); color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 14px; }
+.tile-ic { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--esp-1); color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 0.875rem; }
 .tile strong { font-size: 2rem; font-weight: 800; line-height: 1; }
 .tile-rotulo { min-height: 2.4em; font-size: var(--texto-sm); font-weight: 600; line-height: 1.2; color: var(--cor-texto-suave); } /* 2 linhas reservadas: o esqueleto e o resumo têm a mesma altura */
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
@@ -52,15 +52,15 @@
 @media (min-width: 1000px) { .atalhos { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1400px) { .atalhos { grid-template-columns: repeat(4, 1fr); } }
 .atalho {
-  display: flex; align-items: center; gap: var(--esp-4); min-height: 84px; padding: var(--esp-3) var(--esp-4);
+  display: flex; align-items: center; gap: var(--esp-4); min-height: 5.25rem; padding: var(--esp-3) var(--esp-4);
   color: var(--cor-texto); text-decoration: none; background: var(--cor-superficie);
   border: 1px solid var(--cor-borda); border-radius: var(--raio);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.atalho:hover { color: var(--cor-texto); border-color: var(--cor-marca); box-shadow: 0 4px 14px rgba(255, 117, 7, 0.18); }
+.atalho:hover { color: var(--cor-texto); border-color: var(--cor-marca); box-shadow: 0 0.25rem 0.875rem rgba(255, 117, 7, 0.18); }
 .atalho:active { background: var(--cor-cinza-claro); }
-.atalho-ic { display: grid; place-items: center; flex: none; width: 56px; height: 56px; color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 18px; }
-.atalho-ic .icone { width: 30px; height: 30px; }
+.atalho-ic { display: grid; place-items: center; flex: none; width: 3.5rem; height: 3.5rem; color: var(--cor-marca); background: var(--cor-cinza-claro); border-radius: 1.125rem; }
+.atalho-ic .icone { width: 1.875rem; height: 1.875rem; }
 .atalho-texto { display: flex; flex-direction: column; min-width: 0; }
 .atalho-texto strong { font-size: var(--texto-lg); font-weight: 800; }
 .atalho-texto small { font-size: var(--texto-sm); font-weight: 500; line-height: 1.3; color: var(--cor-texto-suave); }
@@ -73,13 +73,13 @@
   background: var(--cor-aviso-clara); border: 2px solid #ffd2a8; border-radius: var(--raio-medio);
 }
 .pendencia-vencida { background: var(--cor-perigo-clara); border-color: #f4b8b0; }
-.pendencia-ic { display: grid; place-items: center; flex: none; width: 44px; height: 44px; color: var(--cor-aviso); background: var(--cor-superficie); border-radius: 14px; }
+.pendencia-ic { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; color: var(--cor-aviso); background: var(--cor-superficie); border-radius: 0.875rem; }
 .pendencia-vencida .pendencia-ic { color: var(--cor-perigo); }
 .pendencia-texto { flex: 1; min-width: 0; }
 .pendencia-texto p { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .pendencia-texto small { display: block; margin-bottom: var(--esp-2); color: var(--cor-texto-suave); }
 
 @media (min-width: 900px) {
-  .heroi { padding: var(--esp-5) var(--esp-6) calc(var(--esp-5) + 4px); }
+  .heroi { padding: var(--esp-5) var(--esp-6) calc(var(--esp-5) + 0.25rem); }
   .heroi h1 { font-size: 2.125rem; }
 }

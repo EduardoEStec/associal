@@ -10,7 +10,7 @@
 .atend-faixa { font-weight: 600; }
 .atend-rascunho { margin-bottom: var(--esp-4); }
 .atend-detalhe dl { display: grid; grid-template-columns: 1fr; gap: var(--esp-2) var(--esp-4); margin: 0; }
-@media (min-width: 640px) { .atend-detalhe dl { grid-template-columns: 220px 1fr; } }
+@media (min-width: 640px) { .atend-detalhe dl { grid-template-columns: 13.75rem 1fr; } }
 .atend-detalhe dt { font-weight: 600; color: var(--cor-texto-suave); }
 .atend-detalhe dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .atend-historico { list-style: none; margin: 0; padding: 0; }

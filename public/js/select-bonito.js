@@ -10,8 +10,8 @@ import { abrirExclusivo, liberar } from './painel-unico.js';
 const CHECK = '<svg class="icone sb-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
 const SETA = '<svg class="icone sb-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 const MAIS_QUE_ISSO_TEM_BUSCA = 8;
-const ALTURA_MAXIMA = 340;
-const ALTURA_MINIMA = 120;
+const ALTURA_MAXIMA = 260;
+const ALTURA_MINIMA = 100;
 const FOLGA = 8;
 
 let contador = 0;

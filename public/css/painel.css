@@ -40,12 +40,12 @@ main > .grade, main > .card, main > section, .painel-aba > .grade, .painel-aba >
 /* Gráficos */
 .grafico { margin: 0; }
 .grafico-svg { display: block; width: 100%; height: auto; }
-.dist .grafico-svg { max-width: 520px; }
+.dist .grafico-svg { max-width: 32.5rem; }
 .g-grade { stroke: var(--cor-borda); stroke-width: 1; stroke-dasharray: 3 3; }
 .g-eixo { stroke: var(--cor-texto-suave); stroke-width: 1; }
-.g-rotulo { fill: var(--cor-texto-suave); font-size: 12px; font-family: var(--fonte); }
-.g-rotulo-forte { fill: var(--cor-texto); font-size: 13px; }
-.g-valor { fill: var(--cor-texto); font-size: 11px; font-family: var(--fonte); }
+.g-rotulo { fill: var(--cor-texto-suave); font-size: 0.75rem; font-family: var(--fonte); }
+.g-rotulo-forte { fill: var(--cor-texto); font-size: 0.8125rem; }
+.g-valor { fill: var(--cor-texto); font-size: 0.6875rem; font-family: var(--fonte); }
 .g-s0 { fill: var(--cor-titulo); }
 .g-s1 { fill: var(--cor-roxo); }
 .g-s2 { fill: var(--cor-azul); }
@@ -59,7 +59,7 @@ main > .grade, main > .card, main > section, .painel-aba > .grade, .painel-aba >
 
 .grafico-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-3); list-style: none; margin: var(--esp-2) 0 0; padding: 0; font-size: var(--texto-sm); }
 .grafico-legenda li { display: inline-flex; align-items: center; gap: var(--esp-2); }
-.grafico-marca { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.grafico-marca { width: 0.75rem; height: 0.75rem; border-radius: 3px; display: inline-block; }
 .grafico-marca.s0 { background: var(--cor-titulo); }
 .grafico-marca.s1 { background: var(--cor-roxo); }
 .grafico-marca.s2 { background: var(--cor-azul); }
