@@ -87,11 +87,19 @@ export function abrirModal({ titulo, conteudo, botoes = [], fechavel = true } = 
     caixa.append(rodape);
   }
 
+  // botão X no canto (voltar/fechar), só nas janelas que podem ser fechadas
+  if (fechavel) {
+    const x = h('button', { type: 'button', class: 'modal-fechar', 'aria-label': 'Fechar', title: 'Fechar', onclick: fechar });
+    x.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    caixa.classList.add('modal-fechavel');
+    caixa.prepend(x);
+  }
+
   fundo.append(caixa);
   if (fechavel) fundo.addEventListener('mousedown', (e) => { if (e.target === fundo) fechar(); });
   document.addEventListener('keydown', aoTeclar);
   document.body.append(fundo);
-  (caixa.querySelector('input, select, textarea, button') || caixa).focus?.();
+  (caixa.querySelector('input, select, textarea') || caixa.querySelector('button:not(.modal-fechar)') || caixa).focus?.();
   return { fechar, elemento: caixa };
 }
 

@@ -298,7 +298,17 @@ fieldset.secao > legend + * { clear: both; }
   width: 100%; max-height: 90vh; overflow-y: auto; background: var(--cor-superficie);
   border-radius: var(--raio) var(--raio) 0 0; box-shadow: var(--sombra-forte); padding: var(--esp-5) var(--esp-4);
 }
+.modal { position: relative; }
 .modal-titulo { margin: 0 0 var(--esp-3); color: var(--cor-titulo); }
+.modal-fechavel .modal-titulo { padding-right: 2.75rem; }
+.modal-fechar {
+  position: absolute; top: var(--esp-3); right: var(--esp-3); display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: 50%; background: transparent;
+  color: var(--cor-texto-suave); cursor: pointer;
+}
+.modal-fechar svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.modal-fechar:hover { background: var(--cor-fundo-suave); color: var(--cor-texto); }
+.modal-fechar:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
 .modal-rodape { display: flex; flex-wrap: wrap; gap: var(--esp-3); justify-content: flex-end; margin-top: var(--esp-4); }
 @media (min-width: 640px) {
   .modal-fundo { align-items: center; }
