@@ -11,8 +11,6 @@
   var conhecido = !!(info && typeof info.nome === 'string' && PERFIS[info.perfil]);
   if (conhecido) document.documentElement.setAttribute('data-perfil', info.perfil);
 
-  var hora = new Date().getHours();
-  var saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   var data = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   var dataCurta = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   var partes = conhecido ? info.nome.trim().split(/\s+/) : [];
@@ -25,7 +23,6 @@
     'data-hoje-texto': data,
     'data-hoje-curta': dataCurta,
     // Início: mesmo texto que js/paginas/inicio.js monta depois (ele só troca o que mudar)
-    'saudacao': conhecido ? saudacao + ', ' + info.nome.split(' ')[0] + '!' : saudacao + '!',
   };
 
   var feitos = {};

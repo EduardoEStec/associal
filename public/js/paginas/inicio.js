@@ -7,15 +7,6 @@ import { api } from '../api.js';
 const resumoPendente = api.get('/api/painel/resumo-inicio').catch(() => null);
 
 const { usuario, itens } = await iniciarPagina('inicio');
-
-// ---- Saudação ----
-// Saudação (título da página), atalhos e o espaço do resumo já vêm no HTML (js/shell-previo.js pré-preenche os textos); aqui só se confirma o que mudou.
-const hora = new Date().getHours();
-const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
-const primeiroNome = usuario.nome.split(' ')[0];
-const definirTexto = (id, texto) => { const e = document.getElementById(id); if (e.textContent !== texto) e.textContent = texto; };
-definirTexto('saudacao', `${saudacao}, ${primeiroNome}!`);
-
 // ---- Atalhos (blocos sólidos): o HTML traz todos; sai o que o perfil não pode abrir ----
 const permitidos = new Set(itens.map((i) => i.href));
 document.querySelectorAll('#atalhos .atalho').forEach((a) => { if (!permitidos.has(a.getAttribute('href'))) a.remove(); });

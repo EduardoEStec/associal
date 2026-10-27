@@ -51,3 +51,4 @@ hr { border: 0; border-top: 1px solid var(--cor-borda); margin: var(--esp-4) 0; 
 @media (min-width: 900px) {
   .grade-4 { grid-template-columns: repeat(4, 1fr); }
 }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

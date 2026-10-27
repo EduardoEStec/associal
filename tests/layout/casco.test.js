@@ -58,12 +58,12 @@ test('Início: atalhos estáticos = itens do menu (menos o Início), com as mesm
   atalhos.forEach((a, i) => assert.equal(a[1].includes('so-coordenacao'), esperados[i].soCoordenacao));
 });
 
-test('Início: o resumo reserva o espaço do cartão (esqueleto com 6 blocos) e o herói traz os textos-alvo', () => {
+test('Início: o resumo reserva o espaço do cartão (esqueleto com 6 blocos) sem saudação visível', () => {
   const html = ler('index.html');
   assert.match(html, /<section class="card resumo-inicio resumo-esqueleto" aria-hidden="true">/);
   assert.equal((html.match(/<div class="tile">/g) || []).length, 6);
   assert.match(html, /id="data-hoje-texto"/);
-  assert.match(html, /<h1 id="saudacao"><\/h1>/, 'saudação vazia no HTML: o shell-previo.js preenche antes do primeiro desenho');
+  assert.match(html, /<h1 class="sr-only">Início<\/h1>/, 'sem saudação visível; título só para leitor de tela');
   assert.doesNotMatch(html, /id="carregando"/, 'o spinner foi trocado pelo esqueleto');
 });
 
@@ -79,7 +79,7 @@ test('CSS: cabeçalho e menu são camadas próprias na transição; reduzir movi
 
 test('service worker: nova versão e os scripts do casco pré-armazenados', () => {
   const sw = ler('sw.js');
-  assert.match(sw, /const VERSAO = 'associal-v27';/);
+  assert.match(sw, /const VERSAO = 'associal-v28';/);
   assert.ok(sw.includes("'/js/shell-previo.js'") && sw.includes("'/js/shell-cache.js'"));
 });
 
@@ -98,9 +98,9 @@ for (const p of PAGINAS) {
   });
 }
 
-test('Início: saudação é título simples da página (sem herói) e a data não está mais no conteúdo', () => {
+test('Início: sem saudação nem herói, e a data não está mais no conteúdo', () => {
   const html = ler('index.html');
-  assert.match(html, /<div class="pagina-titulo"><h1 id="saudacao"><\/h1><\/div>/);
+  assert.ok(!html.includes('id="saudacao"'), 'sem saudação');
   assert.ok(!html.includes('class="heroi'), 'sem herói');
   assert.ok(!ler('css/inicio.css').includes('.heroi'), 'sem CSS do herói');
   assert.ok(!ler('js/paginas/inicio.js').includes("'data-hoje-texto'"), 'inicio.js não mexe mais na data');
