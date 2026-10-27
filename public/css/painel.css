@@ -7,11 +7,11 @@
 .kpis { margin-bottom: var(--esp-4); }
 .kpi { display: flex; flex-direction: column; gap: var(--esp-1); }
 .kpi-rotulo { font-size: var(--texto-sm); color: var(--cor-texto-suave); }
-.kpi-valor { font-size: var(--texto-2xl); font-weight: 800; color: var(--cor-texto-primaria); line-height: 1.1; }
+.kpi-valor { font-size: var(--texto-2xl); font-weight: 800; color: var(--cor-texto); line-height: 1.1; }
 .kpi-ajuda { font-size: var(--texto-xs); color: var(--cor-texto-suave); }
 
 .tabela td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.linha-total td { font-weight: 700; background: var(--cor-primaria-clara); }
+.linha-total td { font-weight: 700; background: var(--cor-fundo-suave); }
 @media (max-width: 639px) {
   .tabela-responsiva td.num { text-align: left; }
 }
@@ -47,23 +47,23 @@ main > .grade, main > .card, main > section, .painel-aba > .grade, .painel-aba >
 .g-rotulo-forte { fill: var(--cor-texto); font-size: 0.8125rem; }
 .g-valor { fill: var(--cor-texto); font-size: 0.6875rem; font-family: var(--fonte); }
 .g-s0 { fill: var(--cor-titulo); }
-.g-s1 { fill: var(--cor-roxo); }
-.g-s2 { fill: var(--cor-azul); }
-.g-s3 { fill: var(--cor-verde); }
+.g-s1 { fill: #3f3f46; }
+.g-s2 { fill: #9b9ba3; }
+.g-s3 { fill: var(--cor-primaria); }
 .g-linha { stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .g-l0 { stroke: var(--cor-titulo); }
-.g-l1 { stroke: var(--cor-roxo); }
-.g-l2 { stroke: var(--cor-azul); }
-.g-l3 { stroke: var(--cor-verde); }
+.g-l1 { stroke: #3f3f46; }
+.g-l2 { stroke: #9b9ba3; }
+.g-l3 { stroke: var(--cor-primaria); }
 .g-ponto { stroke: var(--cor-superficie); stroke-width: 1.5; }
 
 .grafico-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-3); list-style: none; margin: var(--esp-2) 0 0; padding: 0; font-size: var(--texto-sm); }
 .grafico-legenda li { display: inline-flex; align-items: center; gap: var(--esp-2); }
 .grafico-marca { width: 0.75rem; height: 0.75rem; border-radius: 3px; display: inline-block; }
 .grafico-marca.s0 { background: var(--cor-titulo); }
-.grafico-marca.s1 { background: var(--cor-roxo); }
-.grafico-marca.s2 { background: var(--cor-azul); }
-.grafico-marca.s3 { background: var(--cor-verde); }
+.grafico-marca.s1 { background: #3f3f46; }
+.grafico-marca.s2 { background: #9b9ba3; }
+.grafico-marca.s3 { background: var(--cor-primaria); }
 
 .lista-alertas { list-style: none; margin: 0 0 var(--esp-4); padding: 0; display: grid; gap: var(--esp-2); }
 .lista-alertas li { padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }

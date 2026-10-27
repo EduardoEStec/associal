@@ -1,6 +1,6 @@
 /* Estrutura da página: cabeçalho + menu (inferior no celular, lateral no desktop) + conteúdo.
    O HTML das páginas só declara <main class="conteudo" id="conteudo">; js/layout.js injeta o resto.
-   Visual B1 "Laranja INTECS": cabeçalho creme com logo, barra inferior com filete em gradiente e
+   Visual B1 sóbrio (V17): cabeçalho branco com logo, barra inferior lisa e
    item ativo em pílula laranja; no desktop, menu lateral com logo. */
 
 .app-cabecalho {
@@ -17,14 +17,14 @@
 .app-usuario .nome small { display: block; font-weight: 500; color: var(--cor-texto-suave); }
 .app-avatar {
   width: 2.75rem; height: 2.75rem; border-radius: 50%; display: grid; place-items: center; flex: none;
-  color: var(--cor-texto-inverso); background: var(--cor-roxo); font-weight: 800; font-size: var(--texto-lg);
+  color: var(--cor-texto); background: var(--cor-cinza); border: 1px solid var(--cor-borda); font-weight: 800; font-size: var(--texto-lg);
 }
 .app-usuario-botao {
   display: flex; align-items: center; gap: var(--esp-3); min-height: 2.75rem; padding: 0 var(--esp-1) 0 var(--esp-3); font: inherit; color: inherit;
   background: transparent; border: 2px solid transparent; border-radius: var(--raio-pilula); cursor: pointer; transition: background 0.15s, border-color 0.15s;
 }
 .app-usuario-botao:hover { background: var(--cor-fundo-suave); }
-.app-usuario-botao:focus-visible, .app-usuario-botao[aria-expanded="true"] { outline: none; border-color: var(--cor-foco); box-shadow: 0 0 0 0.25rem rgba(23, 57, 255, 0.18); }
+.app-usuario-botao:focus-visible, .app-usuario-botao[aria-expanded="true"] { outline: none; border-color: var(--cor-foco); box-shadow: 0 0 0 0.25rem rgba(201, 74, 10, 0.18); }
 .app-usuario-seta { width: 1.125rem; height: 1.125rem; margin-right: var(--esp-2); color: var(--cor-texto-suave); transition: transform 0.15s; }
 .app-usuario-botao[aria-expanded="true"] .app-usuario-seta { transform: rotate(180deg); }
 .um-cabecalho { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-3); border-bottom: 1px solid var(--cor-borda); font-size: var(--texto-sm); color: var(--cor-texto-suave); }
@@ -52,16 +52,15 @@
   position: fixed; z-index: 60; left: 0; right: 0; bottom: 0; display: flex; gap: 2px; overflow: hidden;
   height: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom));
   padding: var(--esp-3) var(--esp-2) env(safe-area-inset-bottom);
-  background: var(--cor-superficie); border-radius: 1.625rem 1.625rem 0 0; box-shadow: 0 -0.25rem 1rem rgba(20, 20, 40, 0.10);
+  background: var(--cor-superficie); border-radius: 1.625rem 1.625rem 0 0; border-top: 1px solid var(--cor-borda); box-shadow: none;
 }
-.app-menu::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 0.25rem; background: var(--grad-marca); }
 .app-menu .app-menu-marca { display: none; }
 .app-menu a, .app-menu button {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   min-width: 0; padding: var(--esp-1); font: inherit; font-size: var(--texto-xs); font-weight: 700;
   color: var(--cor-texto-suave); background: none; border: 0; border-radius: var(--raio-medio); text-decoration: none; cursor: pointer;
 }
-.app-menu a:hover, .app-menu button:hover { background: var(--cor-primaria-clara); color: var(--cor-primaria-escura); }
+.app-menu a:hover, .app-menu button:hover { background: var(--cor-primaria-clara); color: var(--cor-texto); }
 .app-menu .icone { width: 1.5rem; height: 1.5rem; }
 .app-menu a[aria-current='page'] { color: var(--cor-texto-primaria); font-weight: 800; }
 .app-menu a[aria-current='page'] .icone {
@@ -85,7 +84,7 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
 /* Lista do "Mais" (modal) */
 .menu-mais { display: flex; flex-direction: column; gap: var(--esp-2); }
 .menu-mais a { display: flex; align-items: center; gap: var(--esp-3); min-height: var(--alvo-toque); padding: var(--esp-2) var(--esp-4); border-radius: var(--raio-pilula); font-weight: 700; color: var(--cor-texto); text-decoration: none; border: 2px solid var(--cor-borda); }
-.menu-mais a:hover { background: var(--cor-primaria-clara); border-color: var(--cor-primaria); }
+.menu-mais a:hover { background: var(--cor-primaria-clara); border-color: #9b9ba3; }
 
 .icone { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
@@ -109,7 +108,7 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
     flex: none; flex-direction: row; justify-content: flex-start; gap: var(--esp-3);
     min-height: var(--alvo-toque); padding: 0 var(--esp-4); font-size: var(--texto-base); font-weight: 700; border-radius: var(--raio-pilula);
   }
-  .app-menu a[aria-current='page'] { color: var(--cor-texto-inverso); background: var(--cor-primaria); box-shadow: var(--sombra-laranja); }
+  .app-menu a[aria-current='page'] { color: var(--cor-texto-inverso); background: var(--cor-primaria); }
   .app-menu a[aria-current='page']:hover { background: var(--cor-primaria-escura); color: var(--cor-texto-inverso); }
   .app-menu a[aria-current='page'] .icone { background: none; padding: 0; width: 1.5rem; height: 1.5rem; color: inherit; }
   .app-menu .menu-mais-botao { display: none; }
@@ -133,7 +132,6 @@ html[data-perfil="COORDENADOR"] .atalho.so-coordenacao, html[data-perfil="ADMIN"
   background: var(--cor-fundo);
 }
 .login-card { position: relative; overflow: hidden; width: min(100%, 26.25rem); padding: var(--esp-6) var(--esp-5) var(--esp-5); }
-.login-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 0.375rem; background: var(--grad-marca); }
 .login-marca { text-align: center; margin-bottom: var(--esp-5); }
 .login-marca img { display: block; height: 6rem; width: 6rem; margin: 0 auto var(--esp-3); }
 .login-marca h1 { margin: 0 0 var(--esp-1); font-size: var(--texto-xl); color: var(--cor-titulo); }

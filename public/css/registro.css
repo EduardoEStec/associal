@@ -8,9 +8,9 @@
 .fam-frases-lista { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
 .fam-frase {
   min-height: var(--alvo-toque); padding: var(--esp-2) var(--esp-3); text-align: left; font: inherit; font-size: var(--texto-sm);
-  color: var(--cor-primaria-escura); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); cursor: pointer;
+  color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pequeno); cursor: pointer;
 }
-.fam-frase:hover, .fam-frase:focus-visible { border-color: var(--cor-primaria); background: var(--cor-fundo-suave); }
+.fam-frase:hover, .fam-frase:focus-visible { border-color: #9b9ba3; background: var(--cor-fundo-suave); }
 .fam-pontos { margin-top: var(--esp-2); }
 .fam-pontos summary { cursor: pointer; font-weight: 700; min-height: var(--alvo-toque); display: flex; align-items: center; }
 .fam-pontos ul { margin: var(--esp-1) 0 0; padding-left: var(--esp-5); }

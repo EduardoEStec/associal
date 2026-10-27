@@ -1,38 +1,35 @@
-/* Design tokens do ASSOCIAL — identidade "B1 · Laranja INTECS" (alinhada ao site intecsbr.org).
+/* Design tokens do ASSOCIAL — identidade B1 "Laranja INTECS", em versão SÓBRIA (V17: menos cores).
    Use SEMPRE estas variáveis nos estilos (nada de cores/medidas soltas).
 
-   ESCOLHAS DE COR E CONTRASTE (WCAG 2.1 AA: texto normal ≥ 4,5:1; texto grande ≥ 3:1)
-   O laranja vivo da marca (#FF7507) com texto branco dá só 2,7:1 — NÃO atinge AA em texto normal.
-   Por isso há dois laranjas, cada um para um uso:
-   • --cor-marca     #FF7507  laranja VIVO da marca. Só em superfícies grandes com texto grande/negrito
-                              (herói, tiles, faixas), ícones, detalhes e gráficos. Nunca para texto pequeno.
-   • --cor-primaria  #C94A0A  laranja PROFUNDO para fundo de botões, chips selecionados, item ativo do menu:
-                              texto branco = 4,7:1 (AA). Hover #A33A05 (6,6:1).
-   • --cor-texto-primaria #B8400A  texto/links laranja pequenos sobre branco (5,6:1), creme (5,2:1) ou laranja claro (4,7:1).
-   • --cor-titulo    #E5600A  títulos grandes (≥ 1.375rem, negrito) laranja: 3,5:1 sobre branco e 3,3:1 sobre creme (AA texto grande).
-   • Roxo #5C3EEB e azul #1739FF (texto branco sobre eles: 6,3:1 e 6,9:1). O foco visível é AZUL (--cor-foco),
-     para aparecer também sobre botões laranja.
-   • Verde #32A64E é decorativo; para TEXTO/ícone de sucesso usa-se #1E7A36 (5,4:1 sobre branco, 4,7:1 sobre o verde claro).
-   Assinatura gráfica: --grad-marca (laranja → roxo → azul) em faixas e no sublinhado dos títulos de seção. */
+   REGRAS DE COR
+   • Base neutra: branco, cinzas e texto quase preto. Títulos, ícones e superfícies são neutros.
+   • O laranja aparece APENAS em: botão primário, item ativo do menu, links e foco visível (e no hover de ícones/atalhos).
+       --cor-primaria #C94A0A  fundo de botão/item ativo: texto branco = 4,7:1 (AA). Hover #A33A05 (6,6:1).
+       --cor-texto-primaria #B8400A  links e texto laranja pequeno sobre branco (5,6:1).
+       --cor-foco = laranja profundo (anel de foco visível, 4,7:1 sobre branco).
+   • Estados (sucesso, aviso, perigo, informação) NÃO pintam fundos: selos e avisos usam fundo neutro, texto escuro e
+     um ponto/ícone/borda esquerda fina na cor do estado (--cor-sucesso, --cor-aviso, --cor-perigo, --cor-info, todas AA sobre branco).
+   • Gráficos: escala de cinzas + um laranja profundo de dados.
+   • Sem gradientes, sem azul/roxo decorativos. */
 :root {
   /* Marca */
   --cor-marca: #ff7507;
   --cor-primaria: #c94a0a;
   --cor-primaria-escura: #a33a05;
-  --cor-primaria-clara: #ffe9d6;
+  --cor-primaria-clara: #f3f3f5;   /* hover/seleção NEUTROS (nome mantido por compatibilidade) */
   --cor-texto-primaria: #b8400a;
-  --cor-titulo: #e5600a;
+  --cor-titulo: #1d1d1f;
   --cor-destaque: #ff7507;
-  --cor-destaque-clara: #fff1e3;
-  --cor-foco: #1739ff;
+  --cor-destaque-clara: #f7f7f8;
+  --cor-foco: #c94a0a;
 
   /* Demais cores do site */
-  --cor-roxo: #5c3eeb;
-  --cor-roxo-escuro: #4527c9;
-  --cor-roxo-clara: #ece8fd;
-  --cor-azul: #1739ff;
-  --cor-azul-escuro: #1230c4;
-  --cor-azul-clara: #e4e9ff;
+  --cor-roxo: #52525b;   /* neutralizado (V17) */
+  --cor-roxo-escuro: #3f3f46;
+  --cor-roxo-clara: #f1f1f3;
+  --cor-azul: #52525b;
+  --cor-azul-escuro: #3f3f46;
+  --cor-azul-clara: #f1f1f3;
   --cor-verde: #32a64e;
 
   /* Neutros */
@@ -48,16 +45,16 @@
 
   /* Estados (texto/ícone em tons escuros para AA sobre o fundo claro correspondente) */
   --cor-sucesso: #1e7a36;
-  --cor-sucesso-clara: #e1f4e6;
-  --cor-aviso: #9a3412;
-  --cor-aviso-clara: #ffebd2;
-  --cor-perigo: #c0392b;
-  --cor-perigo-clara: #fde7e3;
-  --cor-info: #1230c4;
-  --cor-info-clara: #e4e9ff;
+  --cor-sucesso-clara: #f7f7f8;
+  --cor-aviso: #b45309;
+  --cor-aviso-clara: #f7f7f8;
+  --cor-perigo: #9f1d1d;
+  --cor-perigo-clara: #f7f7f8;
+  --cor-info: #52525b;
+  --cor-info-clara: #f7f7f8;
 
   /* Gradiente da marca: laranja → roxo → azul */
-  --grad-marca: linear-gradient(90deg, #ff7507 0%, #5c3eeb 55%, #1739ff 100%);
+  --grad-marca: none; /* sem gradientes (V17) */
 
   /* Tipografia */
   --fonte: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -81,9 +78,9 @@
   --raio-medio: 1.125rem;
   --raio-pequeno: 1rem;    /* campos, opções, avisos */
   --raio-pilula: 999px;    /* botões, chips, selos */
-  --sombra: 0 2px 0.625rem rgba(20, 20, 40, 0.06);
+  --sombra: 0 1px 2px rgba(20, 20, 40, 0.04);
   --sombra-forte: 0 0.75rem 2rem rgba(60, 40, 10, 0.24);
-  --sombra-laranja: 0 0.375rem 0.875rem rgba(201, 74, 10, 0.32);
+  --sombra-laranja: none;
 
   /* Layout */
   --altura-cabecalho: 4rem;

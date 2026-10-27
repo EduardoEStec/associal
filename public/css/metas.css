@@ -22,4 +22,4 @@
 .meta-marcar .opcao { flex: 1 1 7.5rem; justify-content: center; }
 .meta-tratadas { list-style: none; margin: var(--esp-2) 0 0; padding: 0; display: grid; gap: var(--esp-1); }
 .meta-tratadas li { overflow-wrap: anywhere; }
-.fam-evento-meta .fam-evento-marca { color: var(--cor-texto-primaria); border-color: var(--cor-primaria); }
+.fam-evento-meta .fam-evento-marca { color: var(--cor-texto-suave); border-color: #9b9ba3; }

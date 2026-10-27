@@ -1,7 +1,7 @@
 // Service worker mínimo (instalação PWA + abertura rápida do "casco" do app).
 // NUNCA guarda respostas de /api (dados sensíveis, LGPD) — só arquivos estáticos.
 // Ao alterar CSS/JS de forma que precise invalidar o cache, incremente VERSAO.
-const VERSAO = 'associal-v24';
+const VERSAO = 'associal-v25';
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
