@@ -1,7 +1,7 @@
 // Detalhe da ação (modal): dados, mudança de situação, galeria de fotos.
 import { h, abrirModal, confirmar, toast, comEspera, formatarData, formatarNumero, mostrarErrosCampos } from '../ui.js';
 import { api, ErroApi } from '../api.js';
-import { STATUS, abrirFormulario } from './formulario.js';
+import { STATUS, abrirFormulario, nomeDoTipo } from './formulario.js';
 import { seletorFotos, enviarFotos } from './fotos.js';
 
 export const CLASSE_STATUS = { PLANEJADA: 'badge-info', REALIZADA: 'badge-sucesso', CANCELADA: 'badge-perigo' };
@@ -96,7 +96,7 @@ export async function abrirDetalhe({ id, apoio, usuario, aoMudar }) {
     try { acao = await api.get(`/api/acoes/${id}`); } catch (e) { toast.erro(e.message); modal?.fechar(); return; }
     const conteudo = montar(acao);
     if (!modal) {
-      modal = abrirModal({ titulo: acao.instituicaoLocal || acao.tipoAcaoNome, conteudo, fechavel: true });
+      modal = abrirModal({ titulo: acao.instituicaoLocal || nomeDoTipo(acao), conteudo, fechavel: true });
       modal.elemento.classList.add('modal-larga');
     } else {
       modal.elemento.querySelector('.acoes-detalhe')?.replaceWith(conteudo);
@@ -145,7 +145,7 @@ export async function abrirDetalhe({ id, apoio, usuario, aoMudar }) {
       'div', { class: 'acoes-detalhe' },
       h('div', { class: 'acoes-detalhe-topo' },
         h('span', { class: `badge ${CLASSE_STATUS[acao.status]}` }, STATUS[acao.status]),
-        h('span', { class: 'badge' }, acao.tipoAcaoNome)),
+        h('span', { class: 'badge' }, nomeDoTipo(acao))),
       h('dl', { class: 'acoes-infos' },
         linha('Data', formatarData(acao.dataAcao)),
         linha('Unidade', `${acao.unidadeSigla} — ${acao.unidadeNome}`),

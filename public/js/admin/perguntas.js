@@ -167,6 +167,7 @@ export async function montarPerguntas(raiz) {
           o.base ? h('span', { class: 'badge badge-sucesso' }, 'Oficial') : h('span', { class: 'badge badge-info' }, 'Acrescentada'),
           oficialDeEscolha && !o.base ? h('span', { class: 'texto-pequeno texto-suave' }, o.pontua ? `vale como "${o.equivaleTexto}"` : 'não pontua no índice') : null,
           !o.ativa ? h('span', { class: 'badge badge-perigo' }, 'Desativada') : null,
+          o.pedeDetalhe ? h('span', { class: 'texto-pequeno texto-suave' }, 'pede texto livre') : null,
           emUso(o.respostas) ? h('span', { class: 'texto-pequeno texto-suave' }, emUso(o.respostas)) : null)),
       h('div', { class: 'admin-acoes' },
         h('button', { type: 'button', class: 'btn btn-pequeno btn-secundario', disabled: i === 0, 'aria-label': 'Subir opção', onclick: () => moverOpcao(p, i, -1) }, 'Subir'),
@@ -210,10 +211,14 @@ export async function montarPerguntas(raiz) {
         [{ valor: '', rotulo: 'Escolha…' }, ...base.map((b) => ({ valor: b.codigo, rotulo: b.texto })), { valor: NAO_PONTUA, rotulo: 'Não pontua (fica fora do índice e da comparação)' }],
         o ? (o.pontua ? (o.equivaleCodigo ?? '') : NAO_PONTUA) : '')
       : null;
+    // "Outra/Outros": ao marcar a opção, o formulário mostra um campo de texto obrigatório
+    const pedeTexto = !(o && o.base) && formulario.startsWith('QUESTIONARIO_')
+      ? h('div', { class: 'opcoes' }, caixa('Pede um texto livre (opção "Outra/Outros")', 'pedeDetalhe', o?.pedeDetalhe)) : null;
     const form = h('form', {},
       campo(questionario ? 'Texto da opção (questionário inicial)' : 'Texto da opção', 'texto', { valor: o?.texto, obrigatorio: true, maxlength: 200 }),
       questionario ? campo('Texto no questionário final (opcional)', 'textoFinal', { valor: o?.textoFinal, maxlength: 200, ajuda: 'Deixe em branco para usar o mesmo texto.' }) : null,
       valeComo,
+      pedeTexto,
       o && o.base ? h('p', { class: 'texto-pequeno texto-suave' }, 'Opção oficial: só o texto pode ser alterado; ela continua definindo a escala do índice.') : null);
     modalFormulario({
       titulo: o ? 'Editar opção' : 'Nova opção',
@@ -221,6 +226,7 @@ export async function montarPerguntas(raiz) {
       aoSalvar: async (f) => {
         const corpo = { texto: f.elements.texto.value };
         if (f.elements.textoFinal) corpo.textoFinal = f.elements.textoFinal.value;
+        if (f.elements.pedeDetalhe) corpo.pedeDetalhe = f.elements.pedeDetalhe.checked;
         if (f.elements.valeComo) {
           const v = f.elements.valeComo.value;
           if (v === NAO_PONTUA) corpo.naoPontua = true; else if (v) corpo.equivaleA = v;

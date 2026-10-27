@@ -28,9 +28,15 @@ async function validarCorpo(req, corpo, { atual, temasAtuais = [] } = {}) {
   dados.tipoAcaoId = inteiroPositivo(corpo.tipoAcaoId);
   if (!dados.tipoAcaoId) problemas.tipoAcaoId = 'Selecione o tipo.';
   else {
-    const tipo = await consultarUm('SELECT id, ativo FROM tipo_acao WHERE id = @id', { id: dados.tipoAcaoId });
+    const tipo = await consultarUm('SELECT id, ativo, exige_texto FROM tipo_acao WHERE id = @id', { id: dados.tipoAcaoId });
     if (!tipo || (!tipo.ativo && dados.tipoAcaoId !== atual?.tipoAcaoId)) problemas.tipoAcaoId = 'Tipo inválido.';
+    else if (tipo.exigeTexto) {
+      // tipo "Outra": o texto é obrigatório; nos demais tipos é descartado
+      dados.tipoAcaoOutro = texto(corpo.tipoAcaoOutro, 200);
+      if (!dados.tipoAcaoOutro) problemas.tipoAcaoOutro = 'Descreva qual é o outro tipo de ação.';
+    }
   }
+  dados.tipoAcaoOutro ??= null;
 
   dados.instituicaoLocal = texto(corpo.instituicaoLocal, 200);
   dados.endereco = texto(corpo.endereco, 200);
@@ -82,7 +88,7 @@ async function validarCorpo(req, corpo, { atual, temasAtuais = [] } = {}) {
 
 const COLUNAS_ACAO = `
   a.id, a.unidade_id, un.sigla AS unidade_sigla, un.nome AS unidade_nome,
-  a.tipo_acao_id, ta.nome AS tipo_acao_nome, a.data_acao, a.instituicao_local, a.endereco,
+  a.tipo_acao_id, ta.nome AS tipo_acao_nome, a.tipo_acao_outro, a.data_acao, a.instituicao_local, a.endereco,
   a.status, a.qtd_participantes, a.descricao, a.criado_por, a.criado_em, a.alterado_em`;
 const JUNCOES_ACAO = `
   FROM acao_visita a

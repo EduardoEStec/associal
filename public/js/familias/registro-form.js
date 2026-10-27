@@ -88,7 +88,7 @@ export function abrirFormularioRegistro({ id, dados, registro, aoSalvar }) {
   const campoOutro = campo({ id: 'rg-outro', rotulo: 'Descreva o tipo de contato', obrigatorio: true, controle: outro });
   const exigeTexto = () => !!dados.tiposContato.find((t) => String(t.id) === tipo.value)?.exigeTexto
     || (editando && tipo.value === String(registro.tipoContatoId) && !!registro.tipoContatoOutro);
-  const atualizarOutro = () => { campoOutro.hidden = !exigeTexto(); };
+  const atualizarOutro = () => { campoOutro.hidden = !exigeTexto(); if (campoOutro.hidden) outro.value = ''; };
 
   const houveSim = registro ? registro.houveContato : true;
   const grupoFalou = h('div', { class: 'opcoes fam-opcoes-linha', role: 'radiogroup', 'aria-labelledby': 'rg-falou-rotulo' },
@@ -116,7 +116,7 @@ export function abrirFormularioRegistro({ id, dados, registro, aoSalvar }) {
     const ids = new Set([...form.querySelectorAll('input[name="orientacaoIds"]:checked')].map((c) => Number(c.value)));
     return [...orientacoes, ...(registro?.orientacoes || [])].some((o) => ids.has(o.id) && (o.exigeTexto ?? false));
   };
-  const atualizarOrientacaoOutro = () => { campoOrientacaoOutro.hidden = !pedeOutro(); };
+  const atualizarOrientacaoOutro = () => { campoOrientacaoOutro.hidden = !pedeOutro(); if (campoOrientacaoOutro.hidden) orientacaoOutro.value = ''; };
 
   // ----- situação -----
   const grupoSit = h('div', { class: 'opcoes fam-opcoes-linha', role: 'radiogroup', 'aria-labelledby': 'rg-sit-rotulo' },
@@ -224,6 +224,11 @@ export function abrirFormularioRegistro({ id, dados, registro, aoSalvar }) {
           const houve = form.elements.houveContato.value !== 'false';
           const ids = houve ? [...form.querySelectorAll('input[name="orientacaoIds"]:checked')].map((c) => Number(c.value)) : [];
           const uso = form.querySelector('input[name="usoArmazemId"]:checked');
+          // "Outro/Outros" marcado sem o texto: nem envia
+          const faltando = {};
+          if (exigeTexto() && !outro.value.trim()) faltando.tipoContatoOutro = 'Descreva o tipo de contato.';
+          if (houve && pedeOutro() && !orientacaoOutro.value.trim()) faltando.orientacaoOutro = 'Descreva a outra orientação ou encaminhamento.';
+          if (Object.keys(faltando).length) { mostrarErrosCampos(form, faltando); return false; }
           const corpo = {
             mesReferencia: mes.value || undefined,
             dataRegistro: data.value || undefined,

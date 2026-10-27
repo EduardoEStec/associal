@@ -40,7 +40,8 @@ function paraBooleano(v) {
 //   atuais   : Map(perguntaId -> Set(opcaoId)) já gravados: uma opção desativada continua aceita se já estava escolhida
 //   detalhes : { "<código>": texto } — complemento das opções que pedem detalhe ("Outras: ____")
 // Devolve { itens, perguntaIds, erros }. `itens`: [{ perguntaId, opcaoId, valorTexto, valorNum }]; erros por "extras.<código>".
-function validarExtras(defs, entrada, { concluir = false, atuais = new Map(), detalhes = {} } = {}) {
+function validarExtras(defs, entrada, { concluir = false, atuais = new Map(), detalhes } = {}) {
+  const detalhesInformados = detalhes !== undefined; // só o questionário M1 coleta o complemento
   const erros = {};
   const itens = [];
   if (entrada !== undefined && (entrada === null || typeof entrada !== 'object' || Array.isArray(entrada))) {
@@ -92,6 +93,8 @@ function validarExtras(defs, entrada, { concluir = false, atuais = new Map(), de
         else {
           const detalhe = String(detalhes?.[def.codigo] ?? '').trim();
           if (detalhe.length > MAX_DETALHE) erros[`detalhes.${def.codigo}`] = `Use no máximo ${MAX_DETALHE} caracteres.`;
+          // "Outra/Outros": ao concluir, a opção marcada exige o texto (rascunho pode seguir sem ele)
+          if (concluir && detalhesInformados && escolhidas.some((o) => o.pedeDetalhe) && !detalhe) erros[`detalhes.${def.codigo}`] = 'Informe qual é a outra opção.';
           for (const o of escolhidas) itens.push({ perguntaId: def.id, opcaoId: o.id, valorTexto: o.pedeDetalhe && detalhe ? detalhe : null, valorNum: null });
         }
         break;

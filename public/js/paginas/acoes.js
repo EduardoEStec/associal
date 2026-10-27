@@ -2,7 +2,7 @@
 import { iniciarPagina } from '../layout.js';
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, formatarNumero } from '../ui.js';
-import { STATUS, abrirFormulario } from '../acoes/formulario.js';
+import { STATUS, abrirFormulario, nomeDoTipo } from '../acoes/formulario.js';
 import { abrirDetalhe, CLASSE_STATUS } from '../acoes/detalhe.js';
 
 const { usuario, conteudo } = await iniciarPagina('acoes');
@@ -75,10 +75,10 @@ function cartao(a) {
     'button', { type: 'button', class: 'acoes-item', onclick: () => abrirDetalhe({ id: a.id, apoio, usuario, aoMudar: recarregar }) },
     h('span', { class: 'acoes-item-data', 'aria-label': formatarData(a.dataAcao) }, h('strong', {}, dia), h('small', {}, MESES[Number(mes) - 1].slice(0, 3))),
     h('span', { class: 'acoes-item-corpo' },
-      h('strong', {}, a.instituicaoLocal || a.tipoAcaoNome),
+      h('strong', {}, a.instituicaoLocal || nomeDoTipo(a)),
       h('span', { class: 'acoes-item-meta' },
         h('span', { class: `badge ${CLASSE_STATUS[a.status]}` }, STATUS[a.status]),
-        h('span', { class: 'badge' }, a.tipoAcaoNome),
+        h('span', { class: 'badge' }, nomeDoTipo(a)),
         usuario.unidades.length > 1 && h('span', { class: 'badge badge-info' }, a.unidadeSigla)),
       a.temas.length > 0 && h('small', {}, a.temas.map((t) => t.nome).join(' · ')),
       h('small', {}, [
@@ -112,7 +112,7 @@ function renderLista() {
         onkeydown: (e) => { if (e.key === 'Enter') e.currentTarget.click(); } },
       h('td', { 'data-rotulo': 'Data' }, formatarData(a.dataAcao)),
       h('td', { 'data-rotulo': 'Local' }, a.instituicaoLocal || '—'),
-      h('td', { 'data-rotulo': 'Tipo' }, a.tipoAcaoNome),
+      h('td', { 'data-rotulo': 'Tipo' }, nomeDoTipo(a)),
       h('td', { 'data-rotulo': 'Situação' }, h('span', { class: `badge ${CLASSE_STATUS[a.status]}` }, STATUS[a.status])),
       h('td', { 'data-rotulo': 'Unidade' }, a.unidadeSigla),
       h('td', { 'data-rotulo': 'Participantes' }, a.qtdParticipantes === null ? '—' : formatarNumero(a.qtdParticipantes)))))));

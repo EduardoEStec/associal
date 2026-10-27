@@ -4,7 +4,10 @@ import { formatarTelefone } from '../telefone.js';
 import { h, toast, confirmar, carregando, formatarData, formatarCpf, formatarCep } from '../ui.js';
 import { botaoFormulario } from './formulario.js';
 
-const nomeDe = (lista, id) => lista.find((o) => o.id === id)?.nome || '';
+const nomeDe = (lista, id, outro) => {
+  const nome = lista.find((o) => o.id === id)?.nome || '';
+  return nome && outro ? `${nome}: ${outro}` : nome;
+};
 
 function par(rotulo, valor) {
   return [h('dt', {}, rotulo), h('dd', {}, valor || '—')];
@@ -49,9 +52,9 @@ export async function renderDetalhe({ usuario, conteudo, apoio }, id) {
         ...par('Endereço', [p.endereco, p.bairro, p.cep ? formatarCep(p.cep) : ''].filter(Boolean).join(' · ')),
         ...par('Trabalho atual', p.trabalhoAtual),
         ...par('Faixa etária', nomeDe(apoio.faixaEtaria, a.faixaEtariaId)),
-        ...par('Gênero', nomeDe(apoio.genero, p.generoId)),
-        ...par('Escolaridade', nomeDe(apoio.escolaridade, p.escolaridadeId)),
-        ...par('Raça/etnia', nomeDe(apoio.raca, p.racaId)),
+        ...par('Gênero', nomeDe(apoio.genero, p.generoId, p.generoOutro)),
+        ...par('Escolaridade', nomeDe(apoio.escolaridade, p.escolaridadeId, p.escolaridadeOutro)),
+        ...par('Raça/etnia', nomeDe(apoio.raca, p.racaId, p.racaOutro)),
         ...par('Nível de vulnerabilidade', nomeDe(apoio.nivelVulnerabilidade, a.nivelVulnerabilidadeId)),
         ...par('Demandas', listaComOutra(apoio.demanda, a.demandas, a.demandaOutra)),
         ...par('Vulnerabilidades/riscos', listaComOutra(apoio.vulnerabilidade, a.vulnerabilidades, a.vulnerabilidadeOutra)),

@@ -18,7 +18,7 @@ const rascunho = {
 
 const CAMPOS_TEXTO = [
   'dataAtendimento', 'unidadeId', 'cpf', 'nome', 'dataNascimento', 'nis', 'telefone', 'telefone2', 'endereco', 'cep', 'bairro',
-  'trabalhoAtual', 'faixaEtariaId', 'demandaOutra', 'vulnerabilidadeOutra', 'encaminhamentoOutro', 'resumo',
+  'trabalhoAtual', 'faixaEtariaId', 'generoOutro', 'escolaridadeOutro', 'racaOutro', 'demandaOutra', 'vulnerabilidadeOutra', 'encaminhamentoOutro', 'resumo',
 ];
 const CAMPOS_RADIO = ['generoId', 'nivelVulnerabilidadeId'];
 const CAMPOS_SELECT = ['escolaridadeId', 'racaId'];
@@ -120,11 +120,27 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
     encaminhamentoOutro: h('input', { class: 'input', name: 'encaminhamentoOutro', id: 'encaminhamentoOutro', maxlength: 300 }),
   };
   const blocosOutra = {
-    demandas: campo('Qual outra demanda?', outras.demandaOutra, { id: 'demandaOutra' }),
-    vulnerabilidades: campo('Quais outros riscos/vulnerabilidades?', outras.vulnerabilidadeOutra, { id: 'vulnerabilidadeOutra' }),
-    encaminhamentos: campo('Qual outro encaminhamento?', outras.encaminhamentoOutro, { id: 'encaminhamentoOutro' }),
+    demandas: campo('Qual outra demanda?', outras.demandaOutra, { id: 'demandaOutra', obrigatorio: true }),
+    vulnerabilidades: campo('Quais outros riscos/vulnerabilidades?', outras.vulnerabilidadeOutra, { id: 'vulnerabilidadeOutra', obrigatorio: true }),
+    encaminhamentos: campo('Qual outro encaminhamento?', outras.encaminhamentoOutro, { id: 'encaminhamentoOutro', obrigatorio: true }),
   };
+  // campo de texto de cada grupo (só aparece, e só é exigido, com "Outra/Outros" marcado)
+  const textoOutra = { demandas: 'demandaOutra', vulnerabilidades: 'vulnerabilidadeOutra', encaminhamentos: 'encaminhamentoOutro' };
   for (const b of Object.values(blocosOutra)) b.hidden = true;
+
+  // "Outra" em gênero, escolaridade e raça/etnia: campo de texto obrigatório, só visível com a opção marcada
+  const listasPessoa = [
+    { id: 'generoId', outro: 'generoOutro', lista: apoio.genero, rotulo: 'Qual outro gênero?' },
+    { id: 'escolaridadeId', outro: 'escolaridadeOutro', lista: apoio.escolaridade, rotulo: 'Qual outra escolaridade?' },
+    { id: 'racaId', outro: 'racaOutro', lista: apoio.raca, rotulo: 'Qual outra raça/etnia?' },
+  ];
+  const textosPessoa = {};
+  const blocosPessoa = {};
+  for (const l of listasPessoa) {
+    textosPessoa[l.outro] = h('input', { class: 'input', name: l.outro, id: l.outro, maxlength: 200 });
+    blocosPessoa[l.outro] = campo(l.rotulo, textosPessoa[l.outro], { id: l.outro, obrigatorio: true });
+    blocosPessoa[l.outro].hidden = true;
+  }
 
   form.append(
     avisoRascunho,
@@ -150,9 +166,12 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       campo('Trabalho atual', entrada.trabalhoAtual, { id: 'trabalhoAtual' }),
       f.faixaAuto, f.faixaManual,
       grupo('Gênero', opcoesRadio('generoId', apoio.genero)),
+      blocosPessoa.generoOutro,
       h('div', { class: 'grade grade-2' },
         campo('Escolaridade', select('escolaridadeId', apoio.escolaridade), { id: 'escolaridadeId' }),
-        campo('Raça/etnia', select('racaId', apoio.raca), { id: 'racaId' }))),
+        campo('Raça/etnia', select('racaId', apoio.raca), { id: 'racaId' })),
+      blocosPessoa.escolaridadeOutro,
+      blocosPessoa.racaOutro),
 
     h('fieldset', { class: 'secao' }, h('legend', {}, 'Demanda'),
       grupo('Demandas (marque todas que se aplicam)', opcoesCheck('demandas', apoio.demanda)),
@@ -182,6 +201,15 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
     for (const [nome, bloco] of Object.entries(blocosOutra)) {
       const precisa = [...form.querySelectorAll(`input[name="${nome}"]:checked`)].some((c) => c.dataset.exigeTexto);
       bloco.hidden = !precisa;
+      outras[textoOutra[nome]].required = precisa;
+      if (!precisa) outras[textoOutra[nome]].value = '';
+    }
+    for (const l of listasPessoa) {
+      const escolhida = form.elements[l.id]?.value;
+      const precisa = !!l.lista.find((o) => String(o.id) === String(escolhida))?.exigeTexto;
+      blocosPessoa[l.outro].hidden = !precisa;
+      textosPessoa[l.outro].required = precisa;
+      if (!precisa) textosPessoa[l.outro].value = '';
     }
   }
 
@@ -225,6 +253,7 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
       nis: p.nis || '', telefone: p.telefone ? formatarTelefone(p.telefone) : '', telefone2: p.telefone2 ? formatarTelefone(p.telefone2) : '',
       endereco: p.endereco || '', cep: p.cep ? formatarCep(p.cep) : '', bairro: p.bairro || '',
       trabalhoAtual: p.trabalhoAtual || '', generoId: p.generoId ?? '', escolaridadeId: p.escolaridadeId ?? '', racaId: p.racaId ?? '',
+      generoOutro: p.generoOutro || '', escolaridadeOutro: p.escolaridadeOutro || '', racaOutro: p.racaOutro || '',
     };
   }
 
@@ -294,6 +323,19 @@ export async function renderForm({ usuario, conteudo, apoio }, id) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = lerValores();
+    const faltando = {};
+    for (const [nome, bloco] of Object.entries(blocosOutra)) {
+      const chave = textoOutra[nome];
+      if (!bloco.hidden && !String(v[chave] || '').trim()) faltando[chave] = 'Especifique qual é a outra opção.';
+    }
+    for (const l of listasPessoa) {
+      if (!blocosPessoa[l.outro].hidden && !String(v[l.outro] || '').trim()) faltando[l.outro] = 'Especifique qual é a outra opção.';
+    }
+    if (Object.keys(faltando).length) {
+      mostrarErrosCampos(form, faltando);
+      (outras[Object.keys(faltando)[0]] || textosPessoa[Object.keys(faltando)[0]]).focus({ preventScroll: true });
+      return;
+    }
     const corpo = {
       ...v,
       pessoaId: editando ? undefined : pessoaId,

@@ -35,14 +35,15 @@ router.post('/', podeEscrever, async (req, res) => {
 
   const id = await transacao(async (tx) => {
     const [novo] = await tx.consultar(
-      `INSERT INTO acao_visita (unidade_id, tipo_acao_id, data_acao, instituicao_local, endereco, status,
+      `INSERT INTO acao_visita (unidade_id, tipo_acao_id, tipo_acao_outro, data_acao, instituicao_local, endereco, status,
                                 qtd_participantes, descricao, criado_por)
        OUTPUT INSERTED.id
-       VALUES (@unidadeId, @tipoAcaoId, @dataAcao, @instituicaoLocal, @endereco, @status,
+       VALUES (@unidadeId, @tipoAcaoId, @tipoAcaoOutro, @dataAcao, @instituicaoLocal, @endereco, @status,
                @qtdParticipantes, @descricao, @usuario)`,
       {
         unidadeId,
         tipoAcaoId: dados.tipoAcaoId,
+        tipoAcaoOutro: dados.tipoAcaoOutro,
         dataAcao: [tipos.Date, dados.dataAcao],
         instituicaoLocal: dados.instituicaoLocal,
         endereco: dados.endereco,
@@ -68,7 +69,7 @@ router.put('/:id', podeEscrever, async (req, res) => {
   await transacao(async (tx) => {
     await tx.consultar(
       `UPDATE acao_visita
-          SET unidade_id = @unidadeId, tipo_acao_id = @tipoAcaoId, data_acao = @dataAcao,
+          SET unidade_id = @unidadeId, tipo_acao_id = @tipoAcaoId, tipo_acao_outro = @tipoAcaoOutro, data_acao = @dataAcao,
               instituicao_local = @instituicaoLocal, endereco = @endereco, status = @status,
               qtd_participantes = @qtdParticipantes, descricao = @descricao,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
@@ -77,6 +78,7 @@ router.put('/:id', podeEscrever, async (req, res) => {
         id: atual.id,
         unidadeId: dados.unidadeId,
         tipoAcaoId: dados.tipoAcaoId,
+        tipoAcaoOutro: dados.tipoAcaoOutro,
         dataAcao: [tipos.Date, dados.dataAcao],
         instituicaoLocal: dados.instituicaoLocal,
         endereco: dados.endereco,

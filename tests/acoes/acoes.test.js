@@ -28,7 +28,7 @@ const ver = (a) => ({
 
 async function consultar(sql, p = {}) {
   const s = sql.replace(/\s+/g, ' ');
-  if (/FROM tipo_acao WHERE id/.test(s)) return p.id === 1 ? [{ id: 1, ativo: true }] : [];
+  if (/FROM tipo_acao WHERE id/.test(s)) return p.id === 1 ? [{ id: 1, ativo: true, exigeTexto: false }] : p.id === 2 ? [{ id: 2, ativo: true, exigeTexto: true }] : [];
   if (/FROM tema WHERE id IN/.test(s)) return TEMAS.filter((t) => Object.entries(p).some(([k, v]) => /^t\d+$/.test(k) && v === t.id));
   if (/FROM configuracao/.test(s)) return [{ valor: '1' }]; // 1 MB
   if (/INSERT INTO auditoria/.test(s)) return [];
@@ -49,7 +49,7 @@ async function consultar(sql, p = {}) {
   if (/SELECT tm.id, tm.nome, avt.ordem/.test(s)) return estado.temas.filter((t) => t.acaoVisitaId === p.id).map((t) => ({ id: t.temaId, nome: `Tema ${t.temaId}`, ordem: t.ordem }));
   if (/SELECT id, legenda, ordem, nome_original/.test(s)) return estado.fotos.filter((f) => f.acaoVisitaId === p.id).map((f) => ({ ...f, nomeOriginal: f.nomeOriginal }));
   if (/INSERT INTO acao_visita \(/.test(s)) {
-    const a = { id: ++estado.seqAcao, unidadeId: p.unidadeId, tipoAcaoId: p.tipoAcaoId, dataAcao: p.dataAcao[1], instituicaoLocal: p.instituicaoLocal, endereco: p.endereco, status: p.status, qtdParticipantes: p.qtdParticipantes, descricao: p.descricao, criadoPor: p.usuario };
+    const a = { id: ++estado.seqAcao, unidadeId: p.unidadeId, tipoAcaoId: p.tipoAcaoId, tipoAcaoOutro: p.tipoAcaoOutro, dataAcao: p.dataAcao[1], instituicaoLocal: p.instituicaoLocal, endereco: p.endereco, status: p.status, qtdParticipantes: p.qtdParticipantes, descricao: p.descricao, criadoPor: p.usuario };
     estado.acoes.push(a);
     return [{ id: a.id }];
   }
@@ -249,4 +249,19 @@ test('resumo por unidade respeita o escopo', async () => {
   assert.deepEqual(r.corpo.map((u) => u.sigla), ['BRA']);
   r = await chamar('ana', 'GET', '/resumo?unidadeId=2');
   assert.equal(r.status, 403);
+});
+
+test('tipo "Outra" (exige_texto): texto obrigatório (400 com detalhes), gravado só com ele e descartado nos demais tipos', async () => {
+  let r = await chamar('ana', 'POST', '/', { ...valida, tipoAcaoId: 2 });
+  assert.equal(r.status, 400);
+  assert.match(r.corpo.erro.detalhes.tipoAcaoOutro, /outro tipo/i);
+  r = await chamar('ana', 'POST', '/', { ...valida, tipoAcaoId: 2, tipoAcaoOutro: '   ' });
+  assert.equal(r.status, 400, 'só espaços = vazio');
+  r = await chamar('ana', 'POST', '/', { ...valida, tipoAcaoId: 2, tipoAcaoOutro: 'Mutirão de vacina' });
+  assert.equal(r.status, 201);
+  assert.equal(estado.acoes.find((a) => a.id === r.corpo.id).tipoAcaoOutro, 'Mutirão de vacina');
+  // texto enviado com um tipo que não pede texto é ignorado
+  r = await chamar('ana', 'POST', '/', { ...valida, tipoAcaoId: 1, tipoAcaoOutro: 'sobra' });
+  assert.equal(r.status, 201);
+  assert.equal(estado.acoes.find((a) => a.id === r.corpo.id).tipoAcaoOutro, null);
 });

@@ -8,7 +8,7 @@ const { consultar, consultarUm, transacao, tipos } = require('../db');
 const { clausulaUnidades, unidadesPermitidas, exigirUnidade, resolverUnidade } = require('../middlewares/auth');
 const { erros } = require('../lib/erros');
 const { registrarAuditoria } = require('../lib/auditoria');
-const { normalizarTelefone } = require('./pessoas');
+const { normalizarTelefone, LISTAS_OUTRAS, conferirOutro } = require('./pessoas');
 const contato = require('./acompanhamento-contato');
 const pesquisaRegras = require('./pesquisa-regras');
 const metasRegras = require('./metas-regras');
@@ -218,11 +218,11 @@ async function detalhar(req, id) {
   const [familia, membros, questionarios, unidade, assistente] = await Promise.all([
     consultarUm(
       `SELECT f.id, p.id AS pessoa_id, p.cpf, p.nome, p.data_nascimento, p.nis, p.telefone, p.telefone2, p.endereco, p.cep, p.bairro,
-              p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id
+              p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id, p.genero_outro, p.escolaridade_outro, p.raca_outro
          FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id
         WHERE f.id = @familia`, { familia: ac.familiaId }),
     consultar(
-      `SELECT id, nome, data_nascimento, idade, genero_id, parentesco, trabalha
+      `SELECT id, nome, data_nascimento, idade, genero_id, genero_outro, parentesco, trabalha
          FROM familia_membro WHERE familia_id = @familia ORDER BY id`, { familia: ac.familiaId }),
     consultar(
       `SELECT id, tipo, data_aplicacao, concluido, modelo, alterado_em, criado_em
@@ -258,7 +258,7 @@ async function detalhar(req, id) {
       pessoaId: familia.pessoaId, cpf: familia.cpf, nome: familia.nome, dataNascimento: familia.dataNascimento,
       nis: familia.nis, telefone: familia.telefone, telefone2: familia.telefone2, endereco: familia.endereco, cep: familia.cep, bairro: familia.bairro,
       trabalhoAtual: familia.trabalhoAtual, generoId: familia.generoId, escolaridadeId: familia.escolaridadeId,
-      racaId: familia.racaId,
+      racaId: familia.racaId, generoOutro: familia.generoOutro, escolaridadeOutro: familia.escolaridadeOutro, racaOutro: familia.racaOutro,
     },
     membros: membros.map((m) => ({ ...m, trabalha: m.trabalha === null ? null : !!m.trabalha })),
     questionarios: { inicial, final },
@@ -299,12 +299,13 @@ function validarMembros(entrada, hoje) {
       generoId = inteiroPositivo(item.generoId);
       if (!generoId) problemas[`membros.${i}.generoId`] = 'Gênero inválido.';
     }
+    const generoOutro = texto(item.generoOutro, 200);
     let trabalha = null;
     if (item.trabalha === true || item.trabalha === false) trabalha = item.trabalha;
     else if (item.trabalha !== undefined && item.trabalha !== null && item.trabalha !== '') {
       problemas[`membros.${i}.trabalha`] = 'Responda sim ou não.';
     }
-    return { nome, dataNascimento, idade, generoId, parentesco: texto(item.parentesco, 60), trabalha };
+    return { nome, dataNascimento, idade, generoId, generoOutro, parentesco: texto(item.parentesco, 60), trabalha };
   });
   return { membros, problemas };
 }
@@ -347,6 +348,7 @@ function validarResponsavel(entrada, hoje, { exigirCpf }) {
       if (!ids[campo]) problemas[chave(campo)] = 'Opção inválida.';
     }
   }
+  for (const l of LISTAS_OUTRAS) ids[l.outro] = texto(r[l.outro], 200);
 
   return {
     problemas,
@@ -364,17 +366,23 @@ async function conferirApoio(executor, tabela, ids, campoErro, problemas) {
   if (lista.length === 0) return;
   const params = {};
   const marcadores = lista.map((id, i) => { params[`i${i}`] = id; return `@i${i}`; });
-  const achados = await executor.consultar(`SELECT id FROM ${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
+  const achados = await executor.consultar(`SELECT id, exige_texto FROM ${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
   if (achados.length !== lista.length) problemas[campoErro] = 'Opção inexistente.';
+  return achados;
 }
 
 async function conferirTabelasDePessoaEMembros(executor, pessoa, membros, problemas) {
   if (pessoa) {
-    await conferirApoio(executor, 'genero', [pessoa.generoId], 'responsavel.generoId', problemas);
-    await conferirApoio(executor, 'escolaridade', [pessoa.escolaridadeId], 'responsavel.escolaridadeId', problemas);
-    await conferirApoio(executor, 'raca', [pessoa.racaId], 'responsavel.racaId', problemas);
+    for (const l of LISTAS_OUTRAS) {
+      const achados = await conferirApoio(executor, l.tabela, [pessoa[l.id]], `responsavel.${l.id}`, problemas);
+      // "Outra" marcada => texto obrigatório; sem ela o texto é descartado
+      conferirOutro(pessoa, l.id, l.outro, achados || [], problemas, l.rotulo, 'responsavel.');
+    }
   }
-  if (membros) await conferirApoio(executor, 'genero', membros.map((m) => m.generoId), 'membros', problemas);
+  if (membros) {
+    const achados = await conferirApoio(executor, 'genero', membros.map((m) => m.generoId), 'membros', problemas);
+    membros.forEach((m, i) => conferirOutro(m, 'generoId', 'generoOutro', achados || [], problemas, 'gênero', `membros.${i}.`));
+  }
 }
 
 // ---------- escrita: pessoa e membros ----------
@@ -388,7 +396,8 @@ async function gravarPessoa(tx, req, p) {
   const params = {
     nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone, telefone2: p.telefone2, endereco: p.endereco, cep: p.cep,
     bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId, escolaridadeId: p.escolaridadeId,
-    racaId: p.racaId, usuario: req.usuario.id,
+    racaId: p.racaId, generoOutro: p.generoOutro ?? null, escolaridadeOutro: p.escolaridadeOutro ?? null, racaOutro: p.racaOutro ?? null,
+    usuario: req.usuario.id,
   };
   if (existente) {
     await tx.consultar(
@@ -398,6 +407,9 @@ async function gravarPessoa(tx, req, p) {
               endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
               trabalho_atual = COALESCE(@trabalhoAtual, trabalho_atual), genero_id = COALESCE(@generoId, genero_id),
               escolaridade_id = COALESCE(@escolaridadeId, escolaridade_id), raca_id = COALESCE(@racaId, raca_id),
+              genero_outro = CASE WHEN @generoId IS NULL THEN genero_outro ELSE @generoOutro END,
+              escolaridade_outro = CASE WHEN @escolaridadeId IS NULL THEN escolaridade_outro ELSE @escolaridadeOutro END,
+              raca_outro = CASE WHEN @racaId IS NULL THEN raca_outro ELSE @racaOutro END,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
       { ...params, id: existente.id });
@@ -405,10 +417,10 @@ async function gravarPessoa(tx, req, p) {
   }
   const [nova] = await tx.consultar(
     `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
-                         genero_id, escolaridade_id, raca_id, criado_por)
+                         genero_id, escolaridade_id, raca_id, genero_outro, escolaridade_outro, raca_outro, criado_por)
      OUTPUT INSERTED.id
      VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
-             @generoId, @escolaridadeId, @racaId, @usuario)`,
+             @generoId, @escolaridadeId, @racaId, @generoOutro, @escolaridadeOutro, @racaOutro, @usuario)`,
     { ...params, cpf: [tipos.Char(11), p.cpf] });
   return { id: nova.id, criada: true };
 }
@@ -422,10 +434,13 @@ async function atualizarPessoaPorId(tx, req, pessoaId, p) {
             endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
             trabalho_atual = COALESCE(@trabalhoAtual, trabalho_atual), genero_id = COALESCE(@generoId, genero_id),
             escolaridade_id = COALESCE(@escolaridadeId, escolaridade_id), raca_id = COALESCE(@racaId, raca_id),
+            genero_outro = CASE WHEN @generoId IS NULL THEN genero_outro ELSE @generoOutro END,
+            escolaridade_outro = CASE WHEN @escolaridadeId IS NULL THEN escolaridade_outro ELSE @escolaridadeOutro END,
+            raca_outro = CASE WHEN @racaId IS NULL THEN raca_outro ELSE @racaOutro END,
             alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
       WHERE id = @id`,
     {
-      id: pessoaId, nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone,
+      id: pessoaId, generoOutro: p.generoOutro ?? null, escolaridadeOutro: p.escolaridadeOutro ?? null, racaOutro: p.racaOutro ?? null, nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone,
       telefone2: p.telefone2, endereco: p.endereco,
       cep: p.cep, bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId,
       escolaridadeId: p.escolaridadeId, racaId: p.racaId, usuario: req.usuario.id,
@@ -437,11 +452,11 @@ async function substituirMembros(tx, req, familiaId, membros) {
   await tx.consultar('DELETE FROM familia_membro WHERE familia_id = @familia', { familia: familiaId });
   for (const m of membros) {
     await tx.consultar(
-      `INSERT INTO familia_membro (familia_id, nome, data_nascimento, idade, genero_id, parentesco, trabalha, criado_por)
-       VALUES (@familia, @nome, @dataNascimento, @idade, @generoId, @parentesco, @trabalha, @usuario)`,
+      `INSERT INTO familia_membro (familia_id, nome, data_nascimento, idade, genero_id, genero_outro, parentesco, trabalha, criado_por)
+       VALUES (@familia, @nome, @dataNascimento, @idade, @generoId, @generoOutro, @parentesco, @trabalha, @usuario)`,
       {
         familia: familiaId, nome: m.nome, dataNascimento: paramData(m.dataNascimento), idade: m.idade,
-        generoId: m.generoId, parentesco: m.parentesco, trabalha: m.trabalha, usuario: req.usuario.id,
+        generoId: m.generoId, generoOutro: m.generoOutro ?? null, parentesco: m.parentesco, trabalha: m.trabalha, usuario: req.usuario.id,
       });
   }
 }

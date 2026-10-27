@@ -337,6 +337,11 @@ async function exigirPerguntaDeEscolha(executor, perguntaId) {
   return p;
 }
 
+// "Pede um texto livre" (opção "Outra/Outros"): só nos questionários inicial e final, onde o formulário coleta o texto
+// (as listas de apoio do atendimento e do registro têm o próprio "exige_texto", na aba Listas).
+const aceitaDetalhe = (p) => m1.FORMULARIOS_M1.includes(p.formulario);
+const querDetalhe = (corpo) => corpo.pedeDetalhe === true || corpo.pedeDetalhe === 'true';
+
 async function criarOpcao(req, perguntaId, corpo) {
   const resultado = await transacao(async (tx) => {
     const p = await exigirPerguntaDeEscolha(tx, perguntaId);
@@ -353,9 +358,10 @@ async function criarOpcao(req, perguntaId, corpo) {
     const codigo = `OP${String(proximoNumero(existentes.map((e) => e.codigo.startsWith('OP') ? e.codigo : 'OP00'), 'OP')).padStart(2, '0')}`;
     const ordem = existentes.reduce((m, e) => Math.max(m, e.ordem), 0) + 10;
     const [nova] = await tx.consultar(
-      `INSERT INTO catalogo_opcao (pergunta_id, codigo, texto, texto_final, ordem, base, equivale_a_id, criado_por)
-       OUTPUT INSERTED.id VALUES (@pergunta, @codigo, @t, @textoFinal, @ordem, 0, @equivale, @por)`,
-      { pergunta: p.id, codigo, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : null, ordem, equivale: equivaleAId, por: req.usuario.id });
+      `INSERT INTO catalogo_opcao (pergunta_id, codigo, texto, texto_final, ordem, base, equivale_a_id, pede_detalhe, criado_por)
+       OUTPUT INSERTED.id VALUES (@pergunta, @codigo, @t, @textoFinal, @ordem, 0, @equivale, @pedeDetalhe, @por)`,
+      { pergunta: p.id, codigo, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : null, ordem, equivale: equivaleAId,
+        pedeDetalhe: aceitaDetalhe(p) && querDetalhe(corpo), por: req.usuario.id });
     await registrarAuditoria(req, 'CRIAR', 'catalogo_opcao', nova.id,
       { formulario: p.formulario, pergunta: p.codigo, codigo, texto: t, ...(p.oficial ? { valeComo: equivaleAId ? corpo.equivaleA : 'nao_pontua' } : {}) }, tx);
     return { id: nova.id, codigo };
@@ -385,9 +391,10 @@ async function atualizarOpcao(req, perguntaId, opcaoId, corpo) {
     }
     lancarSeErros(problemas);
     await tx.consultar(
-      `UPDATE catalogo_opcao SET texto = @t, texto_final = @textoFinal, equivale_a_id = @equivale,
+      `UPDATE catalogo_opcao SET texto = @t, texto_final = @textoFinal, equivale_a_id = @equivale, pede_detalhe = @pedeDetalhe,
               alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
-      { id: o.id, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : o.textoFinal, equivale: equivaleAId, por: req.usuario.id });
+      { id: o.id, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : o.textoFinal, equivale: equivaleAId,
+        pedeDetalhe: o.base || !aceitaDetalhe(p) || corpo.pedeDetalhe === undefined ? !!o.pedeDetalhe : querDetalhe(corpo), por: req.usuario.id });
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_opcao', o.id,
       { formulario: p.formulario, pergunta: p.codigo, codigo: o.codigo, de: o.texto, para: t, ...(equivaleAId !== o.equivaleAId ? { valeComoAlterado: true } : {}) }, tx);
   });

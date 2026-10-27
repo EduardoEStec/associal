@@ -176,11 +176,13 @@ export async function renderQuestionarioLegado(ctx, acId, tipoUrl) {
     const outro = h('input', { class: 'input q-input', type: 'text', id: novoId(campoOutro || campo), name: campoOutro || `${campo}Outro`, maxlength: 200, placeholder: rotuloOutro });
     outro.value = paraTexto(resp[campoOutro]);
     outro.addEventListener('input', () => definir(campoOutro, outro.value));
-    const campoOutroWrap = h('div', { class: 'campo' }, h('label', { for: outro.id }, rotuloOutro), outro);
+    const campoOutroWrap = h('div', { class: 'campo' }, h('label', { for: outro.id, class: 'obrigatorio' }, rotuloOutro), outro);
 
     const atualizarOutro = () => {
       const exige = lista.some((o) => o.exigeTexto && marcados.has(o.id));
       campoOutroWrap.hidden = !exige;
+      outro.required = exige;
+      if (!exige && outro.value) { outro.value = ''; definir(campoOutro, ''); }
     };
     const caixas = lista.map((o) => {
       const input = h('input', { type: 'checkbox', name: campo, value: String(o.id) });

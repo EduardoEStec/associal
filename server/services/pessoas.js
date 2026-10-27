@@ -10,7 +10,22 @@ const {
 } = require('../lib/validacao');
 
 const COLUNAS_PESSOA = `p.id, p.cpf, p.nome, p.data_nascimento, p.nis, p.endereco, p.cep, p.bairro,
-  p.telefone, p.telefone2, p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id`;
+  p.telefone, p.telefone2, p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id,
+  p.genero_outro, p.escolaridade_outro, p.raca_outro`;
+
+// Listas de apoio da pessoa que têm a opção "Outra" (exige_texto): campo do id -> campo do texto
+const LISTAS_OUTRAS = [
+  { id: 'generoId', outro: 'generoOutro', tabela: 'genero', rotulo: 'gênero' },
+  { id: 'escolaridadeId', outro: 'escolaridadeOutro', tabela: 'escolaridade', rotulo: 'escolaridade' },
+  { id: 'racaId', outro: 'racaOutro', tabela: 'raca', rotulo: 'raça/etnia' },
+];
+
+// Opção com `exige_texto` marcada => o texto é obrigatório; sem ela o texto é descartado. `achadas`: linhas { id, exigeTexto }.
+function conferirOutro(dados, id, outro, achadas, problemas, rotulo, prefixo = '') {
+  const exige = !!dados[id] && achadas.some((a) => a.id === dados[id] && a.exigeTexto);
+  if (!exige) dados[outro] = null;
+  else if (!dados[outro]) problemas[`${prefixo}${outro}`] = `Descreva a opção "Outra" de ${rotulo}.`;
+}
 
 // Telefone: só dígitos, DDD + número (10 ou 11). Devolve { valor, erro }; vazio => valor null.
 function normalizarTelefone(entrada) {
@@ -66,16 +81,17 @@ function validarDadosPessoa(corpo) {
     else if (!inteiroPositivo(v)) problemas[campo] = 'Opção inválida.';
     else dados[campo] = Number(v);
   }
+  for (const l of LISTAS_OUTRAS) dados[l.outro] = texto(corpo[l.outro], 200);
   return { dados, problemas };
 }
 
 // Garante que gênero/escolaridade/raça existem (mensagem clara em vez de erro de FK).
 async function validarApoioPessoa(dados, problemas, executor = { consultar }) {
-  const mapa = { generoId: 'genero', escolaridadeId: 'escolaridade', racaId: 'raca' };
-  for (const [campo, tabela] of Object.entries(mapa)) {
-    if (!dados[campo] || problemas[campo]) continue;
-    const achou = await executor.consultar(`SELECT 1 AS ok FROM ${tabela} WHERE id = @id`, { id: dados[campo] });
-    if (!achou.length) problemas[campo] = 'Opção inexistente.';
+  for (const l of LISTAS_OUTRAS) {
+    if (!dados[l.id] || problemas[l.id]) { if (!dados[l.id]) dados[l.outro] = null; continue; }
+    const achou = await executor.consultar(`SELECT id, exige_texto FROM ${l.tabela} WHERE id = @id`, { id: dados[l.id] });
+    if (!achou.length) problemas[l.id] = 'Opção inexistente.';
+    else conferirOutro(dados, l.id, l.outro, achou, problemas, l.rotulo);
   }
 }
 
@@ -94,16 +110,19 @@ function paramsPessoa(d) {
     generoId: d.generoId,
     escolaridadeId: d.escolaridadeId,
     racaId: d.racaId,
+    generoOutro: d.generoOutro ?? null,
+    escolaridadeOutro: d.escolaridadeOutro ?? null,
+    racaOutro: d.racaOutro ?? null,
   };
 }
 
 async function criarPessoa(tx, dados, usuarioId) {
   const [nova] = await tx.consultar(
     `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
-                         genero_id, escolaridade_id, raca_id, criado_por)
+                         genero_id, escolaridade_id, raca_id, genero_outro, escolaridade_outro, raca_outro, criado_por)
      OUTPUT INSERTED.id
      VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
-             @generoId, @escolaridadeId, @racaId, @usuarioId)`,
+             @generoId, @escolaridadeId, @racaId, @generoOutro, @escolaridadeOutro, @racaOutro, @usuarioId)`,
     { ...paramsPessoa(dados), usuarioId },
   );
   return nova.id;
@@ -114,6 +133,7 @@ async function atualizarPessoa(tx, id, dados, usuarioId) {
     `UPDATE pessoa SET cpf = @cpf, nome = @nome, data_nascimento = @dataNascimento, nis = @nis, telefone = @telefone, telefone2 = @telefone2,
             endereco = @endereco, cep = @cep, bairro = @bairro, trabalho_atual = @trabalhoAtual,
             genero_id = @generoId, escolaridade_id = @escolaridadeId, raca_id = @racaId,
+            genero_outro = @generoOutro, escolaridade_outro = @escolaridadeOutro, raca_outro = @racaOutro,
             alterado_por = @usuarioId, alterado_em = SYSUTCDATETIME()
       WHERE id = @id`,
     { ...paramsPessoa(dados), usuarioId, id },
@@ -154,6 +174,8 @@ module.exports = {
   COLUNAS_PESSOA,
   validarDadosPessoa,
   validarApoioPessoa,
+  LISTAS_OUTRAS,
+  conferirOutro,
   criarPessoa,
   atualizarPessoa,
   buscarPorCpf,

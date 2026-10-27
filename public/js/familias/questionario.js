@@ -153,16 +153,26 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     return h('label', { class: 'opcao q-opcao' }, input, h('span', {}, rotulo));
   }
 
-  // Complemento das opções que pedem detalhe ("Outras: ____"): aparece quando a opção está marcada
+  // Complemento das opções que pedem detalhe ("Outras: ____"): aparece (e é obrigatório ao concluir) quando a opção está
+  // marcada; ao desmarcar, o texto é limpo
+  const pedeDetalheMarcado = (p) => {
+    const v = resp[p.codigo];
+    const marcadas = Array.isArray(v) ? v : (v ? [v] : []);
+    return p.opcoes.some((o) => o.pedeDetalhe && marcadas.includes(o.valor));
+  };
+
   function campoDetalhe(p, escolhidas) {
     const entrada = h('input', {
       class: 'input q-input', type: 'text', id: novoId(`${p.codigo}-detalhe`), name: `detalhes.${p.codigo}`, maxlength: 200,
-      placeholder: 'Qual?', 'aria-label': `Complemento da pergunta ${p.codigo}`,
+      placeholder: 'Qual?', 'aria-required': 'true',
     });
     entrada.value = paraTexto(detalhes[p.codigo]);
     entrada.addEventListener('input', () => definirDetalhe(p.codigo, entrada.value));
-    const caixa = h('div', { class: 'campo q-detalhe' }, entrada);
-    const atualizar = () => { caixa.hidden = !p.opcoes.some((o) => o.pedeDetalhe && escolhidas().includes(o.valor)); };
+    const caixa = h('div', { class: 'campo q-detalhe' }, h('label', { for: entrada.id, class: 'obrigatorio' }, 'Descreva a outra opção'), entrada);
+    const atualizar = () => {
+      caixa.hidden = !p.opcoes.some((o) => o.pedeDetalhe && escolhidas().includes(o.valor));
+      if (caixa.hidden && entrada.value) { entrada.value = ''; definirDetalhe(p.codigo, ''); }
+    };
     atualizar();
     return { caixa, atualizar };
   }
@@ -317,11 +327,26 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     await concluir();
   });
 
+  function mostrarErrosDoServidor(detalhesDeErro) {
+    errosPendentes = detalhesDeErro;
+    const primeiro = Math.min(...Object.keys(detalhesDeErro).map((c) => (passoDoCampo[c] ?? 0)));
+    toast.erro(`Faltam respostas ou há campos inválidos (etapa ${primeiro + 1}).`);
+    passo = primeiro;
+    renderPasso();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function concluir() {
     if (!jaConcluido) {
       const ok = await confirmar('Concluir o questionário? Você ainda poderá corrigir as respostas enquanto o acompanhamento estiver em andamento.', { titulo: 'Concluir questionário', textoOk: 'Concluir' });
       if (!ok) return;
     }
+    // "Outra/Outros" marcada sem o texto: nem envia
+    const faltando = {};
+    for (const b of blocos) for (const p of b.perguntas) {
+      if (pedeDetalheMarcado(p) && !String(detalhes[p.codigo] || '').trim()) faltando[`detalhes.${p.codigo}`] = 'Informe qual é a outra opção.';
+    }
+    if (Object.keys(faltando).length) { mostrarErrosDoServidor(faltando); return; }
     botaoAvancar.disabled = true;
     clearTimeout(temporizador);
     while (salvando) await salvando.catch(() => {});
@@ -333,12 +358,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
       if (voltarPara) location.href = voltarPara; else navegar(reavaliacao ? `#/a/${acId}/indicadores` : `#/a/${acId}`);
     } catch (e) {
       if (e instanceof ErroApi && e.status === 400 && e.detalhes) {
-        errosPendentes = e.detalhes;
-        const primeiro = Math.min(...Object.keys(e.detalhes).map((c) => (passoDoCampo[c] ?? 0)));
-        toast.erro(`Faltam respostas ou há campos inválidos (etapa ${primeiro + 1}).`);
-        passo = primeiro;
-        renderPasso();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        mostrarErrosDoServidor(e.detalhes);
       } else {
         toast.erro(e.message);
       }

@@ -6,6 +6,9 @@ import { seletorFotos, enviarFotos } from './fotos.js';
 export const STATUS = { PLANEJADA: 'Planejada', REALIZADA: 'Realizada', CANCELADA: 'Cancelada' };
 const MAX_TEMAS = 4;
 
+// "Outra: <texto>" quando o tipo pede o texto livre
+export const nomeDoTipo = (a) => (a.tipoAcaoOutro ? `${a.tipoAcaoNome}: ${a.tipoAcaoOutro}` : a.tipoAcaoNome);
+
 function campo(rotulo, entrada, { obrigatorio = false, ajuda } = {}) {
   const id = entrada.id || `ac-${entrada.name}`;
   entrada.id = id;
@@ -37,6 +40,12 @@ export function abrirFormulario({ apoio, usuario, acao, aoSalvar }) {
   const selTipo = h('select', { class: 'select', name: 'tipoAcaoId' },
     h('option', { value: '' }, 'Selecione...'),
     tiposLista.map((t) => h('option', { value: t.id, selected: acao?.tipoAcaoId === t.id }, t.nome)));
+  // Tipo "Outra": aparece o campo de texto (obrigatório); ao trocar de tipo, o texto é limpo
+  const tipoOutro = h('input', { class: 'input', type: 'text', name: 'tipoAcaoOutro', maxlength: '200', value: acao?.tipoAcaoOutro || '' });
+  const campoTipoOutro = campo('Qual outro tipo de ação?', tipoOutro, { obrigatorio: true });
+  const exigeTipoOutro = () => !!tiposLista.find((t) => String(t.id) === selTipo.value)?.exigeTexto;
+  const atualizarTipoOutro = () => { campoTipoOutro.hidden = !exigeTipoOutro(); if (campoTipoOutro.hidden) tipoOutro.value = ''; };
+  selTipo.addEventListener('change', atualizarTipoOutro);
   const selStatus = h('select', { class: 'select', name: 'status' },
     Object.entries(STATUS).map(([k, v]) => h('option', { value: k, selected: (acao?.status || 'PLANEJADA') === k }, v)));
   const qtd = h('input', { class: 'input', type: 'text', inputmode: 'numeric', name: 'qtdParticipantes', maxlength: '6', value: acao?.qtdParticipantes ?? '' });
@@ -68,6 +77,7 @@ export function abrirFormulario({ apoio, usuario, acao, aoSalvar }) {
       campo('Data', h('input', { class: 'input', type: 'date', name: 'dataAcao', value: acao?.dataAcao?.slice(0, 10) || hojeIso() }), { obrigatorio: true }),
       campo('Tipo', selTipo, { obrigatorio: true }),
       campo('Situação', selStatus, { obrigatorio: true })),
+    campoTipoOutro,
     campo('Instituição / local', h('input', { class: 'input', type: 'text', name: 'instituicaoLocal', maxlength: '200', value: acao?.instituicaoLocal || '' })),
     campo('Endereço', h('input', { class: 'input', type: 'text', name: 'endereco', maxlength: '200', value: acao?.endereco || '' })),
     campoTemas,
@@ -76,6 +86,7 @@ export function abrirFormulario({ apoio, usuario, acao, aoSalvar }) {
     h('fieldset', { class: 'secao' }, h('legend', {}, edicao ? 'Adicionar fotos' : 'Fotos'), fotos.elemento),
   );
 
+  atualizarTipoOutro();
   const botaoSalvar = h('button', { type: 'submit', class: 'btn' }, edicao ? 'Salvar alterações' : 'Salvar ação');
   const modal = abrirModal({
     titulo: edicao ? 'Editar ação' : 'Nova ação',
@@ -89,10 +100,16 @@ export function abrirFormulario({ apoio, usuario, acao, aoSalvar }) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (exigeTipoOutro() && !tipoOutro.value.trim()) {
+      mostrarErrosCampos(form, { tipoAcaoOutro: 'Descreva qual é o outro tipo de ação.' });
+      tipoOutro.focus({ preventScroll: true });
+      return;
+    }
     const corpo = {
       unidadeId: form.elements.unidadeId.value || undefined,
       dataAcao: form.elements.dataAcao.value,
       tipoAcaoId: form.elements.tipoAcaoId.value,
+      tipoAcaoOutro: exigeTipoOutro() ? tipoOutro.value.trim() : null,
       status: form.elements.status.value,
       instituicaoLocal: form.elements.instituicaoLocal.value,
       endereco: form.elements.endereco.value,

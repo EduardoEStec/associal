@@ -43,7 +43,10 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
   const [d, apoio] = await Promise.all([api.get(`/api/familias/acompanhamentos/${id}`), carregarApoio()]);
   const escrita = podeEscrever(usuario);
   const encerrado = d.status !== 'EM_ANDAMENTO';
-  const nomeApoio = (lista, v) => (v ? (lista || []).find((o) => o.id === v)?.nome : null);
+  const nomeApoio = (lista, v, outro) => {
+    const nome = v ? (lista || []).find((o) => o.id === v)?.nome : null;
+    return nome && outro ? `${nome}: ${outro}` : nome;
+  };
   const r = d.responsavel;
 
   const acoes = [];
@@ -86,7 +89,7 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
         h('td', { 'data-rotulo': 'Nome' }, m.nome),
         h('td', { 'data-rotulo': 'Parentesco' }, textoOuTraco(m.parentesco)),
         h('td', { 'data-rotulo': 'Nascimento / idade' }, m.dataNascimento ? formatarData(m.dataNascimento) : (m.idade !== null ? `${m.idade} anos` : '—')),
-        h('td', { 'data-rotulo': 'Gênero' }, textoOuTraco(nomeApoio(apoio.genero, m.generoId))),
+        h('td', { 'data-rotulo': 'Gênero' }, textoOuTraco(nomeApoio(apoio.genero, m.generoId, m.generoOutro))),
         h('td', { 'data-rotulo': 'Trabalha' }, rotuloSimNao(m.trabalha)))))));
 
   const qI = d.questionarios.inicial;
@@ -111,8 +114,8 @@ export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'r
       dado('CPF', r.cpf ? formatarCpf(r.cpf) : null), dado('Nascimento', r.dataNascimento ? formatarData(r.dataNascimento) : null),
       dado('Telefone', [r.telefone && formatarTelefone(r.telefone), r.telefone2 && `${formatarTelefone(r.telefone2)} (recado)`].filter(Boolean).join(' · ')),
       dado('NIS (CadÚnico)', r.nis), dado('Endereço', [r.endereco, r.bairro].filter(Boolean).join(' — ')),
-      dado('Trabalho atual', r.trabalhoAtual), dado('Gênero', nomeApoio(apoio.genero, r.generoId)),
-      dado('Escolaridade', nomeApoio(apoio.escolaridade, r.escolaridadeId)), dado('Raça/etnia', nomeApoio(apoio.raca, r.racaId)))),
+      dado('Trabalho atual', r.trabalhoAtual), dado('Gênero', nomeApoio(apoio.genero, r.generoId, r.generoOutro)),
+      dado('Escolaridade', nomeApoio(apoio.escolaridade, r.escolaridadeId, r.escolaridadeOutro)), dado('Raça/etnia', nomeApoio(apoio.raca, r.racaId, r.racaOutro)))),
 
     h('h2', {}, `Demais membros (${d.membros.length})`),
     membros,

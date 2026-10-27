@@ -12,6 +12,17 @@ function entrada(attrs) {
   return h('input', { class: 'input', ...attrs });
 }
 
+// Opção "Outra" (exige_texto) de uma lista: campo de texto obrigatório que só aparece com ela escolhida; some e é limpo ao trocar
+function ligarOutro({ select, lista, id, name, rotulo, valor }) {
+  const texto = entrada({ type: 'text', id, name, maxlength: 200, value: valor || '' });
+  const bloco = campo({ id, rotulo, obrigatorio: true, controle: texto });
+  const exige = () => !!(lista || []).find((o) => String(o.id) === select.value)?.exigeTexto;
+  const atualizar = () => { bloco.hidden = !exige(); if (bloco.hidden) texto.value = ''; };
+  select.addEventListener('change', atualizar);
+  atualizar();
+  return { texto, bloco, exige, atualizar, valor: () => (exige() ? texto.value.trim() || null : null) };
+}
+
 function criarCartaoMembro(apoio, membro = {}) {
   const cartao = h('div', { class: 'card fam-membro' });
   const topo = h('div', { class: 'linha-entre' }, h('strong', { class: 'fam-membro-titulo' }));
@@ -25,6 +36,7 @@ function criarCartaoMembro(apoio, membro = {}) {
   const idade = entrada({ type: 'number', inputmode: 'numeric', min: 0, max: 120 });
   idade.value = membro.idade ?? '';
   const genero = selectApoio({ lista: apoio.genero, valor: membro.generoId, vazio: 'Não informado' });
+  const generoOutro = ligarOutro({ select: genero, lista: apoio.genero, rotulo: 'Qual outro gênero?', valor: membro.generoOutro });
   const parentesco = entrada({ type: 'text', maxlength: 60, placeholder: 'Ex.: filho, cônjuge, mãe' });
   parentesco.value = membro.parentesco || '';
   const trabalha = h('select', { class: 'select' },
@@ -38,8 +50,10 @@ function criarCartaoMembro(apoio, membro = {}) {
       rot('Nome', nome), rot('Parentesco com o responsável', parentesco),
       rot('Data de nascimento', nasc), rot('Idade (se não souber a data)', idade),
       rot('Gênero', genero), rot('Trabalha?', trabalha)),
+    generoOutro.bloco,
   );
-  const campos = { nome, dataNascimento: nasc, idade, generoId: genero, parentesco, trabalha };
+  const campos = { nome, dataNascimento: nasc, idade, generoId: genero, generoOutro: generoOutro.texto, parentesco, trabalha };
+  cartao.faltaOutro = () => generoOutro.exige() && !generoOutro.texto.value.trim();
   // O "for" do rótulo aponta para o campo (ids são atribuídos em renumerar()).
   cartao.campos = campos;
   cartao.lerValores = () => ({
@@ -47,6 +61,7 @@ function criarCartaoMembro(apoio, membro = {}) {
     dataNascimento: nasc.value || null,
     idade: nasc.value || idade.value === '' ? null : Number(idade.value),
     generoId: genero.value ? Number(genero.value) : null,
+    generoOutro: generoOutro.valor(),
     parentesco: parentesco.value.trim() || null,
     trabalha: trabalha.value === '' ? null : trabalha.value === 'true',
   });
@@ -111,6 +126,10 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
   const genero = selectApoio({ id: 'genero', name: 'responsavel.generoId', lista: apoio.genero, valor: r.generoId, vazio: 'Não informado' });
   const escolaridade = selectApoio({ id: 'escolaridade', name: 'responsavel.escolaridadeId', lista: apoio.escolaridade, valor: r.escolaridadeId, vazio: 'Não informada' });
   const raca = selectApoio({ id: 'raca', name: 'responsavel.racaId', lista: apoio.raca, valor: r.racaId, vazio: 'Não informada' });
+  const generoOutro = ligarOutro({ select: genero, lista: apoio.genero, id: 'genero-outro', name: 'responsavel.generoOutro', rotulo: 'Qual outro gênero?', valor: r.generoOutro });
+  const escolaridadeOutro = ligarOutro({ select: escolaridade, lista: apoio.escolaridade, id: 'escolaridade-outro', name: 'responsavel.escolaridadeOutro', rotulo: 'Qual outra escolaridade?', valor: r.escolaridadeOutro });
+  const racaOutro = ligarOutro({ select: raca, lista: apoio.raca, id: 'raca-outro', name: 'responsavel.racaOutro', rotulo: 'Qual outra raça/etnia?', valor: r.racaOutro });
+  const outrosResp = [generoOutro, escolaridadeOutro, racaOutro];
 
   const secResp = h('fieldset', { class: 'secao' }, h('legend', {}, 'Responsável familiar'),
     campo({
@@ -129,9 +148,9 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
       campo({ id: 'cep', rotulo: 'CEP', controle: cep }),
       campo({ id: 'bairro', rotulo: 'Bairro', controle: bairro }),
       campo({ id: 'trabalho', rotulo: 'Trabalho atual', controle: trabalho }),
-      campo({ id: 'genero', rotulo: 'Gênero', controle: genero }),
-      campo({ id: 'escolaridade', rotulo: 'Escolaridade', controle: escolaridade }),
-      campo({ id: 'raca', rotulo: 'Raça/etnia', controle: raca })));
+      campo({ id: 'genero', rotulo: 'Gênero', controle: genero }), generoOutro.bloco,
+      campo({ id: 'escolaridade', rotulo: 'Escolaridade', controle: escolaridade }), escolaridadeOutro.bloco,
+      campo({ id: 'raca', rotulo: 'Raça/etnia', controle: raca }), racaOutro.bloco));
 
   // Busca por CPF (contrato da API de pessoas: GET /api/pessoas/buscar?cpf=)
   let ultimoCpfBuscado = '';
@@ -150,6 +169,8 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
         endereco.value = p.endereco || ''; cep.value = p.cep ? formatarCep(p.cep) : ''; bairro.value = p.bairro || '';
         trabalho.value = p.trabalhoAtual || ''; genero.value = p.generoId ? String(p.generoId) : '';
         escolaridade.value = p.escolaridadeId ? String(p.escolaridadeId) : ''; raca.value = p.racaId ? String(p.racaId) : '';
+        generoOutro.texto.value = p.generoOutro || ''; escolaridadeOutro.texto.value = p.escolaridadeOutro || ''; racaOutro.texto.value = p.racaOutro || '';
+        outrosResp.forEach((o) => { const t = o.texto.value; o.atualizar(); if (o.exige()) o.texto.value = t; });
         avisoCpf.replaceChildren(h('div', { class: 'aviso aviso-sucesso' }, 'Cadastro existente: dados preenchidos. Confira e atualize se necessário.'));
       } else {
         avisoCpf.replaceChildren(h('p', { class: 'ajuda' }, 'CPF ainda não cadastrado: preencha os dados.'));
@@ -210,6 +231,11 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // "Outra" escolhida sem o texto: nem envia
+    const faltando = {};
+    for (const o of outrosResp) if (o.exige() && !o.texto.value.trim()) faltando[o.texto.name] = 'Especifique qual é a outra opção.';
+    cartoes.forEach((c) => { if (c.faltaOutro()) faltando[c.campos.generoOutro.name] = 'Especifique qual é a outra opção.'; });
+    if (Object.keys(faltando).length) { mostrarErrosCampos(form, faltando); toast.erro('Corrija os campos destacados.'); return; }
     const corpo = {
       dataInicio: dataInicio.value || undefined,
       observacoes: observacoes.value.trim() || null,
@@ -219,6 +245,7 @@ export async function renderCadastro({ usuario, conteudo, navegar }, acompanhame
         bairro: bairro.value.trim() || null, trabalhoAtual: trabalho.value.trim() || null,
         generoId: genero.value ? Number(genero.value) : null, escolaridadeId: escolaridade.value ? Number(escolaridade.value) : null,
         racaId: raca.value ? Number(raca.value) : null,
+        generoOutro: generoOutro.valor(), escolaridadeOutro: escolaridadeOutro.valor(), racaOutro: racaOutro.valor(),
       },
       membros: cartoes.map((c) => c.lerValores()),
     };
