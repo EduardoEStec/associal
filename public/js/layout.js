@@ -86,6 +86,8 @@ function montarCabecalho(usuario) {
     h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
       h('img', { class: 'app-logo', src: '/img/logo-associal.png', alt: '', width: 40, height: 40 }),
       h('span', { class: 'app-marca-nome' }, 'ASSOCIAL')),
+    h('span', { class: 'app-data', id: 'app-data' }, icone('calendario'),
+      h('span', { class: 'app-data-longa', id: 'data-hoje-texto' }), h('span', { class: 'app-data-curta', id: 'data-hoje-curta' })),
     h('div', { class: 'app-usuario' }, menuDoUsuario(usuario)),
   );
 }
@@ -93,6 +95,20 @@ function montarCabecalho(usuario) {
 // O botão do usuário substitui o espaço reservado do HTML (mesma caixa, sem pulo)
 function hidratarCabecalho(cabecalho, usuario) {
   cabecalho.querySelector('.app-usuario').replaceChildren(menuDoUsuario(usuario));
+  confirmarData();
+}
+
+// A data do cabeçalho vem pré-pintada (shell-previo.js); aqui só se confirma (ex.: página aberta desde ontem)
+function confirmarData() {
+  const agora = new Date();
+  const textos = {
+    'data-hoje-texto': agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
+    'data-hoje-curta': agora.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+  };
+  for (const [id, texto] of Object.entries(textos)) {
+    const e = document.getElementById(id);
+    if (e && e.textContent !== texto) e.textContent = texto;
+  }
 }
 
 function abrirMais(extras) {
@@ -230,7 +246,7 @@ export async function iniciarPagina(chave) {
   const conteudo = document.getElementById('conteudo');
   conteudo.classList.add('conteudo');
   const cabecalho = document.querySelector('.app-cabecalho');
-  if (cabecalho) hidratarCabecalho(cabecalho, usuario); else document.body.prepend(montarCabecalho(usuario));
+  if (cabecalho) hidratarCabecalho(cabecalho, usuario); else { document.body.prepend(montarCabecalho(usuario)); confirmarData(); }
   const menu = document.querySelector('.app-menu');
   if (menu) hidratarMenu(menu, chave, itens); else document.body.append(montarMenu(chave, itens));
   document.body.classList.add('com-layout');

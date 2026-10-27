@@ -79,11 +79,43 @@ test('CSS: cabeçalho e menu são camadas próprias na transição; reduzir movi
 
 test('service worker: nova versão e os scripts do casco pré-armazenados', () => {
   const sw = ler('sw.js');
-  assert.match(sw, /const VERSAO = 'associal-v26';/);
+  assert.match(sw, /const VERSAO = 'associal-v27';/);
   assert.ok(sw.includes("'/js/shell-previo.js'") && sw.includes("'/js/shell-cache.js'"));
 });
 
 test('shell-previo.js usa a mesma chave de js/shell-cache.js', () => {
   const chave = ler('js/shell-cache.js').match(/CHAVE_SHELL = '([^']+)'/)[1];
   assert.ok(ler('js/shell-previo.js').includes(`localStorage.getItem('${chave}')`));
+});
+
+// V18: a data fica no cabeçalho (todas as páginas), sem caixa de herói na Início
+for (const p of PAGINAS) {
+  test(`${p.arquivo}: data de hoje no cabeçalho, antes do bloco do usuário (espaço reservado, sem pulo)`, () => {
+    const html = ler(p.arquivo);
+    const cab = html.match(/<header class="app-cabecalho">[\s\S]*?<\/header>/)[0];
+    assert.match(cab, /<span class="app-data" id="app-data">[\s\S]*?id="data-hoje-texto"[\s\S]*?id="data-hoje-curta"/);
+    assert.ok(cab.indexOf('id="app-data"') < cab.indexOf('id="app-usuario"'), 'data à esquerda do usuário');
+  });
+}
+
+test('Início: saudação é título simples da página (sem herói) e a data não está mais no conteúdo', () => {
+  const html = ler('index.html');
+  assert.match(html, /<div class="pagina-titulo"><h1 id="saudacao"><\/h1><\/div>/);
+  assert.ok(!html.includes('class="heroi'), 'sem herói');
+  assert.ok(!ler('css/inicio.css').includes('.heroi'), 'sem CSS do herói');
+  assert.ok(!ler('js/paginas/inicio.js').includes("'data-hoje-texto'"), 'inicio.js não mexe mais na data');
+});
+
+test('shell-previo.js pré-pinta a data longa e a curta; layout.js as confirma', () => {
+  const previo = ler('js/shell-previo.js');
+  assert.ok(previo.includes("'data-hoje-texto': data,") && previo.includes("'data-hoje-curta': dataCurta,"));
+  const layout = ler('js/layout.js');
+  assert.ok(layout.includes('function confirmarData()') && layout.includes('confirmarData();'));
+});
+
+test('CSS: data suave no cabeçalho; no celular só a curta', () => {
+  const css = ler('css/layout.css');
+  assert.match(css, /\.app-data \{[^}]*margin-left: auto;[^}]*color: var\(--cor-texto-suave\)/);
+  assert.match(css, /\.app-data-longa \{ display: none; \}/);
+  assert.match(css, /@media \(min-width: 640px\) \{ \.app-data-longa \{ display: inline; \} \.app-data-curta \{ display: none; \} \}/);
 });

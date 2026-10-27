@@ -13,20 +13,6 @@
 .resumo-esqueleto strong { display: block; width: 3.5rem; }
 .resumo-esqueleto .tile-rotulo { display: block; width: 70%; }
 
-/* Herói: cinza bem claro com borda fina, saudação em texto escuro (sem laranja, sem gradiente) */
-.heroi {
-  position: relative; overflow: hidden; padding: var(--esp-4) var(--esp-4) var(--esp-4);
-  color: var(--cor-texto); border-radius: var(--raio);
-  background: var(--cor-fundo-suave); border: 1px solid var(--cor-borda);
-}
-.heroi h1 { position: relative; margin: 0; font-size: 1.75rem; color: var(--cor-texto); background: none; padding: 0; width: auto; }
-.heroi-data .icone { width: 1rem; height: 1rem; margin-right: var(--esp-1); color: var(--cor-primaria); }
-.heroi-data {
-  position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 0.3125rem var(--esp-3);
-  font-size: var(--texto-sm); font-weight: 700; color: var(--cor-texto-suave);
-  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-pilula);
-}
-
 /* Resumo do mês: cards neutros (fundo branco, borda sutil, texto escuro); cor só no ícone */
 .resumo-inicio > p { margin-top: calc(var(--esp-2) * -1); }
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); }
@@ -76,7 +62,3 @@
 .pendencia-texto p { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .pendencia-texto small { display: block; margin-bottom: var(--esp-2); color: var(--cor-texto-suave); }
 
-@media (min-width: 900px) {
-  .heroi { padding: var(--esp-5) var(--esp-6) calc(var(--esp-5) + 0.25rem); }
-  .heroi h1 { font-size: 2.125rem; }
-}

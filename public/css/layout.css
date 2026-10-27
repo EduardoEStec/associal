@@ -12,6 +12,11 @@
 .app-marca:hover { color: inherit; }
 .app-logo { display: block; height: 2.5rem; width: 2.5rem; }
 .app-marca-nome { font-size: var(--texto-lg); font-weight: 800; letter-spacing: 0.02em; }
+/* Data de hoje: texto suave ao lado do usuário (pré-pintada por js/shell-previo.js; sem pulo) */
+.app-data { display: inline-flex; align-items: center; gap: var(--esp-2); margin-left: auto; white-space: nowrap; font-size: var(--texto-sm); font-weight: 600; color: var(--cor-texto-suave); }
+.app-data .icone { width: 1.125rem; height: 1.125rem; }
+.app-data-longa { display: none; }
+@media (min-width: 640px) { .app-data-longa { display: inline; } .app-data-curta { display: none; } }
 .app-usuario { display: flex; align-items: center; gap: var(--esp-3); font-size: var(--texto-sm); }
 .app-usuario .nome { display: none; text-align: right; line-height: 1.2; font-weight: 700; }
 .app-usuario .nome small { display: block; font-weight: 500; color: var(--cor-texto-suave); }

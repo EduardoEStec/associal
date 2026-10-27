@@ -1,4 +1,4 @@
-// Início: herói de boas-vindas, resumo do mês, atalhos para os módulos do perfil e pendências.
+// Início: saudação, resumo do mês, atalhos para os módulos do perfil e pendências.
 import { iniciarPagina, icone } from '../layout.js';
 import { h, formatarNumero, formatarData } from '../ui.js';
 import { api } from '../api.js';
@@ -8,16 +8,13 @@ const resumoPendente = api.get('/api/painel/resumo-inicio').catch(() => null);
 
 const { usuario, itens } = await iniciarPagina('inicio');
 
-// ---- Herói ----
-// Herói, atalhos e o espaço do resumo já vêm no HTML (js/shell-previo.js pré-preenche os textos); aqui só se confirma o que mudou.
+// ---- Saudação ----
+// Saudação (título da página), atalhos e o espaço do resumo já vêm no HTML (js/shell-previo.js pré-preenche os textos); aqui só se confirma o que mudou.
 const hora = new Date().getHours();
 const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 const primeiroNome = usuario.nome.split(' ')[0];
 const definirTexto = (id, texto) => { const e = document.getElementById(id); if (e.textContent !== texto) e.textContent = texto; };
 definirTexto('saudacao', `${saudacao}, ${primeiroNome}!`);
-const dataExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-const unidade = usuario.unidades.length === 1 ? `${usuario.unidades[0].nome} · ` : '';
-definirTexto('data-hoje-texto', `${unidade}${dataExtenso}`);
 
 // ---- Atalhos (blocos sólidos): o HTML traz todos; sai o que o perfil não pode abrir ----
 const permitidos = new Set(itens.map((i) => i.href));
