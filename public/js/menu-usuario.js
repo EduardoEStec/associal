@@ -1,4 +1,4 @@
-// Menu do usuário no cabeçalho: botão (nome + perfil + avatar + chevron) que abre um painel no visual da lista suspensa (.sb-painel).
+// Menu do usuário (rodapé do menu lateral; avatar no cabeçalho no celular): botão (nome + perfil + avatar + chevron) que abre um painel no visual da lista suspensa (.sb-painel).
 // Itens: Trocar de usuário e Sair. Teclado: Enter/Espaço/setas abrem, setas navegam, Esc fecha e devolve o foco.
 
 import { abrirExclusivo, liberar } from './painel-unico.js';
@@ -43,8 +43,13 @@ export function montarMenuUsuario(opcoes) {
     const r = gatilho.getBoundingClientRect();
     const largura = Math.min(300, innerWidth - 2 * FOLGA);
     painel.style.width = `${largura}px`;
-    painel.style.top = `${r.bottom + 4}px`;
-    painel.style.left = `${Math.min(Math.max(FOLGA, r.right - largura), innerWidth - largura - FOLGA)}px`;
+    // Para cima (rodapé do menu lateral) quando cabe; senão para baixo
+    const cima = r.top - painel.offsetHeight - 4 >= FOLGA;
+    painel.classList.toggle('cima', cima);
+    painel.style.top = `${cima ? r.top - painel.offsetHeight - 4 : r.bottom + 4}px`;
+    // Alinhado à esquerda do botão quando ele está na metade esquerda da tela (menu lateral), senão à direita
+    const esquerda = r.left + r.width / 2 < innerWidth / 2;
+    painel.style.left = `${Math.min(Math.max(FOLGA, esquerda ? r.left : r.right - largura), innerWidth - largura - FOLGA)}px`;
   }
 
   function aoClicarFora(e) {

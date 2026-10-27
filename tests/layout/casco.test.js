@@ -79,7 +79,7 @@ test('CSS: cabeçalho e menu são camadas próprias na transição; reduzir movi
 
 test('service worker: nova versão e os scripts do casco pré-armazenados', () => {
   const sw = ler('sw.js');
-  assert.match(sw, /const VERSAO = 'associal-v28';/);
+  assert.match(sw, /const VERSAO = 'associal-v29';/);
   assert.ok(sw.includes("'/js/shell-previo.js'") && sw.includes("'/js/shell-cache.js'"));
 });
 
@@ -90,11 +90,15 @@ test('shell-previo.js usa a mesma chave de js/shell-cache.js', () => {
 
 // V18: a data fica no cabeçalho (todas as páginas), sem caixa de herói na Início
 for (const p of PAGINAS) {
-  test(`${p.arquivo}: data de hoje no cabeçalho, antes do bloco do usuário (espaço reservado, sem pulo)`, () => {
+  test(`${p.arquivo}: data de hoje no cabeçalho; bloco do usuário no rodapé do menu lateral (espaço reservado, sem pulo)`, () => {
     const html = ler(p.arquivo);
     const cab = html.match(/<header class="app-cabecalho">[\s\S]*?<\/header>/)[0];
     assert.match(cab, /<span class="app-data" id="app-data">[\s\S]*?id="data-hoje-texto"[\s\S]*?id="data-hoje-curta"/);
-    assert.ok(cab.indexOf('id="app-data"') < cab.indexOf('id="app-usuario"'), 'data à esquerda do usuário');
+    assert.ok(!cab.includes('app-usuario'), 'o usuário saiu do cabeçalho');
+    const menu = html.match(/<nav class="app-menu"[\s\S]*?<\/nav>/)[0];
+    assert.match(menu, /<div class="app-usuario" id="app-usuario">[\s\S]*?id="previo-nome"[\s\S]*?id="previo-perfil"[\s\S]*?id="previo-avatar"/);
+    const ultimoItem = Math.max(menu.lastIndexOf('</a>'), menu.lastIndexOf('</button>'));
+    assert.ok(menu.indexOf('id="app-usuario"') > ultimoItem - 1, 'usuário depois dos itens do menu');
   });
 }
 
@@ -118,4 +122,24 @@ test('CSS: data suave no cabeçalho; no celular só a curta', () => {
   assert.match(css, /\.app-data \{[^}]*margin-left: auto;[^}]*color: var\(--cor-texto-suave\)/);
   assert.match(css, /\.app-data-longa \{ display: none; \}/);
   assert.match(css, /@media \(min-width: 640px\) \{ \.app-data-longa \{ display: inline; \} \.app-data-curta \{ display: none; \} \}/);
+});
+
+// V20: usuário no rodapé do menu lateral; menu suspenso para cima
+test('CSS: usuário fixo no rodapé do menu lateral (desktop) e avatar no cabeçalho (celular)', () => {
+  const css = ler('css/layout.css');
+  assert.match(css, /\.app-usuario \{ position: fixed; top: 0; right: var\(--esp-4\);/);
+  assert.match(css, /\.app-usuario \{ position: static; flex: none;[^}]*margin-top: auto;/);
+  assert.match(css, /\.app-menu \.app-usuario \.app-usuario-botao \{ width: 100%;/);
+});
+
+test('menu-usuario.js: abre para cima quando cabe, senão para baixo', () => {
+  const js = ler('js/menu-usuario.js');
+  assert.ok(js.includes("painel.classList.toggle('cima', cima)"));
+  assert.ok(js.includes('r.top - painel.offsetHeight - 4 >= FOLGA'));
+});
+
+test('layout.js: sem casco no HTML o bloco do usuário é criado no menu, não no cabeçalho', () => {
+  const js = ler('js/layout.js');
+  assert.ok(js.includes('function hidratarUsuario(usuario)') && js.includes('hidratarUsuario(usuario);'));
+  assert.ok(!js.includes("h('div', { class: 'app-usuario' }, menuDoUsuario(usuario))"));
 });

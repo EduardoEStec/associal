@@ -80,7 +80,7 @@ function menuDoUsuario(usuario) {
 }
 
 // Só para página sem casco no HTML (todas as páginas do app já trazem o casco; ver public/*.html)
-function montarCabecalho(usuario) {
+function montarCabecalho() {
   return h(
     'header', { class: 'app-cabecalho' },
     h('a', { class: 'app-marca', href: '/index.html', 'aria-label': 'ASSOCIAL — início' },
@@ -88,14 +88,16 @@ function montarCabecalho(usuario) {
       h('span', { class: 'app-marca-nome' }, 'ASSOCIAL')),
     h('span', { class: 'app-data', id: 'app-data' }, icone('calendario'),
       h('span', { class: 'app-data-longa', id: 'data-hoje-texto' }), h('span', { class: 'app-data-curta', id: 'data-hoje-curta' })),
-    h('div', { class: 'app-usuario' }, menuDoUsuario(usuario)),
   );
 }
 
-// O botão do usuário substitui o espaço reservado do HTML (mesma caixa, sem pulo)
-function hidratarCabecalho(cabecalho, usuario) {
-  cabecalho.querySelector('.app-usuario').replaceChildren(menuDoUsuario(usuario));
-  confirmarData();
+// O bloco do usuário fica no rodapé do menu lateral (nav.app-menu). O botão real substitui o espaço
+// reservado do HTML (mesma caixa, sem pulo); sem casco no HTML, o bloco é criado no fim do menu.
+function hidratarUsuario(usuario) {
+  const menu = menuDoUsuario(usuario);
+  const bloco = document.querySelector('.app-usuario');
+  if (bloco) { bloco.replaceChildren(menu); return; }
+  document.querySelector('.app-menu').append(h('div', { class: 'app-usuario', id: 'app-usuario' }, menu));
 }
 
 // A data do cabeçalho vem pré-pintada (shell-previo.js); aqui só se confirma (ex.: página aberta desde ontem)
@@ -245,10 +247,11 @@ export async function iniciarPagina(chave) {
   salvarShell(usuario);
   const conteudo = document.getElementById('conteudo');
   conteudo.classList.add('conteudo');
-  const cabecalho = document.querySelector('.app-cabecalho');
-  if (cabecalho) hidratarCabecalho(cabecalho, usuario); else { document.body.prepend(montarCabecalho(usuario)); confirmarData(); }
+  if (!document.querySelector('.app-cabecalho')) document.body.prepend(montarCabecalho());
+  confirmarData();
   const menu = document.querySelector('.app-menu');
   if (menu) hidratarMenu(menu, chave, itens); else document.body.append(montarMenu(chave, itens));
+  hidratarUsuario(usuario);
   document.body.classList.add('com-layout');
 
   if (usuario.deveTrocarSenha) await exigirTrocaSenha();
