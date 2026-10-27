@@ -79,7 +79,7 @@ test('CSS: cabeçalho e menu são camadas próprias na transição; reduzir movi
 
 test('service worker: nova versão e os scripts do casco pré-armazenados', () => {
   const sw = ler('sw.js');
-  assert.match(sw, /const VERSAO = 'associal-v25';/);
+  assert.match(sw, /const VERSAO = 'associal-v26';/);
   assert.ok(sw.includes("'/js/shell-previo.js'") && sw.includes("'/js/shell-cache.js'"));
 });
 

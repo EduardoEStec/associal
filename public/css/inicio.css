@@ -20,7 +20,7 @@
   background: var(--cor-fundo-suave); border: 1px solid var(--cor-borda);
 }
 .heroi h1 { position: relative; margin: 0; font-size: 1.75rem; color: var(--cor-texto); background: none; padding: 0; width: auto; }
-.heroi-data .icone { width: 1rem; height: 1rem; margin-right: var(--esp-1); color: var(--cor-texto-suave); }
+.heroi-data .icone { width: 1rem; height: 1rem; margin-right: var(--esp-1); color: var(--cor-primaria); }
 .heroi-data {
   position: relative; display: inline-flex; margin-bottom: var(--esp-3); padding: 0.3125rem var(--esp-3);
   font-size: var(--texto-sm); font-weight: 700; color: var(--cor-texto-suave);
@@ -34,7 +34,7 @@
   display: flex; flex-direction: column; gap: var(--esp-1); padding: var(--esp-3); min-height: 7.25rem;
   color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-medio);
 }
-.tile-ic { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--esp-1); color: var(--cor-texto-suave); background: var(--cor-cinza-claro); border-radius: 0.875rem; }
+.tile-ic { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--esp-1); color: var(--cor-primaria); background: var(--cor-cinza-claro); border-radius: 0.875rem; }
 .tile strong { font-size: 2rem; font-weight: 800; line-height: 1; }
 .tile-rotulo { min-height: 2.4em; font-size: var(--texto-sm); font-weight: 600; line-height: 1.2; color: var(--cor-texto-suave); } /* 2 linhas reservadas: o esqueleto e o resumo têm a mesma altura */
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
@@ -52,9 +52,9 @@
   transition: border-color 0.15s, background 0.15s;
 }
 .atalho:hover { color: var(--cor-texto); border-color: #9b9ba3; background: var(--cor-fundo-suave); }
-.atalho:hover .atalho-ic, .atalho:focus-visible .atalho-ic { color: var(--cor-primaria); }
+.atalho:hover .atalho-ic, .atalho:focus-visible .atalho-ic { color: var(--cor-primaria-escura); }
 .atalho:active { background: var(--cor-cinza-claro); }
-.atalho-ic { display: grid; place-items: center; flex: none; width: 3.5rem; height: 3.5rem; color: var(--cor-texto-suave); background: var(--cor-cinza-claro); transition: color 0.15s; border-radius: 1.125rem; }
+.atalho-ic { display: grid; place-items: center; flex: none; width: 3.5rem; height: 3.5rem; color: var(--cor-primaria); background: var(--cor-cinza-claro); transition: color 0.15s; border-radius: 1.125rem; }
 .atalho-ic .icone { width: 1.875rem; height: 1.875rem; }
 .atalho-texto { display: flex; flex-direction: column; min-width: 0; }
 .atalho-texto strong { font-size: var(--texto-lg); font-weight: 800; }

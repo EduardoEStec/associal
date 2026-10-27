@@ -40,8 +40,8 @@
   color: inherit; text-decoration: none; min-height: 6.875rem;
 }
 .card-atalho:hover { border-color: #9b9ba3; color: inherit; }
-.card-atalho .icone { color: var(--cor-texto-suave); }
-.card-atalho:hover .icone { color: var(--cor-primaria); }
+.card-atalho .icone { color: var(--cor-primaria); }
+.card-atalho:hover .icone { color: var(--cor-primaria-escura); }
 .card-atalho strong { font-size: var(--texto-lg); }
 .card-vazio { text-align: center; color: var(--cor-texto-suave); padding: var(--esp-6) var(--esp-4); }
 
