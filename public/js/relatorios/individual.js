@@ -1,4 +1,5 @@
-// Relatório Individual Familiar: escolher a família → editar os textos → gerar .docx.
+// Relatório Final Familiar (modelo oficial 4): escolher a família → editar os textos → gerar .docx.
+// Também baixa os questionários inicial e final (modelos oficiais 1 e 3) para impressão e assinatura.
 import { api } from '../api.js';
 import { h, toast, carregando, formatarData, comEspera } from '../ui.js';
 import { icone } from '../layout.js';
@@ -92,7 +93,6 @@ export function montarIndividual(raiz, opcoes) {
 
     const ident = previa.identificacao;
     const campos = {
-      nome: campoLinha('Nome (identificação da família)', { valor: ident.nome, nome: 'nome' }),
       responsavel: campoLinha('Responsável familiar', { valor: ident.responsavel, nome: 'responsavel' }),
       cpf: campoLinha('CPF', { valor: ident.cpf, nome: 'cpf', max: 20 }),
       nis: campoLinha('Nº CadÚnico', { valor: ident.nis, nome: 'nis', max: 20 }),
@@ -103,7 +103,19 @@ export function montarIndividual(raiz, opcoes) {
     const local = campoLinha('Local', { valor: previa.local, nome: 'local', max: 80 });
     const data = campoLinha('Data do relatório', { valor: previa.data, tipo: 'date', nome: 'data' });
 
-    const gerar = h('button', { type: 'button', class: 'btn' }, 'Gerar .docx');
+    const gerar = h('button', { type: 'button', class: 'btn' }, 'Gerar relatório final (.docx)');
+    const baixarQuestionario = (tipo, botao) => comEspera(botao, async () => {
+      try {
+        const nome = await baixarArquivo(`/api/relatorios/formulario/${id}/${tipo}`);
+        toast.sucesso(`Documento gerado: ${nome}`);
+      } catch (e) {
+        toast.erro(mensagemErro(e));
+      }
+    });
+    const botaoInicial = h('button', { type: 'button', class: 'btn btn-secundario' }, 'Questionário inicial (.docx)');
+    const botaoFinal = h('button', { type: 'button', class: 'btn btn-secundario' }, 'Questionário final (.docx)');
+    botaoInicial.addEventListener('click', () => baixarQuestionario('INICIAL', botaoInicial));
+    botaoFinal.addEventListener('click', () => baixarQuestionario('FINAL', botaoFinal));
     gerar.addEventListener('click', () => comEspera(gerar, async () => {
       try {
         const nome = await baixarArquivo(`/api/relatorios/individual/${id}`, {
@@ -126,8 +138,10 @@ export function montarIndividual(raiz, opcoes) {
         h('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', onclick: () => { history.replaceState(null, '', location.pathname); mostrarLista(); } }, '← Escolher outra família')),
       h('div', { class: 'card' },
         h('h2', { class: 'rel-passo-titulo' }, `2. Revise o relatório — ${previa.acompanhamento.unidadeNome}`),
-        h('p', { class: 'texto-pequeno' }, 'Os textos abaixo foram preenchidos com os dados dos questionários. Edite o que for necessário antes de gerar o documento.'),
-        previa.avisos.map((a) => h('div', { class: 'aviso aviso-aviso rel-aviso-item' }, a))),
+        h('p', { class: 'texto-pequeno' }, 'Os textos abaixo foram preenchidos com os dados dos questionários e dos registros de acompanhamento. Edite o que for necessário antes de gerar o documento.'),
+        previa.avisos.map((a) => h('div', { class: 'aviso aviso-aviso rel-aviso-item' }, a)),
+        h('div', { class: 'linha' },
+          h('span', { class: 'texto-pequeno texto-suave' }, 'Para imprimir e assinar (preenchidos ou em branco):'), botaoInicial, botaoFinal)),
       h('fieldset', { class: 'secao' }, h('legend', {}, 'Identificação'),
         h('div', { class: 'grade grade-2' }, Object.values(campos).map((c) => c.elemento))),
       ...SECOES.map(([chave]) => textos[chave].elemento),

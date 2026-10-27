@@ -29,8 +29,23 @@ const paramData = (v) => [tipos.Date, v ?? null];
 // Validação (pura, exportada para teste)
 // ---------------------------------------------------------------------------
 
-// `tiposAtivos`: [{ id, nome, exigeTexto }]. Devolve { dados, erros }.
-function validarRegistro(corpo, { hoje, dataInicio, tiposAtivos }) {
+const MAX_RESUMO = 2000;
+const MAX_ORIENTACOES = 20;
+
+// Mês de referência do registro (modelo oficial 2): aceita "AAAA-MM" ou "AAAA-MM-DD" e devolve o dia 1 do mês.
+// undefined = não informado; null = em branco; 'AAAA-MM-01'; false = inválido.
+function normalizarMes(valor) {
+  if (valor === undefined) return undefined;
+  if (valor === null || valor === '') return null;
+  const m = /^(\d{4})-(\d{2})(?:-\d{2})?$/.exec(String(valor).trim());
+  if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return false;
+  return `${m[1]}-${m[2]}-01`;
+}
+
+// `tiposAtivos`: [{ id, nome, exigeTexto }]. `usosAtivos` ([{ id }]) e `orientacoesAtivas` ([{ id, exigeTexto }]) só são
+// conferidos quando o corpo traz o campo (campo ausente = não mexe no que já está gravado: `undefined` em `dados`).
+// Devolve { dados, erros }.
+function validarRegistro(corpo, { hoje, dataInicio, tiposAtivos, usosAtivos = [], orientacoesAtivas = [] }) {
   const problemas = {};
 
   let dataRegistro = normalizarData(corpo.dataRegistro || hoje);
@@ -59,18 +74,62 @@ function validarRegistro(corpo, { hoje, dataInicio, tiposAtivos }) {
     if (!SITUACOES.includes(situacao)) { problemas.situacao = 'Escolha como a família está.'; situacao = null; }
   }
 
-  const resumo = texto(corpo.resumo, 1000);
-  if (houveContato === true && !resumo) problemas.resumo = 'Escreva um resumo curto do contato.';
-  if (corpo.resumo && String(corpo.resumo).trim().length > 1000) problemas.resumo = 'Use no máximo 1000 caracteres.';
+  const resumo = texto(corpo.resumo, MAX_RESUMO);
+  if (houveContato === true && !resumo) problemas.resumo = 'Escreva as observações do profissional sobre o contato.';
+  if (corpo.resumo && String(corpo.resumo).trim().length > MAX_RESUMO) problemas.resumo = `Use no máximo ${MAX_RESUMO} caracteres.`;
 
   let proximoContatoEm = normalizarData(corpo.proximoContatoEm);
   if (proximoContatoEm === undefined) { problemas.proximoContatoEm = 'Informe uma data válida.'; proximoContatoEm = null; }
   else if (proximoContatoEm && proximoContatoEm < dataRegistro) problemas.proximoContatoEm = 'O próximo contato não pode ser antes do contato registrado.';
 
+  // mês de referência: não pode ser futuro nem anterior ao mês do início do acompanhamento
+  let mesReferencia = normalizarMes(corpo.mesReferencia);
+  if (mesReferencia === false) { problemas.mesReferencia = 'Informe o mês de referência (mês e ano).'; mesReferencia = undefined; }
+  else if (mesReferencia && mesReferencia > `${hoje.slice(0, 7)}-01`) problemas.mesReferencia = 'O mês de referência não pode ser futuro.';
+  else if (mesReferencia && dataInicio && mesReferencia < `${dataInicio.slice(0, 7)}-01`) problemas.mesReferencia = 'O mês não pode ser anterior ao início do acompanhamento.';
+
+  // uso do Armazém (lista de apoio)
+  let usoArmazemId;
+  if (corpo.usoArmazemId !== undefined) {
+    if (corpo.usoArmazemId === null || corpo.usoArmazemId === '' || houveContato === false) usoArmazemId = null;
+    else {
+      usoArmazemId = inteiroPositivo(corpo.usoArmazemId);
+      if (!usoArmazemId || !usosAtivos.some((u) => u.id === usoArmazemId)) { problemas.usoArmazemId = 'Escolha uma das opções de uso do Armazém.'; usoArmazemId = undefined; }
+    }
+  }
+
+  // orientações e encaminhamentos (várias; "Outros" pede o texto)
+  let orientacaoIds;
+  let orientacaoOutro;
+  if (corpo.orientacaoIds !== undefined) {
+    const brutos = corpo.orientacaoIds === null ? [] : corpo.orientacaoIds;
+    if (!Array.isArray(brutos) || brutos.length > MAX_ORIENTACOES) problemas.orientacaoIds = 'Seleção inválida.';
+    else {
+      const ids = [...new Set(brutos.map(inteiroPositivo))];
+      if (ids.includes(null) || ids.some((id) => !orientacoesAtivas.some((o) => o.id === id))) problemas.orientacaoIds = 'Escolha apenas opções da lista.';
+      else {
+        orientacaoIds = houveContato === false ? [] : ids;
+        orientacaoOutro = texto(corpo.orientacaoOutro, 200);
+        const pedeTexto = orientacaoIds.some((id) => orientacoesAtivas.find((o) => o.id === id)?.exigeTexto);
+        if (pedeTexto && !orientacaoOutro) problemas.orientacaoOutro = 'Descreva a outra orientação ou encaminhamento.';
+        if (!pedeTexto) orientacaoOutro = null;
+      }
+    }
+  }
+
+  let familiaAceitaFoto;
+  if (corpo.familiaAceitaFoto !== undefined) {
+    const v = corpo.familiaAceitaFoto;
+    if (v === true || v === 'true' || v === 1) familiaAceitaFoto = true;
+    else if (v === false || v === 'false' || v === 0 || v === null) familiaAceitaFoto = false;
+    else problemas.familiaAceitaFoto = 'Informe se a família aceitou fotos.';
+  }
+
   return {
     erros: problemas,
     dados: {
       dataRegistro, tipoContatoId, tipoContatoOutro, houveContato: houveContato === true, situacao, resumo, proximoContatoEm,
+      mesReferencia, usoArmazemId, orientacaoIds, orientacaoOutro, familiaAceitaFoto,
     },
   };
 }
@@ -79,13 +138,37 @@ async function tiposContatoAtivos(executor = { consultar }) {
   return executor.consultar('SELECT id, nome, exige_texto FROM tipo_contato WHERE ativo = 1 ORDER BY ordem, nome');
 }
 
+// Listas de apoio do formulário (só as ativas): uso do Armazém, orientações/encaminhamentos e frases-sugestão. Uma consulta só.
+async function apoiosDoRegistro(executor = { consultar }) {
+  const linhas = await executor.consultar(
+    `SELECT 'USO' AS lista, id, nome, exige_texto, ordem FROM uso_armazem WHERE ativo = 1
+     UNION ALL SELECT 'ORI', id, nome, exige_texto, ordem FROM orientacao_registro WHERE ativo = 1
+     UNION ALL SELECT 'FRA', id, nome, exige_texto, ordem FROM frase_registro WHERE ativo = 1
+     ORDER BY lista, ordem, nome`);
+  const de = (lista) => linhas.filter((l) => l.lista === lista).map((l) => ({ id: l.id, nome: l.nome, exigeTexto: !!l.exigeTexto }));
+  return { usosArmazem: de('USO'), orientacoes: de('ORI'), frases: de('FRA') };
+}
+
 // ---------------------------------------------------------------------------
 // Leitura
 // ---------------------------------------------------------------------------
 
-const formatarRegistro = (req, r, metasDoRegistro = []) => ({
+const lerJson = (valor) => {
+  try { return valor ? JSON.parse(valor) : []; } catch { return []; }
+};
+
+const formatarRegistro = (req, r, metasDoRegistro = [], acompanhamentoId = null) => ({
   id: r.id,
   dataRegistro: r.dataRegistro,
+  mesReferencia: r.mesReferencia ? isoData(r.mesReferencia) : (r.dataRegistro ? `${isoData(r.dataRegistro).slice(0, 7)}-01` : null),
+  usoArmazem: r.usoArmazemId ? { id: r.usoArmazemId, nome: r.usoArmazemNome } : null,
+  orientacoes: lerJson(r.orientacoesJson).map((o) => ({ id: o.id, nome: o.nome, exigeTexto: !!o.exige_texto })),
+  orientacaoOutro: r.orientacaoOutro ?? null,
+  familiaAceitaFoto: !!r.familiaAceitaFoto,
+  fotos: lerJson(r.fotosJson).map((f) => ({
+    id: f.id, legenda: f.legenda ?? null, dataFoto: f.data_foto,
+    url: `/api/familias/acompanhamentos/${acompanhamentoId}/registros/${r.id}/fotos/${f.id}`,
+  })),
   tipoContatoId: r.tipoContatoId,
   tipoContato: r.tipoContatoNome,
   tipoContatoOutro: r.tipoContatoOutro,
@@ -104,20 +187,27 @@ const formatarRegistro = (req, r, metasDoRegistro = []) => ({
 async function listarRegistros(req, acompanhamentoId) {
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
   const hoje = familias.hojeIso();
-  const [config, linhas, tiposContato, metasPorReg] = await Promise.all([
+  const [config, linhas, tiposContato, metasPorReg, apoios] = await Promise.all([
     familias.lerConfiguracao(),
     consultar(
       `SELECT r.id, r.data_registro, r.tipo_contato_id, tc.nome AS tipo_contato_nome, r.tipo_contato_outro, r.houve_contato,
-              r.situacao, r.resumo, r.proximo_contato_em, r.usuario_id, u.nome AS autor_nome, r.criado_em, r.alterado_em
+              r.situacao, r.resumo, r.proximo_contato_em, r.usuario_id, u.nome AS autor_nome, r.criado_em, r.alterado_em,
+              r.mes_referencia, r.uso_armazem_id, ua.nome AS uso_armazem_nome, r.orientacao_outro, r.familia_aceita_foto,
+              (SELECT o.id, o.nome, o.exige_texto FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+                WHERE ro.registro_id = r.id ORDER BY o.ordem, o.nome FOR JSON PATH) AS orientacoes_json,
+              (SELECT f.id, f.legenda, CONVERT(VARCHAR(10), f.data_foto, 23) AS data_foto FROM acompanhamento_registro_foto f
+                WHERE f.registro_id = r.id ORDER BY f.data_foto, f.ordem, f.id FOR JSON PATH) AS fotos_json
          FROM acompanhamento_registro r
          JOIN tipo_contato tc ON tc.id = r.tipo_contato_id
          JOIN usuario u ON u.id = r.usuario_id
+         LEFT JOIN uso_armazem ua ON ua.id = r.uso_armazem_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL
         ORDER BY r.data_registro DESC, r.id DESC`,
       { id: ac.id },
     ),
     tiposContatoAtivos(),
     metas.metasPorRegistro(ac.id),
+    apoiosDoRegistro(),
   ]);
   return {
     acompanhamentoId: ac.id,
@@ -125,7 +215,8 @@ async function listarRegistros(req, acompanhamentoId) {
     semContatoDias: config.semContatoDias,
     resumo: await contato.lerResumoContato(ac, hoje, config.semContatoDias),
     tiposContato: tiposContato.map((t) => ({ id: t.id, nome: t.nome, exigeTexto: !!t.exigeTexto })),
-    registros: linhas.map((r) => formatarRegistro(req, r, metasPorReg.get(r.id) || [])),
+    ...apoios,
+    registros: linhas.map((r) => formatarRegistro(req, r, metasPorReg.get(r.id) || [], ac.id)),
   };
 }
 
@@ -137,7 +228,7 @@ async function carregarRegistro(executor, acId, registroId) {
   const id = inteiroPositivo(registroId);
   if (!id) throw erros.naoEncontrado('Registro não encontrado.');
   const r = await executor.consultarUm(
-    `SELECT id, acompanhamento_id, usuario_id, anulado_em FROM acompanhamento_registro
+    `SELECT id, acompanhamento_id, usuario_id, anulado_em, data_registro, familia_aceita_foto FROM acompanhamento_registro
       WHERE id = @id AND acompanhamento_id = @ac`,
     { id, ac: acId },
   );
@@ -151,28 +242,40 @@ function exigirAutorOuCoordenacao(req, registro) {
   }
 }
 
+async function gravarOrientacoes(tx, registroId, ids) {
+  await tx.consultar('DELETE FROM acompanhamento_registro_orientacao WHERE registro_id = @id', { id: registroId });
+  for (const orientacaoId of ids) {
+    await tx.consultar('INSERT INTO acompanhamento_registro_orientacao (registro_id, orientacao_id) VALUES (@r, @o)', { r: registroId, o: orientacaoId });
+  }
+}
+
 async function criarRegistro(req, acompanhamentoId, corpo) {
   const hoje = familias.hojeIso();
   const id = await transacao(async (tx) => {
     const ac = await familias.carregarAcompanhamento(req, acompanhamentoId, tx, { travar: true });
     familias.exigirEmAndamento(ac);
+    const apoios = (corpo.usoArmazemId !== undefined || corpo.orientacaoIds !== undefined) ? await apoiosDoRegistro(tx) : {};
     const { dados, erros: problemas } = validarRegistro(corpo, {
       hoje, dataInicio: isoData(ac.dataInicio), tiposAtivos: (await tiposContatoAtivos(tx)).map((t) => ({ id: t.id, exigeTexto: !!t.exigeTexto })),
+      usosAtivos: apoios.usosArmazem, orientacoesAtivas: apoios.orientacoes,
     });
     const marcadas = metasRegras.validarMetasDoRegistro(corpo.metas, { houveContato: dados.houveContato, abertas: await metas.metasMarcaveis(tx, ac.id) });
     lancarSeErros({ ...problemas, ...marcadas.erros });
     const [novo] = await tx.consultar(
       `INSERT INTO acompanhamento_registro
          (acompanhamento_id, usuario_id, data_registro, tipo_contato_id, tipo_contato_outro, houve_contato, situacao,
-          resumo, proximo_contato_em, criado_por)
+          resumo, proximo_contato_em, mes_referencia, uso_armazem_id, orientacao_outro, familia_aceita_foto, criado_por)
        OUTPUT INSERTED.id
-       VALUES (@ac, @usuario, @data, @tipo, @outro, @houve, @situacao, @resumo, @proximo, @usuario)`,
+       VALUES (@ac, @usuario, @data, @tipo, @outro, @houve, @situacao, @resumo, @proximo, @mes, @uso, @orientacaoOutro, @aceitaFoto, @usuario)`,
       {
         ac: ac.id, usuario: req.usuario.id, data: paramData(dados.dataRegistro), tipo: dados.tipoContatoId,
         outro: dados.tipoContatoOutro, houve: dados.houveContato, situacao: dados.situacao, resumo: dados.resumo,
         proximo: paramData(dados.proximoContatoEm),
+        mes: paramData(dados.mesReferencia || `${dados.dataRegistro.slice(0, 7)}-01`), uso: dados.usoArmazemId ?? null,
+        orientacaoOutro: dados.orientacaoOutro ?? null, aceitaFoto: dados.familiaAceitaFoto === true,
       },
     );
+    if (dados.orientacaoIds?.length) await gravarOrientacoes(tx, novo.id, dados.orientacaoIds);
     if (marcadas.itens.length) await metas.gravarMetasDoRegistro(tx, novo.id, marcadas.itens);
     await registrarAuditoria(req, 'CRIAR', 'acompanhamento_registro', novo.id,
       { acompanhamentoId: ac.id, houveContato: dados.houveContato, situacao: dados.situacao, metas: marcadas.itens.length }, tx);
@@ -194,25 +297,51 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
       'SELECT tc.id, tc.exige_texto FROM acompanhamento_registro r JOIN tipo_contato tc ON tc.id = r.tipo_contato_id WHERE r.id = @id',
       { id: registro.id });
     if (atual && !ativos.some((t) => t.id === atual.id)) ativos.push({ id: atual.id, exigeTexto: !!atual.exigeTexto });
-    const { dados, erros: problemas } = validarRegistro(corpo, { hoje, dataInicio: isoData(ac.dataInicio), tiposAtivos: ativos });
+    // usos/orientações já gravados neste registro continuam aceitos mesmo se a coordenação os desativou depois
+    let apoios = {};
+    if (corpo.usoArmazemId !== undefined || corpo.orientacaoIds !== undefined) {
+      apoios = await apoiosDoRegistro(tx);
+      const gravado = await tx.consultarUm('SELECT uso_armazem_id FROM acompanhamento_registro WHERE id = @id', { id: registro.id });
+      if (gravado?.usoArmazemId && !apoios.usosArmazem.some((u) => u.id === gravado.usoArmazemId)) apoios.usosArmazem.push({ id: gravado.usoArmazemId });
+      const antigas = await tx.consultar(
+        `SELECT o.id, o.exige_texto FROM acompanhamento_registro_orientacao ro
+           JOIN orientacao_registro o ON o.id = ro.orientacao_id WHERE ro.registro_id = @id`, { id: registro.id });
+      for (const o of antigas) if (!apoios.orientacoes.some((x) => x.id === o.id)) apoios.orientacoes.push({ id: o.id, exigeTexto: !!o.exigeTexto });
+    }
+    const { dados, erros: problemas } = validarRegistro(corpo, {
+      hoje, dataInicio: isoData(ac.dataInicio), tiposAtivos: ativos, usosAtivos: apoios.usosArmazem, orientacoesAtivas: apoios.orientacoes,
+    });
+    // não dá para desmarcar "a família aceitou fotos" com fotos já anexadas
+    if (dados.familiaAceitaFoto === false) {
+      const fotos = await tx.consultarUm('SELECT COUNT(*) AS n FROM acompanhamento_registro_foto WHERE registro_id = @id', { id: registro.id });
+      if (fotos && fotos.n > 0) problemas.familiaAceitaFoto = 'Remova as fotos deste registro antes de desmarcar o aceite da família.';
+    }
     // metas: só mexe nelas se vierem no corpo (ou se virou tentativa sem contato, que não marca metas)
     const mexeEmMetas = corpo.metas !== undefined || !dados.houveContato;
     const marcadas = mexeEmMetas
       ? metasRegras.validarMetasDoRegistro(corpo.metas ?? [], { houveContato: dados.houveContato, abertas: await metas.metasMarcaveis(tx, ac.id, registro.id) })
       : { erros: {}, itens: [] };
     lancarSeErros({ ...problemas, ...marcadas.erros });
+    // campos do modelo 2: só mexe nos que vieram no corpo (ausente = mantém); sem contato limpa uso e orientações
+    const extra = [];
+    const paramsExtra = {};
+    if (dados.mesReferencia !== undefined) { extra.push('mes_referencia = @mes'); paramsExtra.mes = paramData(dados.mesReferencia || `${dados.dataRegistro.slice(0, 7)}-01`); }
+    if (dados.usoArmazemId !== undefined) { extra.push('uso_armazem_id = @uso'); paramsExtra.uso = dados.usoArmazemId; }
+    if (dados.orientacaoIds !== undefined) { extra.push('orientacao_outro = @orientacaoOutro'); paramsExtra.orientacaoOutro = dados.orientacaoOutro ?? null; }
+    if (dados.familiaAceitaFoto !== undefined) { extra.push('familia_aceita_foto = @aceitaFoto'); paramsExtra.aceitaFoto = dados.familiaAceitaFoto; }
     await tx.consultar(
       `UPDATE acompanhamento_registro
           SET data_registro = @data, tipo_contato_id = @tipo, tipo_contato_outro = @outro, houve_contato = @houve,
-              situacao = @situacao, resumo = @resumo, proximo_contato_em = @proximo,
+              situacao = @situacao, resumo = @resumo, proximo_contato_em = @proximo${extra.map((e) => `, ${e}`).join('')},
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
       {
         id: registro.id, usuario: req.usuario.id, data: paramData(dados.dataRegistro), tipo: dados.tipoContatoId,
         outro: dados.tipoContatoOutro, houve: dados.houveContato, situacao: dados.situacao, resumo: dados.resumo,
-        proximo: paramData(dados.proximoContatoEm),
+        proximo: paramData(dados.proximoContatoEm), ...paramsExtra,
       },
     );
+    if (dados.orientacaoIds !== undefined) await gravarOrientacoes(tx, registro.id, dados.orientacaoIds);
     if (mexeEmMetas) await metas.gravarMetasDoRegistro(tx, registro.id, marcadas.itens);
     await registrarAuditoria(req, 'ALTERAR', 'acompanhamento_registro', registro.id, { acompanhamentoId: ac.id }, tx);
   });
@@ -276,7 +405,10 @@ function montarEventos({ ac, hoje, registros, atendimentos, questionarios, famil
       tipo: 'REGISTRO', data: isoData(r.dataRegistro), momento: new Date(r.criadoEm).toISOString(),
       titulo: r.houveContato ? `Contato: ${quem}` : `Tentativa sem sucesso: ${quem}`,
       detalhe: r.houveContato
-        ? ((r.metasTratadas || []).length ? `Metas: ${r.metasTratadas.map((m) => `${m.descricao} (${ROTULO_AVANCO[m.avanco]})`).join('; ')}` : null)
+        ? ([r.usoArmazemNome && `Armazém: ${r.usoArmazemNome.toLowerCase()}`,
+          r.orientacoesTexto && `Orientações: ${r.orientacoesTexto}`,
+          (r.metasTratadas || []).length ? `Metas: ${r.metasTratadas.map((m) => `${m.descricao} (${ROTULO_AVANCO[m.avanco]})`).join('; ')}` : null,
+        ].filter(Boolean).join(' · ') || null)
         : 'Não foi possível falar com a família.', // a situação aparece no selo
       resumo: txt(r.resumo), autor: r.autorNome,
       situacao: r.houveContato ? r.situacao : null,
@@ -392,10 +524,14 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
   const [registros, atendimentos, questionarios, assistente, pesquisas, metasAc, metasPorReg] = await Promise.all([
     consultar(
       `SELECT r.id, r.data_registro, r.tipo_contato_outro, tc.nome AS tipo_contato_nome, r.houve_contato, r.situacao, r.resumo,
-              r.proximo_contato_em, u.nome AS autor_nome, r.criado_em
+              r.proximo_contato_em, u.nome AS autor_nome, r.criado_em, ua.nome AS uso_armazem_nome,
+              (SELECT STRING_AGG(o.nome, N', ') WITHIN GROUP (ORDER BY o.ordem, o.nome)
+                 FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+                WHERE ro.registro_id = r.id) AS orientacoes_texto
          FROM acompanhamento_registro r
          JOIN tipo_contato tc ON tc.id = r.tipo_contato_id
          JOIN usuario u ON u.id = r.usuario_id
+         LEFT JOIN uso_armazem ua ON ua.id = r.uso_armazem_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL`,
       { id: ac.id }),
     // atendimentos do RESPONSÁVEL (membros não são "pessoa"), apenas de unidades que o usuário pode ver
@@ -440,7 +576,12 @@ module.exports = {
   atualizarRegistro,
   anularRegistro,
   linhaDoTempo,
+  // usados pelas fotos do registro e pelo relatório do registro periódico
+  carregarRegistro,
+  exigirAutorOuCoordenacao,
+  apoiosDoRegistro,
   // exportados para testes
   validarRegistro,
+  normalizarMes,
   montarEventos,
 };

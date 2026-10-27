@@ -7,6 +7,9 @@ const { consultar, tipos } = require('../db');
 const { carregarAcompanhamento, hojeIso } = require('./familias');
 const { montarRespostas } = require('./questionario');
 const regras = require('./indice-progresso');
+const extras = require('./extras');
+const { formularioDoTipo } = require('./modelos-m1');
+const catalogo = require('./catalogo');
 
 const isoData = (v) => (v ? new Date(v).toISOString().slice(0, 10) : null);
 const DIMENSOES_GRAVADAS = ['GERAL', ...regras.DIMENSOES];
@@ -24,6 +27,14 @@ async function lerParametros(executor = { consultar }) {
   };
 }
 
+// Respostas de um questionário (linha de dbo.questionario) no formato que o cálculo espera:
+// LEGADO -> campos das colunas fixas; M1 -> { modelo: 'M1', mapa: { "<código>": resposta } } lido de dbo.resposta_extra.
+async function respostasDoQuestionario(executor, q) {
+  if (q.modelo !== 'M1') return montarRespostas(q);
+  const { mapa } = await extras.carregarRespostas(executor, formularioDoTipo(q.tipo), q.id);
+  return { modelo: 'M1', mapa };
+}
+
 // Calcula e grava (substituindo) o instantâneo de UM questionário concluído. `executor`: transação ou { consultar }.
 // `respostas`: campos do questionário (a mesma forma de montarRespostas).
 async function gravarInstantaneo(executor, { acompanhamentoId, questionarioId, tipo, dataRef, respostas }) {
@@ -33,7 +44,7 @@ async function gravarInstantaneo(executor, { acompanhamentoId, questionarioId, t
   const parametros = JSON.stringify(calc.parametros);
   for (const dim of DIMENSOES_GRAVADAS) {
     const d = dim === 'GERAL'
-      ? { nivel: calc.geral.nivel, itensValidos: calc.geral.dimensoes, itensTotal: regras.DIMENSOES.length }
+      ? { nivel: calc.geral.nivel, itensValidos: calc.geral.dimensoes, itensTotal: calc.geral.dimensoesTotal ?? regras.DIMENSOES.length }
       : calc.dimensoes[dim];
     await executor.consultar(
       `INSERT INTO acompanhamento_indice (acompanhamento_id, questionario_id, tipo, data_ref, dimensao, nivel, itens_validos, itens_total, versao_regra, parametros)
@@ -49,10 +60,12 @@ async function gravarInstantaneo(executor, { acompanhamentoId, questionarioId, t
 
 // Refaz o instantâneo de todos os questionários concluídos (script de recálculo e testes). Devolve a quantidade.
 async function recalcularTodos(executor = { consultar }) {
+  await catalogo.carregar(); // fora do servidor (script, teste) o catálogo em memória ainda não foi carregado: as respostas M1 dependem dele
   const linhas = await executor.consultar('SELECT * FROM questionario WHERE concluido = 1 ORDER BY id');
   for (const q of linhas) {
     await gravarInstantaneo(executor, {
-      acompanhamentoId: q.acompanhamentoId, questionarioId: q.id, tipo: q.tipo, dataRef: isoData(q.dataAplicacao), respostas: montarRespostas(q),
+      acompanhamentoId: q.acompanhamentoId, questionarioId: q.id, tipo: q.tipo, dataRef: isoData(q.dataAplicacao),
+      respostas: await respostasDoQuestionario(executor, q),
     });
   }
   return linhas.length;
@@ -86,20 +99,23 @@ async function obterIndicadores(req, acompanhamentoId) {
     ? await consultar('SELECT * FROM acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: ac.id })
     : [];
 
-  const pontos = concluidos.map((q) => {
+  const pontos = [];
+  for (const q of concluidos) {
     const linhas = instantaneo.filter((l) => l.questionarioId === q.id);
     if (linhas.length === DIMENSOES_GRAVADAS.length) {
       const p = pontoDeLinhas(q, linhas);
-      return { ...p, desatualizado: p.versaoRegra !== regras.VERSAO_REGRA };
+      pontos.push({ ...p, modelo: q.modelo, desatualizado: p.versaoRegra !== regras.versaoDoModelo(q.modelo) });
+      continue;
     }
     // questionário concluído antes da F5 e ainda sem instantâneo: calcula na hora (o script de recálculo grava)
-    const calc = regras.calcularIndice(montarRespostas(q), { tipo: q.tipo, salarioMinimo: params.salarioMinimo });
-    return {
+    const calc = regras.calcularIndice(await respostasDoQuestionario({ consultar }, q), { tipo: q.tipo, salarioMinimo: params.salarioMinimo });
+    pontos.push({
+      modelo: q.modelo,
       questionarioId: q.id, tipo: q.tipo, dataRef: isoData(q.dataAplicacao), versaoRegra: calc.versaoRegra,
       dimensoes: Object.fromEntries(regras.DIMENSOES.map((d) => [d, { nivel: calc.dimensoes[d].nivel, itensValidos: calc.dimensoes[d].itensValidos, itensTotal: calc.dimensoes[d].itensTotal }])),
       geral: calc.geral, parametros: calc.parametros, desatualizado: false, calculadoAgora: true,
-    };
-  });
+    });
+  }
 
   const evolucao = regras.montarEvolucao(pontos, params.tolerancia);
 

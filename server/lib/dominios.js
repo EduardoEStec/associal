@@ -31,7 +31,7 @@ const QUESTIONARIO = Object.freeze({
 const TABELAS_APOIO = Object.freeze([
   'demanda', 'encaminhamento', 'vulnerabilidade', 'escolaridade', 'raca', 'genero',
   'faixa_etaria', 'nivel_vulnerabilidade', 'tema', 'tipo_acao', 'beneficio', 'destino_economia',
-  'tipo_contato',
+  'tipo_contato', 'uso_armazem', 'orientacao_registro', 'frase_registro',
 ]);
 
 module.exports = {

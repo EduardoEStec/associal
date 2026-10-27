@@ -1,22 +1,19 @@
 // Aba "Acompanhamento" da ficha: resumo de contato, formulário curto de registro e lista de registros.
 import { api, ErroApi } from '../api.js';
 import { icone } from '../layout.js';
-import { h, toast, abrirModal, formatarData, mostrarErrosCampos, hojeIso } from '../ui.js';
+import { h, toast, abrirModal, formatarData, mostrarErrosCampos } from '../ui.js';
 import { campo, textoOuTraco, ehCoordenacao } from './util.js';
+import { abrirFormularioRegistro, ROTULO_SITUACAO } from './registro-form.js';
+import { galeriaRegistro } from './registro-fotos.js';
+import { abrirRegistroPeriodico } from './registro-periodico.js';
 import { ROTULO_MOMENTO, ROTULO_LIKERT, ROTULO_MODO } from './pesquisa.js';
 import { cartaoMetas, blocoMetasDoRegistro, seloAvanco } from './metas.js';
 
-export const ROTULO_SITUACAO = { MELHORANDO: 'Melhorando', IGUAL: 'Igual', PIORANDO: 'Piorando', NAO_SEI: 'Sem avaliação' };
+export { ROTULO_SITUACAO };
 const CLASSE_SITUACAO = { MELHORANDO: 'badge-sucesso', IGUAL: 'badge-info', PIORANDO: 'badge-perigo', NAO_SEI: 'badge' };
 const ICONE_SITUACAO = { MELHORANDO: 'subir', IGUAL: 'igual', PIORANDO: 'descer', NAO_SEI: null };
 
 const pluralDias = (n) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
-
-function somarDias(iso, dias) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return d.toISOString().slice(0, 10);
-}
 
 // Ícone + palavra: o significado não depende só da cor.
 export function seloSituacao(situacao) {
@@ -64,11 +61,19 @@ function cartaoRegistro(reg, { escrita, encerrado, editar, anular }) {
   return h('li', { class: 'card fam-registro' },
     h('div', { class: 'fam-registro-topo' },
       h('strong', {}, formatarData(reg.dataRegistro)),
+      reg.mesReferencia ? h('span', { class: 'badge badge-info' }, 'Mês ' + new Date(`${reg.mesReferencia.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })) : null,
       h('span', { class: 'badge' }, quem),
       reg.houveContato
         ? seloSituacao(reg.situacao)
         : h('span', { class: 'badge badge-aviso' }, icone('alerta'), 'Não conseguiu falar')),
+    reg.houveContato && (reg.usoArmazem || reg.orientacoes.length)
+      ? h('dl', { class: 'fam-registro-dados' },
+        reg.usoArmazem ? [h('dt', {}, 'Uso do Armazém'), h('dd', {}, reg.usoArmazem.nome)] : null,
+        reg.orientacoes.length ? [h('dt', {}, 'Orientações e encaminhamentos'),
+          h('dd', {}, [...reg.orientacoes.filter((o) => !o.exigeTexto).map((o) => o.nome), reg.orientacaoOutro ? `Outros: ${reg.orientacaoOutro}` : null].filter(Boolean).join('; '))] : null)
+      : null,
     reg.resumo ? h('p', { class: 'fam-registro-texto' }, reg.resumo) : null,
+    reg.fotos?.length ? galeriaRegistro(reg.fotos) : null,
     (reg.metas || []).length
       ? h('ul', { class: 'meta-tratadas' }, reg.metas.map((x) => h('li', {}, h('span', { class: 'texto-suave' }, `${x.dimensaoNome}: `), x.descricao, ' ', seloAvanco(x.avanco))))
       : null,
@@ -76,111 +81,6 @@ function cartaoRegistro(reg, { escrita, encerrado, editar, anular }) {
       h('span', {}, `Registrado por ${textoOuTraco(reg.autor?.nome)}`),
       reg.proximoContatoEm ? h('span', {}, `Próximo contato: ${formatarData(reg.proximoContatoEm)}`) : null),
     acoes);
-}
-
-// ---- formulário (criar e editar) ----
-
-function opcaoRadio(nome, valor, rotulo, marcado) {
-  const entrada = h('input', { type: 'radio', name: nome, value: valor, checked: marcado });
-  return h('label', { class: 'opcao' }, entrada, h('span', {}, rotulo));
-}
-
-function abrirFormulario({ id, dados, registro, aoSalvar }) {
-  const editando = !!registro;
-  const form = h('form', { class: 'fam-form-registro', novalidate: true });
-  const hoje = hojeIso();
-
-  const data = h('input', { class: 'input', type: 'date', id: 'rg-data', name: 'dataRegistro', value: registro?.dataRegistro?.slice(0, 10) || hoje, max: hoje, required: true });
-  if (dados.dataInicio) data.min = String(dados.dataInicio).slice(0, 10);
-
-  const tipo = h('select', { class: 'select', id: 'rg-tipo', name: 'tipoContatoId' },
-    h('option', { value: '' }, 'Selecione'),
-    dados.tiposContato.map((t) => h('option', { value: String(t.id), 'data-exige': t.exigeTexto ? '1' : '' }, t.nome)));
-  tipo.value = registro?.tipoContatoId ? String(registro.tipoContatoId) : '';
-  if (editando && tipo.value === '') { // tipo desativado depois do registro: mantém visível
-    tipo.append(h('option', { value: String(registro.tipoContatoId) }, registro.tipoContato));
-    tipo.value = String(registro.tipoContatoId);
-  }
-  const outro = h('input', { class: 'input', type: 'text', id: 'rg-outro', name: 'tipoContatoOutro', maxlength: 200, value: registro?.tipoContatoOutro || '', placeholder: 'Qual?' });
-  const campoOutro = campo({ id: 'rg-outro', rotulo: 'Descreva o tipo de contato', obrigatorio: true, controle: outro });
-  const exigeTexto = () => !!dados.tiposContato.find((t) => String(t.id) === tipo.value)?.exigeTexto
-    || (editando && tipo.value === String(registro.tipoContatoId) && !!registro.tipoContatoOutro);
-  const atualizarOutro = () => { campoOutro.hidden = !exigeTexto(); };
-
-  const houveSim = registro ? registro.houveContato : true;
-  const grupoFalou = h('div', { class: 'opcoes fam-opcoes-linha', role: 'radiogroup', 'aria-labelledby': 'rg-falou-rotulo' },
-    opcaoRadio('houveContato', 'true', 'Sim', houveSim), opcaoRadio('houveContato', 'false', 'Não', !houveSim));
-  const campoFalou = h('div', { class: 'campo' }, h('span', { class: 'rotulo obrigatorio', id: 'rg-falou-rotulo' }, 'Conseguiu falar com a família?'), grupoFalou);
-
-  const grupoSit = h('div', { class: 'opcoes fam-opcoes-linha', role: 'radiogroup', 'aria-labelledby': 'rg-sit-rotulo' },
-    ['MELHORANDO', 'IGUAL', 'PIORANDO', 'NAO_SEI'].map((v) => opcaoRadio('situacao', v, ROTULO_SITUACAO[v], registro?.situacao === v)));
-  const campoSit = h('div', { class: 'campo' }, h('span', { class: 'rotulo obrigatorio', id: 'rg-sit-rotulo' }, 'Como a família está?'), grupoSit);
-
-  const resumo = h('textarea', { class: 'textarea', id: 'rg-resumo', name: 'resumo', maxlength: 1000, rows: 4, value: registro?.resumo || '' });
-  resumo.value = registro?.resumo || '';
-  const contador = h('span', { class: 'ajuda' });
-  const campoResumo = h('div', { class: 'campo' },
-    h('label', { for: 'rg-resumo', class: 'obrigatorio' }, 'Resumo do contato'),
-    resumo, contador,
-    h('span', { class: 'ajuda' }, 'Seja breve. Não registre detalhes de saúde nem de violência neste campo.'));
-  const contar = () => { contador.textContent = `${resumo.value.length} de 1000 caracteres`; };
-  resumo.addEventListener('input', contar);
-
-  const proximo = h('input', { class: 'input', type: 'date', id: 'rg-proximo', name: 'proximoContatoEm',
-    value: editando ? (registro.proximoContatoEm?.slice(0, 10) || '') : somarDias(hoje, dados.semContatoDias) });
-  const campoProximo = campo({ id: 'rg-proximo', rotulo: 'Próximo contato', ajuda: `Sugestão: daqui a ${pluralDias(dados.semContatoDias)}. Deixe em branco se não houver data.`, controle: proximo });
-
-  const blocoMetas = blocoMetasDoRegistro(dados.metas, registro);
-  const atualizarFalou = () => {
-    const sim = form.elements.houveContato.value !== 'false';
-    campoSit.hidden = !sim;
-    blocoMetas.mostrar(sim);
-    campoResumo.querySelector('label').classList.toggle('obrigatorio', sim);
-  };
-
-  form.append(
-    campo({ id: 'rg-data', rotulo: 'Data do contato', obrigatorio: true, controle: data }),
-    campo({ id: 'rg-tipo', rotulo: 'Tipo de contato', obrigatorio: true, controle: tipo }),
-    campoOutro, campoFalou, campoSit, campoResumo, blocoMetas.elemento, campoProximo);
-  form.addEventListener('submit', (e) => e.preventDefault());
-  tipo.addEventListener('change', atualizarOutro);
-  form.addEventListener('change', (e) => { if (e.target.name === 'houveContato') atualizarFalou(); });
-  atualizarOutro(); atualizarFalou(); contar();
-
-  const url = `/api/familias/acompanhamentos/${id}/registros`;
-  abrirModal({
-    titulo: editando ? 'Editar registro de contato' : 'Registrar contato',
-    conteudo: form,
-    botoes: [
-      { texto: 'Cancelar', classe: 'btn btn-secundario' },
-      {
-        texto: 'Salvar',
-        classe: 'btn',
-        acao: async () => {
-          const houve = form.elements.houveContato.value !== 'false';
-          const corpo = {
-            dataRegistro: data.value || undefined,
-            tipoContatoId: tipo.value ? Number(tipo.value) : null,
-            tipoContatoOutro: exigeTexto() ? outro.value.trim() || null : null,
-            houveContato: houve,
-            situacao: houve ? form.elements.situacao.value || null : null,
-            resumo: resumo.value.trim() || null,
-            proximoContatoEm: proximo.value || null,
-            metas: houve ? blocoMetas.valores() : [],
-          };
-          try {
-            if (editando) await api.put(`${url}/${registro.id}`, corpo); else await api.post(url, corpo);
-            toast.sucesso(editando ? 'Registro atualizado.' : 'Contato registrado.');
-            aoSalvar();
-            return true;
-          } catch (e) {
-            if (e instanceof ErroApi && e.status === 400) mostrarErrosCampos(form, e.detalhes); else toast.erro(e.message);
-            return false;
-          }
-        },
-      },
-    ],
-  });
 }
 
 function abrirAnulacao({ id, registro, aoSalvar }) {
@@ -320,11 +220,15 @@ export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNo
   ]);
   const encerrado = d.status !== 'EM_ANDAMENTO';
   const recarregar = () => navegar(`#/a/${id}/acompanhamento`, true);
-  const dados = { dataInicio: d.dataInicio, tiposContato: r.tiposContato, semContatoDias: r.semContatoDias, metas: plano.metas };
-  const novo = () => abrirFormulario({ id, dados, aoSalvar: recarregar });
+  const dados = {
+    dataInicio: d.dataInicio, tiposContato: r.tiposContato, semContatoDias: r.semContatoDias, metas: plano.metas,
+    usosArmazem: r.usosArmazem, orientacoes: r.orientacoes, frases: r.frases,
+  };
+  const novo = () => abrirFormularioRegistro({ id, dados, aoSalvar: recarregar });
 
   // o botão "Registrar contato" fica só no cabeçalho da ficha (detalhe.js), para não repetir
-  const topo = h('div', { class: 'fam-aba-topo' }, h('h2', {}, 'Contatos e visitas'));
+  const topo = h('div', { class: 'fam-aba-topo' }, h('h2', {}, 'Contatos e visitas'),
+    r.registros.length ? h('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', onclick: () => abrirRegistroPeriodico({ id }) }, 'Registro periódico (.docx)') : null);
 
   const lista = r.registros.length === 0
     ? h('div', { class: 'card card-vazio' },
@@ -334,7 +238,7 @@ export async function renderAbaAcompanhamento({ id, d, escrita, navegar, abrirNo
         : 'Registre cada visita, ligação ou conversa com a família. Leva menos de um minuto.'))
     : h('ul', { class: 'fam-registros' }, r.registros.map((reg) => cartaoRegistro(reg, {
       escrita, encerrado,
-      editar: (x) => abrirFormulario({ id, dados, registro: x, aoSalvar: recarregar }),
+      editar: (x) => abrirFormularioRegistro({ id, dados, registro: x, aoSalvar: recarregar }),
       anular: (x) => abrirAnulacao({ id, registro: x, aoSalvar: recarregar }),
     })));
 

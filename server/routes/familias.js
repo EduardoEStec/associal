@@ -9,7 +9,11 @@ const { requirePerfil } = require('../middlewares/auth');
 const familias = require('../services/familias');
 const questionarioDados = require('../services/questionario-dados');
 const { montarModelo } = require('../services/questionario');
+const { montarModeloM1 } = require('../services/questionario-m1');
 const registros = require('../services/acompanhamento-registros');
+const registroFotos = require('../services/acompanhamento-registro-fotos');
+const fotosArquivos = require('../services/acoes-fotos');
+const { erros } = require('../lib/erros');
 const pesquisa = require('../services/pesquisa');
 const metas = require('../services/acompanhamento-metas');
 const indicadores = require('../services/indice-dados');
@@ -21,10 +25,12 @@ const escrita = requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN');
 
 // ----- rotas fixas (antes de /:id) -----
 
-// GET /api/familias/questionario/modelo?tipo=INICIAL|FINAL — perguntas, textos e opções
+// GET /api/familias/questionario/modelo?tipo=INICIAL|REAVALIACAO|FINAL[&modelo=LEGADO] — perguntas, textos e opções.
+// Padrão: modelos oficiais M1 (inicial e final diferentes). `modelo=LEGADO`: formato anterior (só para ler questionários antigos).
 router.get('/questionario/modelo', (req, res) => {
   const tipo = String(req.query.tipo || 'INICIAL').toUpperCase();
-  res.json(montarModelo(['FINAL', 'REAVALIACAO'].includes(tipo) ? tipo : 'INICIAL'));
+  const tipoValido = ['FINAL', 'REAVALIACAO'].includes(tipo) ? tipo : 'INICIAL';
+  res.json(String(req.query.modelo || '').toUpperCase() === 'LEGADO' ? { ...montarModelo(tipoValido), modelo: 'LEGADO' } : montarModeloM1(tipoValido));
 });
 
 // GET /api/familias/comparacao?inicio=&fim=&unidadeId= — consolidado inicial × final
@@ -82,6 +88,41 @@ router.put('/acompanhamentos/:id/registros/:registroId', escrita, async (req, re
 router.post('/acompanhamentos/:id/registros/:registroId/anular', escrita, async (req, res) => {
   await registros.anularRegistro(req, req.params.id, req.params.registroId, req.body || {});
   res.json(await registros.listarRegistros(req, req.params.id));
+});
+
+// ----- fotos do registro (modelo oficial 2: só com o aceite da família, sempre com a data do acompanhamento) -----
+
+// POST multipart: campo "fotos" [até 10]; "legendas" e "datas" opcionais, na mesma ordem
+router.post('/acompanhamentos/:id/registros/:registroId/fotos', escrita, async (req, res, next) => {
+  try { req.envioFoto = await registroFotos.prepararEnvio(req); next(); } catch (e) { next(e); } // 404/409 antes de aceitar arquivos
+}, fotosArquivos.receberFotos, async (req, res) => {
+  const recebidas = req.files || [];
+  try {
+    const fotos = await registroFotos.gravar(req, req.envioFoto, recebidas, req.body);
+    res.status(201).json({ fotos });
+  } catch (e) {
+    recebidas.forEach((f) => fotosArquivos.removerArquivo(f.filename));
+    throw e;
+  }
+});
+
+router.get('/acompanhamentos/:id/registros/:registroId/fotos/:fotoId', async (req, res, next) => {
+  const { foto } = await registroFotos.carregarFoto(req);
+  res.type(foto.mimeType || 'application/octet-stream');
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.sendFile(fotosArquivos.caminhoDe(foto.arquivo), (err) => {
+    if (err) next(err.code === 'ENOENT' ? erros.naoEncontrado('Arquivo da foto não encontrado.') : err);
+  });
+});
+
+router.patch('/acompanhamentos/:id/registros/:registroId/fotos/:fotoId', escrita, async (req, res) => {
+  res.json(await registroFotos.atualizar(req, req.body || {}));
+});
+
+router.delete('/acompanhamentos/:id/registros/:registroId/fotos/:fotoId', escrita, async (req, res) => {
+  await registroFotos.excluir(req);
+  res.status(204).end();
 });
 
 // ----- plano de metas (F4) -----

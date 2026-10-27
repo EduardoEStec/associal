@@ -1,6 +1,6 @@
 'use strict';
 
-// Teste E2E (banco REAL do Docker de teste) da F5: índice de progresso, instantâneo, reavaliação rápida e escopo.
+// Teste E2E (banco REAL do Docker de teste) da F5 sobre os modelos oficiais M1: índice de progresso (regra v2), instantâneo, reavaliação rápida e escopo.
 // Uso:  node tests/familias/indice.e2e.js        (sobe o próprio servidor em TESTE_PORT, padrão 3125)
 // Cria os usuários f5_* e três famílias "Teste F5E2E ..." (CPFs próprios), exercita a API e remove SÓ isso ao final.
 // Não toca no usuário "admin". TRAVA: recusa rodar se o SQL Server não for o container Linux local.
@@ -12,7 +12,7 @@ const bcrypt = require('bcrypt');
 const db = require('../../server/db');
 const familias = require('../../server/services/familias');
 const regras = require('../../server/services/indice-progresso');
-const { montarRespostas } = require('../../server/services/questionario');
+const { corpoInicial, corpoFinal } = require('./m1-dados');
 
 const PORTA = process.env.TESTE_PORT || 3125;
 const BASE = `http://127.0.0.1:${PORTA}`;
@@ -106,28 +106,15 @@ async function esperarServidor() {
 let ok = 0;
 const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${nome}`); };
 
-// Respostas completas do INICIAL (família com renda baixa) e do FINAL (melhorou em tudo)
-const inicial = () => ({
-  dataAplicacao: dias(-60), qtdMembrosFamilia: 4, rendaMensalMedia: 1200, qtdMembrosComRenda: 1, recebeAuxilio: true, beneficioIds: [1],
-  acessoAlimentosInNatura: 'NAO_TINHA', frequenciaFrutasVerduras: 'UMA_DUAS', qualidadeAlimentacao: 'NAO_MELHOROU', saudeNutricional: 'NENHUMA',
-  conseguePoupar: false, economiaMensalFaixa: 'ATE_100', economiaMensalValor: 50, destinoEconomiaIds: [2],
-  capacidadePoupanca: 'NAO_CONSEGUE', gestaoFinanceira: 'SEM_MUDANCA', empoderadaDecisoes: false, melhoriaPlanejamento: false,
-  avaliacaoArmazem: 'BOA', recomendaria: true,
+// Respostas completas do INICIAL (família com renda baixa) e do FINAL (melhorou em tudo) nos modelos oficiais M1
+const inicial = (extra = {}) => corpoInicial(dias(-60), extra);
+const reavaliacao = (extra = {}, dataAplicacao = dias(-30)) => ({
+  dataAplicacao,
+  respostas: { '1.3': 'DE_1001_2000', '2.4': 'TRES_QUATRO', '2.5': 'PARCIALMENTE', '2.6': 'ALGUMAS_VEZES', '2.7': 'NAO', ...extra },
 });
-const reavaliacao = (extra = {}) => ({
-  dataAplicacao: dias(-30), qtdMembrosFamilia: 4, rendaMensalMedia: 1800, qtdMembrosComRenda: 2,
-  acessoAlimentosInNatura: 'SEMANAL_2_3', frequenciaFrutasVerduras: 'TRES_QUATRO',
-  conseguePoupar: true, economiaMensalFaixa: 'DE_101_200', economiaMensalValor: 150, capacidadePoupanca: 'AS_VEZES',
-  empoderadaDecisoes: true, melhoriaPlanejamento: true,
-  ...extra,
-});
-const final = (extra = {}) => ({
-  ...inicial(), dataAplicacao: dias(-1), rendaMensalMedia: 4000, qtdMembrosComRenda: 2, qtdMembrosFamilia: 2,
-  acessoAlimentosInNatura: 'DIARIO', frequenciaFrutasVerduras: 'CINCO_OU_MAIS', qualidadeAlimentacao: 'MELHOROU_MUITO', saudeNutricional: 'GRANDE_MELHORIA',
-  conseguePoupar: true, economiaMensalFaixa: 'DE_201_300', economiaMensalValor: 250, capacidadePoupanca: 'REGULARMENTE', gestaoFinanceira: 'MELHOROU',
-  empoderadaDecisoes: true, melhoriaPlanejamento: true, avaliacaoArmazem: 'OTIMA',
-  ...extra,
-});
+const final = (extra = {}) => corpoFinal(dias(-1), extra);
+// o cálculo "de referência": mesmas respostas, regra pura
+const mapaDe = (corpo) => ({ modelo: 'M1', mapa: corpo.respostas });
 
 (async () => {
   await travaDeSeguranca();
@@ -177,7 +164,7 @@ const final = (extra = {}) => ({
       assert.ok(t.id);
     });
 
-    await teste('INICIAL concluído grava o instantâneo (5 linhas, versão da regra, parâmetros) igual ao cálculo puro', async () => {
+    await teste('INICIAL concluído grava o instantâneo (5 linhas, regra v2) igual ao cálculo puro', async () => {
       acA = await nova(CPF_A, 'Teste F5E2E A', dias(-60));
       const r = await q(acA, 'INICIAL', inicial());
       assert.strictEqual(r.status, 200, JSON.stringify(r.corpo));
@@ -185,15 +172,16 @@ const final = (extra = {}) => ({
       assert.strictEqual(linhas.length, 5);
       assert.deepStrictEqual(linhas.map((l) => l.dimensao).sort(), ['ALIMENTACAO', 'AUTONOMIA', 'ECONOMIA', 'GERAL', 'RENDA']);
       assert.ok(linhas.every((l) => l.versaoRegra === regras.VERSAO_REGRA && l.tipo === 'INICIAL'));
-      const esperado = regras.calcularIndice(montarRespostas({ ...inicial(), economiaMensalValor: 50 }), { tipo: 'INICIAL', salarioMinimo: await cfg('salario_minimo_referencia') });
+      const esperado = regras.calcularIndice(mapaDe(inicial()), { tipo: 'INICIAL' });
       const geral = linhas.find((l) => l.dimensao === 'GERAL');
       assert.strictEqual(Number(geral.nivel), esperado.geral.nivel);
-      assert.strictEqual(JSON.parse(geral.parametros).salarioMinimo, await cfg('salario_minimo_referencia'));
+      assert.strictEqual(Number(linhas.find((l) => l.dimensao === 'ALIMENTACAO').nivel), esperado.dimensoes.ALIMENTACAO.nivel);
+      assert.strictEqual(linhas.find((l) => l.dimensao === 'AUTONOMIA').nivel, null, 'sem itens nos modelos oficiais: vazio, nunca zero');
     });
 
     await teste('rascunho NÃO grava instantâneo', async () => {
       acB = await nova(CPF_B, 'Teste F5E2E B', dias(-60));
-      const r = await q(acB, 'INICIAL', { rendaMensalMedia: 900 }, false);
+      const r = await q(acB, 'INICIAL', { respostas: { '2.2': 'ATE_500' } }, false);
       assert.strictEqual(r.status, 200);
       assert.strictEqual((await instantaneo(acB)).length, 0);
       const ind = await a.req('GET', `/api/familias/acompanhamentos/${acB}/indicadores`);
@@ -206,21 +194,23 @@ const final = (extra = {}) => ({
       assert.strictEqual(r.status, 200);
       const d = r.corpo;
       assert.strictEqual(d.pontos.length, 1);
+      assert.strictEqual(d.versaoRegra, 2);
       assert.strictEqual(d.comparacao, null);
       assert.strictEqual(d.pontos[0].tipo, 'INICIAL');
+      assert.strictEqual(d.pontos[0].modelo, 'M1');
       assert.strictEqual(d.reavaliacao.situacao, 'PENDENTE');
       assert.strictEqual(d.reavaliacao.dataPrevista, dias(-15));
       assert.strictEqual(d.tolerancia, tolOriginal);
     });
 
-    await teste('modelo da reavaliação: 4 blocos, 10 perguntas, só estado', async () => {
+    await teste('modelo da reavaliação: 5 perguntas (as de estado com par no inicial); os modelos oficiais não mudaram', async () => {
       const m = await a.req('GET', '/api/familias/questionario/modelo?tipo=REAVALIACAO');
       assert.strictEqual(m.corpo.tipo, 'REAVALIACAO');
-      assert.strictEqual(m.corpo.blocos.length, 4);
-      assert.strictEqual(m.corpo.blocos.flatMap((x) => x.perguntas).length, 10);
+      assert.strictEqual(m.corpo.blocos.flatMap((x) => x.perguntas).length, 5);
+      assert.deepStrictEqual(m.corpo.blocos.flatMap((x) => x.perguntas).map((p) => p.codigo), ['1.3', '2.4', '2.5', '2.6', '2.7']);
       const oficial = await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL');
-      assert.strictEqual(oficial.corpo.blocos.length, 5, 'as perguntas oficiais não mudaram');
-      assert.strictEqual(oficial.corpo.blocos.flatMap((x) => x.perguntas).length, 21);
+      assert.strictEqual(oficial.corpo.blocos.length, 3);
+      assert.strictEqual(oficial.corpo.blocos.flatMap((x) => x.perguntas).length, 14);
     });
 
     await teste('reavaliação: bloqueada sem o inicial concluído (GET bloqueio, PUT 409)', async () => {
@@ -231,18 +221,19 @@ const final = (extra = {}) => ({
     });
 
     await teste('reavaliação: concluir incompleta => 400 só com as perguntas de estado; completa => 200 e instantâneo', async () => {
-      let r = await q(acA, 'REAVALIACAO', { dataAplicacao: dias(-30), rendaMensalMedia: 1800 });
+      let r = await q(acA, 'REAVALIACAO', { dataAplicacao: dias(-30), respostas: { '1.3': 'DE_1001_2000' } });
       assert.strictEqual(r.status, 400);
-      assert.ok(r.corpo.erro.detalhes.capacidadePoupanca);
-      assert.ok(!r.corpo.erro.detalhes.avaliacaoArmazem && !r.corpo.erro.detalhes.recebeAuxilio && !r.corpo.erro.detalhes.destinoEconomiaIds);
+      assert.ok(r.corpo.erro.detalhes['extras.2.5']);
+      assert.ok(!r.corpo.erro.detalhes['extras.4.5'] && !r.corpo.erro.detalhes['extras.3.2'], 'só as perguntas da reavaliação são exigidas');
 
       r = await q(acA, 'REAVALIACAO', reavaliacao());
       assert.strictEqual(r.status, 200, JSON.stringify(r.corpo));
       assert.strictEqual(r.corpo.concluido, true);
-      const [linha] = await db.consultar("SELECT recebe_auxilio, avaliacao_armazem, recomendaria, qualidade_alimentacao FROM questionario WHERE acompanhamento_id = @ac AND tipo = 'REAVALIACAO'", { ac: acA });
-      assert.strictEqual(linha.recebeAuxilio, null);
-      assert.strictEqual(linha.avaliacaoArmazem, null);
-      assert.strictEqual(linha.qualidadeAlimentacao, null);
+      const [linha] = await db.consultar("SELECT modelo FROM questionario WHERE acompanhamento_id = @ac AND tipo = 'REAVALIACAO'", { ac: acA });
+      assert.strictEqual(linha.modelo, 'M1');
+      const [n] = await db.consultar(`SELECT COUNT(*) AS n FROM resposta_extra r JOIN questionario q ON q.id = r.questionario_id
+        WHERE q.acompanhamento_id = @ac AND q.tipo = 'REAVALIACAO'`, { ac: acA });
+      assert.strictEqual(n.n, 5, 'só as 5 respostas de estado são gravadas');
       assert.strictEqual((await instantaneo(acA)).length, 10, '5 do inicial + 5 da reavaliação');
     });
 
@@ -250,22 +241,26 @@ const final = (extra = {}) => ({
       const d = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/indicadores`)).corpo;
       assert.deepStrictEqual(d.pontos.map((p) => p.tipo), ['INICIAL', 'REAVALIACAO']);
       assert.strictEqual(d.comparacao.geral.selo, 'melhorou');
-      assert.strictEqual(d.comparacao.dimensoes.ECONOMIA.selo, 'melhorou');
+      assert.strictEqual(d.comparacao.dimensoes.ALIMENTACAO.selo, 'melhorou');
+      assert.strictEqual(d.comparacao.dimensoes.ECONOMIA.selo, 'sem_dados', 'Economia não tem par nos modelos oficiais');
       assert.strictEqual(d.reavaliacao.situacao, 'CONCLUIDA');
       assert.strictEqual(d.passos.length, 1);
-      const antes = await q(acA, 'REAVALIACAO', reavaliacao({ dataAplicacao: dias(-90) }));
+      const antes = await q(acA, 'REAVALIACAO', reavaliacao({}, dias(-90)));
       assert.strictEqual(antes.status, 400, 'reavaliação não pode ser anterior ao inicial');
       assert.ok(antes.corpo.erro.detalhes.dataAplicacao);
     });
 
     await teste('corrigir a reavaliação concluída substitui o instantâneo (sem duplicar)', async () => {
-      const r = await q(acA, 'REAVALIACAO', reavaliacao({ capacidadePoupanca: 'REGULARMENTE', conseguePoupar: false }));
+      const corrigida = reavaliacao({ '2.5': 'SIM', '2.6': 'NAO' });
+      const r = await q(acA, 'REAVALIACAO', corrigida);
       assert.strictEqual(r.status, 200, JSON.stringify(r.corpo));
       assert.strictEqual((await instantaneo(acA)).length, 10);
       const d = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/indicadores`)).corpo;
-      const nivelEco = d.pontos[1].dimensoes.ECONOMIA.nivel;
-      const esperado = regras.calcularIndice(montarRespostas({ ...reavaliacao({ capacidadePoupanca: 'REGULARMENTE', conseguePoupar: false }) }), { tipo: 'REAVALIACAO', salarioMinimo: d.salarioMinimo });
-      assert.strictEqual(nivelEco, esperado.dimensoes.ECONOMIA.nivel);
+      const esperado = regras.calcularIndice(mapaDe(corrigida), { tipo: 'REAVALIACAO' });
+      assert.strictEqual(d.pontos[1].dimensoes.ALIMENTACAO.nivel, esperado.dimensoes.ALIMENTACAO.nivel);
+      const [n] = await db.consultar(`SELECT COUNT(*) AS n FROM resposta_extra r JOIN questionario q ON q.id = r.questionario_id
+        WHERE q.acompanhamento_id = @ac AND q.tipo = 'REAVALIACAO'`, { ac: acA });
+      assert.strictEqual(n.n, 5, 'as respostas também são substituídas, não duplicadas');
     });
 
     await teste('FINAL concluído: 3 pontos; reavaliação não interfere na comparação oficial inicial × final', async () => {
@@ -278,11 +273,13 @@ const final = (extra = {}) => ({
       assert.strictEqual(d.passos.length, 2);
       const cmp = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/comparacao`)).corpo;
       assert.strictEqual(cmp.completo, true);
-      const renda = cmp.itens.find((i) => i.campo === 'rendaMensalMedia');
-      assert.strictEqual(renda.inicial, 1200);
-      assert.strictEqual(renda.final, 4000);
+      assert.strictEqual(cmp.modelo, 'M1');
+      const renda = cmp.itens.find((i) => i.chave === 'rendaFaixa');
+      assert.strictEqual(renda.inicial.valor, 'DE_501_1000');
+      assert.strictEqual(renda.final.valor, 'DE_1001_2000');
       const ficha = (await a.req('GET', `/api/familias/acompanhamentos/${acA}`)).corpo;
       assert.strictEqual(ficha.questionarios.inicial.concluido, true);
+      assert.strictEqual(ficha.questionarios.inicial.modelo, 'M1');
       assert.strictEqual(ficha.questionarios.final.concluido, true);
       const lista = (await a.req('GET', '/api/familias?status=EM_ANDAMENTO')).corpo.itens.find((i) => i.acompanhamentoId === acA);
       assert.strictEqual(lista.finalConcluido, true);
@@ -295,7 +292,7 @@ const final = (extra = {}) => ({
 
     await teste('família com final concluído e sem reavaliação: dispensada e bloqueada (409)', async () => {
       acC = await nova(CPF_C, 'Teste F5E2E C', dias(-90));
-      assert.strictEqual((await q(acC, 'INICIAL', inicial())).status, 200);
+      assert.strictEqual((await q(acC, 'INICIAL', corpoInicial(dias(-90)))).status, 200);
       assert.strictEqual((await q(acC, 'FINAL', final())).status, 200);
       const d = (await a.req('GET', `/api/familias/acompanhamentos/${acC}/indicadores`)).corpo;
       assert.strictEqual(d.reavaliacao.situacao, 'DISPENSADA');
@@ -333,26 +330,19 @@ const final = (extra = {}) => ({
       assert.strictEqual(await cfg('indice_tolerancia_pontos'), tolOriginal);
     });
 
-    await teste('salário mínimo de referência: o instantâneo antigo guarda o valor usado; recalcular refaz com o atual', async () => {
-      const salario = await cfg('salario_minimo_referencia');
-      try {
-        await db.consultar("UPDATE configuracao SET valor = '10000' WHERE chave = 'salario_minimo_referencia'");
-        // o que já foi gravado não muda sozinho
-        const parado = (await instantaneo(acA)).find((l) => l.dimensao === 'GERAL' && l.tipo === 'INICIAL');
-        assert.strictEqual(JSON.parse(parado.parametros).salarioMinimo, salario);
-        const { recalcularTodos } = require('../../server/services/indice-dados');
-        await db.transacao((tx) => recalcularTodos(tx));
-        const novo = (await instantaneo(acA)).find((l) => l.dimensao === 'GERAL' && l.tipo === 'INICIAL');
-        assert.strictEqual(JSON.parse(novo.parametros).salarioMinimo, 10000);
-        assert.strictEqual((await instantaneo(acA)).length, 15);
-      } finally {
-        await db.consultar("UPDATE configuracao SET valor = @v WHERE chave = 'salario_minimo_referencia'", { v: String(salario) });
-        const { recalcularTodos } = require('../../server/services/indice-dados');
-        await db.transacao((tx) => recalcularTodos(tx));
-      }
+    await teste('regra versionada: instantâneo marcado com a versão antiga aparece como desatualizado e recalcular refaz com a atual', async () => {
+      await db.consultar("UPDATE acompanhamento_indice SET versao_regra = 1 WHERE acompanhamento_id = @ac AND tipo = 'INICIAL'", { ac: acA });
+      const velho = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/indicadores`)).corpo;
+      assert.strictEqual(velho.pontos.find((p) => p.tipo === 'INICIAL').desatualizado, true);
+      const { recalcularTodos } = require('../../server/services/indice-dados');
+      await db.transacao((tx) => recalcularTodos(tx));
+      const novo = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/indicadores`)).corpo;
+      assert.ok(novo.pontos.every((p) => p.desatualizado === false));
+      assert.strictEqual((await instantaneo(acA)).length, 15);
+      assert.ok((await instantaneo(acA)).every((l) => l.versaoRegra === 2));
     });
 
-    await teste('relatório individual .docx traz a seção de evolução (família com 3 pontos)', async () => {
+    await teste('relatório final familiar .docx traz a seção de evolução (família com 3 pontos)', async () => {
       const r = await fetch(`${BASE}/api/relatorios/individual/${acA}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch', Cookie: a.cookie }, body: '{}' });
       assert.strictEqual(r.status, 200);
@@ -360,7 +350,8 @@ const final = (extra = {}) => ({
       const xml = new PizZip(Buffer.from(await r.arrayBuffer())).file('word/document.xml').asText();
       assert.ok(xml.includes('Evolução durante o acompanhamento'));
       assert.ok(xml.includes('Reavaliação ('), 'coluna da reavaliação');
-      assert.ok(xml.includes('Melhorou'));
+      assert.ok(xml.includes('Melhorou'), xml.replace(/<[^>]+>/g, ' ').replace(/ +/g, ' ').slice(-1500));
+      assert.ok(!xml.includes('Economia e poupança'), 'dimensão sem itens nos modelos oficiais não aparece');
       assert.ok(!/\{[#/@]?[a-zA-Z.]+\}/.test(xml.replace(/<[^>]+>/g, '')), 'sem tags soltas');
       // família só com o inicial (rascunho do B): sem a seção
       const sem = await fetch(`${BASE}/api/relatorios/individual/${acB}`, {

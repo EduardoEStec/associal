@@ -12,6 +12,7 @@ const bcrypt = require('bcrypt');
 const PizZip = require('pizzip');
 const db = require('../../server/db');
 const familias = require('../../server/services/familias');
+const { corpoInicial, corpoFinal } = require('./m1-dados');
 
 const PORTA = process.env.TESTE_PORT || 3126;
 const BASE = `http://127.0.0.1:${PORTA}`;
@@ -108,20 +109,12 @@ async function esperarServidor() {
 let ok = 0;
 const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${nome}`); };
 
-// Respostas completas: "pobre" (renda baixa, nada melhorou) e "boa" (renda alta, tudo melhorou)
-const pobre = (dataAplicacao) => ({
-  dataAplicacao, qtdMembrosFamilia: 4, rendaMensalMedia: 1200, qtdMembrosComRenda: 1, recebeAuxilio: true, beneficioIds: [1],
-  acessoAlimentosInNatura: 'NAO_TINHA', frequenciaFrutasVerduras: 'UMA_DUAS', qualidadeAlimentacao: 'NAO_MELHOROU', saudeNutricional: 'NENHUMA',
-  conseguePoupar: false, economiaMensalFaixa: 'ATE_100', economiaMensalValor: 50, destinoEconomiaIds: [2],
-  capacidadePoupanca: 'NAO_CONSEGUE', gestaoFinanceira: 'SEM_MUDANCA', empoderadaDecisoes: false, melhoriaPlanejamento: false,
-  avaliacaoArmazem: 'BOA', recomendaria: true,
-});
-const boa = (dataAplicacao) => ({
-  ...pobre(dataAplicacao), rendaMensalMedia: 4000, qtdMembrosComRenda: 2, qtdMembrosFamilia: 2,
-  acessoAlimentosInNatura: 'DIARIO', frequenciaFrutasVerduras: 'CINCO_OU_MAIS', qualidadeAlimentacao: 'MELHOROU_MUITO', saudeNutricional: 'GRANDE_MELHORIA',
-  conseguePoupar: true, economiaMensalFaixa: 'DE_201_300', economiaMensalValor: 250, capacidadePoupanca: 'REGULARMENTE', gestaoFinanceira: 'MELHOROU',
-  empoderadaDecisoes: true, melhoriaPlanejamento: true, avaliacaoArmazem: 'OTIMA',
-});
+// Respostas completas dos modelos oficiais M1: "pobre" (renda baixa, nada melhorou) e "boa" (renda alta, tudo melhorou).
+// O inicial e o final têm perguntas diferentes; os níveis de Alimentação e Renda são comparáveis entre os dois.
+const inicialPobre = (data) => corpoInicial(data, { '3.6': 'PARCIALMENTE' });
+const inicialBoa = (data) => corpoInicial(data, { '2.2': 'ACIMA_3000', '3.2': 'NUNCA', '3.3': 'NAO', '3.4': 'NAO', '3.6': 'SIM' });
+const finalBoa = (data) => corpoFinal(data);
+const finalPobre = (data) => corpoFinal(data, { '1.3': 'DE_501_1000', '2.4': 'UMA_DUAS', '2.5': 'NAO', '2.6': 'FREQUENTEMENTE', '2.7': 'SIM' });
 const itensPesquisa = (nps, likert, textos = []) => [
   { codigo: 'NPS', valorNum: nps }, ...[1, 2, 3, 4, 5, 6].map((n) => ({ codigo: `L${n}`, valorNum: likert })), ...textos];
 
@@ -153,9 +146,9 @@ const itensPesquisa = (nps, likert, textos = []) => [
     const coord = await new Cliente().entrar('f6_coord');
     const adm = await new Cliente().entrar('f6_admin');
 
-    // Período até ONTEM: deixa de fora a família de teste do banco ("Maria Teste E2E", criada hoje) e os dados de hoje; os testes de metas e
+    // Período até 9 dias atrás: deixa de fora a família de teste que já existe no banco ("Maria Teste E2E", de uma semana atrás) e os dados de hoje; os testes de metas e
     // desligamento (que acontecem hoje) usam o período até hoje.
-    const periodo = `inicio=${dias(-90)}&fim=${dias(-1)}`;
+    const periodo = `inicio=${dias(-90)}&fim=${dias(-9)}`;
     const periodoHoje = `inicio=${dias(-90)}&fim=${hoje}`;
     const progresso = async (cli = coord, extra = '', per = periodo) => (await cli.req('GET', `/api/painel/progresso?${per}${extra}`));
     const satisfacao = async (cli = coord, extra = '') => (await cli.req('GET', `/api/painel/satisfacao?${periodo}${extra}`));
@@ -178,11 +171,11 @@ const itensPesquisa = (nps, likert, textos = []) => [
       elegiveisAntes = (await satisfacao()).corpo.geral.elegiveis;
       await nova(a, uA, 'A1', dias(-60)); await nova(a, uA, 'A2', dias(-60)); await nova(a, uA, 'A3', dias(-60));
       await nova(b, uB, 'B1', dias(-60)); await nova(a, uA, 'A5', dias(-60)); await nova(a, uA, 'A6', dias(-200));
-      await q(a, 'A1', 'INICIAL', pobre(dias(-60))); await q(a, 'A1', 'FINAL', boa(dias(-1)));
-      await q(a, 'A2', 'INICIAL', pobre(dias(-60))); await q(a, 'A2', 'FINAL', pobre(dias(-1)));
-      await q(a, 'A3', 'INICIAL', boa(dias(-60))); await q(a, 'A3', 'FINAL', pobre(dias(-1)));
-      await q(b, 'B1', 'INICIAL', pobre(dias(-60))); await q(b, 'B1', 'FINAL', boa(dias(-1)));
-      await q(a, 'A5', 'INICIAL', pobre(dias(-60)));
+      await q(a, 'A1', 'INICIAL', inicialPobre(dias(-60))); await q(a, 'A1', 'FINAL', finalBoa(dias(-10)));
+      await q(a, 'A2', 'INICIAL', inicialPobre(dias(-60))); await q(a, 'A2', 'FINAL', finalPobre(dias(-10)));
+      await q(a, 'A3', 'INICIAL', inicialBoa(dias(-60))); await q(a, 'A3', 'FINAL', finalPobre(dias(-10)));
+      await q(b, 'B1', 'INICIAL', inicialPobre(dias(-60))); await q(b, 'B1', 'FINAL', finalBoa(dias(-10)));
+      await q(a, 'A5', 'INICIAL', inicialPobre(dias(-60)));
       const [n] = await db.consultar(`SELECT COUNT(*) AS n FROM acompanhamento_indice WHERE acompanhamento_id IN (${Object.values(ac).join(', ')})`);
       assert.strictEqual(n.n, 5 * 9, '9 questionários concluídos × 5 linhas (geral e 4 dimensões)');
     });
@@ -213,7 +206,8 @@ const itensPesquisa = (nps, likert, textos = []) => [
       assert.strictEqual(g.semaforo, 'VERDE');
       assert.ok(g.indiceMedioInicial !== null && g.indiceMedioAtual !== null);
       assert.deepStrictEqual(r.dimensoes.map((d) => d.codigo), ['ALIMENTACAO', 'RENDA', 'ECONOMIA', 'AUTONOMIA']);
-      assert.ok(r.dimensoes.every((d) => d.n >= 2));
+      assert.ok(r.dimensoes.filter((d) => ['ALIMENTACAO', 'RENDA'].includes(d.codigo)).every((d) => d.n >= 2));
+      assert.ok(r.dimensoes.filter((d) => ['ECONOMIA', 'AUTONOMIA'].includes(d.codigo)).every((d) => d.n === 0), 'sem perguntas com par nos modelos oficiais');
       const bra = r.unidades.find((u) => u.sigla === uA.sigla);
       assert.strictEqual(bra.n, 3);
       assert.strictEqual(bra.pctMelhoraram, 33.3);
@@ -258,14 +252,14 @@ const itensPesquisa = (nps, likert, textos = []) => [
 
     await teste('satisfação: NPS, concordância, taxas, semáforo por unidade e n mínimo (assistente 403)', async () => {
       const aplicar = (cli, chave, itens, extra = {}) => cli.req('POST', `/api/familias/acompanhamentos/${ac[chave]}/pesquisas`,
-        { momento: 'AVULSA', situacao: 'CONCLUIDA', consentimentoLido: true, modo: 'FAMILIA_FALOU', dataAplicacao: dias(-1), itens, ...extra });
+        { momento: 'AVULSA', situacao: 'CONCLUIDA', consentimentoLido: true, modo: 'FAMILIA_FALOU', dataAplicacao: dias(-10), itens, ...extra });
       let r = await aplicar(a, 'A1', itensPesquisa(10, 5, [{ codigo: 'T1', valorTexto: 'Preço justo e atendimento acolhedor.' }, { codigo: 'T2', valorTexto: 'Mais dias de funcionamento.' }]));
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
       r = await aplicar(a, 'A2', itensPesquisa(6, 3));
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
       r = await aplicar(a, 'A3', itensPesquisa(9, 4));
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
-      r = await b.req('POST', `/api/familias/acompanhamentos/${ac.B1}/pesquisas`, { momento: 'AVULSA', situacao: 'RECUSADA', dataAplicacao: dias(-1) });
+      r = await b.req('POST', `/api/familias/acompanhamentos/${ac.B1}/pesquisas`, { momento: 'AVULSA', situacao: 'RECUSADA', dataAplicacao: dias(-10) });
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
 
       assert.strictEqual((await satisfacao(a)).status, 403);
@@ -378,7 +372,7 @@ const itensPesquisa = (nps, likert, textos = []) => [
     });
 
     await teste('relatório semestral: prévia e .docx com as seções de progresso e satisfação; CSV; individual com metas', async () => {
-      const prm = `dataInicio=${dias(-90)}&dataFim=${dias(-1)}`;
+      const prm = `dataInicio=${dias(-90)}&dataFim=${dias(-9)}`;
       const previa = (await coord.req('GET', `/api/relatorios/semestral/previa?${prm}`)).corpo;
       assert.strictEqual(previa.progresso.geral.n, 4);
       assert.strictEqual(previa.satisfacao.geral.respostas, 3);
@@ -387,7 +381,7 @@ const itensPesquisa = (nps, likert, textos = []) => [
       assert.match(previa.textos.satisfacao, /3 pesquisas de satisfação foram respondidas e 1 família preferiu não responder/);
       assert.deepStrictEqual((await a.req('GET', `/api/relatorios/semestral/previa?${prm}`)).corpo.comentariosSatisfacao, [], 'assistente não recebe os comentários');
 
-      const docx = await coord.req('POST', '/api/relatorios/semestral', { dataInicio: dias(-90), dataFim: dias(-1), fotos: [], relatos: [], comentariosSatisfacao: [{ id: previa.comentariosSatisfacao[0].id }] }, true);
+      const docx = await coord.req('POST', '/api/relatorios/semestral', { dataInicio: dias(-90), dataFim: dias(-9), fotos: [], relatos: [], comentariosSatisfacao: [{ id: previa.comentariosSatisfacao[0].id }] }, true);
       assert.strictEqual(docx.status, 200);
       const texto = new PizZip(docx.buffer).file('word/document.xml').asText().replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '');
       assert.match(texto, /4\. Acompanhamento e evolução das famílias/);

@@ -1,6 +1,7 @@
 'use strict';
 
-// Perguntas EXTRAS (P2): as que a coordenação cria no catálogo para o questionário, a pesquisa de satisfação e o atendimento.
+// Respostas às perguntas do CATÁLOGO: as EXTRAS (P2: criadas pela coordenação para a pesquisa de satisfação, o atendimento e os
+// questionários) e, nos questionários inicial e final (M1), também as perguntas OFICIAIS dos modelos em papel.
 // Validação (pura) e gravação/leitura das respostas em dbo.resposta_extra. Contrato: docs/API-CATALOGO.md.
 //
 // Valor na API, por tipo:  TEXTO -> string · NUMERO -> número · SIM_NAO -> true/false · ESCOLHA -> código da opção ·
@@ -9,12 +10,16 @@
 const { tipos } = require('../db');
 const estado = require('./catalogo-estado');
 
-const MAX_TEXTO = 1000;
+const MAX_TEXTO = 2000;
+const MAX_DETALHE = 200;
 const MAX_NUMERO = 999999999999;
 const FALTA = 'Responda esta pergunta para concluir.';
 
 // formulário -> coluna de dbo.resposta_extra que aponta o dono da resposta
-const COLUNA_DONO = Object.freeze({ QUESTIONARIO: 'questionario_id', ATENDIMENTO: 'atendimento_id', PESQUISA: 'pesquisa_resposta_id' });
+const COLUNA_DONO = Object.freeze({
+  QUESTIONARIO: 'questionario_id', QUESTIONARIO_INICIAL: 'questionario_id', QUESTIONARIO_FINAL: 'questionario_id',
+  ATENDIMENTO: 'atendimento_id', PESQUISA: 'pesquisa_resposta_id',
+});
 
 const vazio = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
 
@@ -33,8 +38,9 @@ function paraBooleano(v) {
 //   entrada  : o objeto `extras` do corpo (ou undefined)
 //   concluir : exige as perguntas marcadas como obrigatórias
 //   atuais   : Map(perguntaId -> Set(opcaoId)) já gravados: uma opção desativada continua aceita se já estava escolhida
+//   detalhes : { "<código>": texto } — complemento das opções que pedem detalhe ("Outras: ____")
 // Devolve { itens, perguntaIds, erros }. `itens`: [{ perguntaId, opcaoId, valorTexto, valorNum }]; erros por "extras.<código>".
-function validarExtras(defs, entrada, { concluir = false, atuais = new Map() } = {}) {
+function validarExtras(defs, entrada, { concluir = false, atuais = new Map(), detalhes = {} } = {}) {
   const erros = {};
   const itens = [];
   if (entrada !== undefined && (entrada === null || typeof entrada !== 'object' || Array.isArray(entrada))) {
@@ -62,7 +68,10 @@ function validarExtras(defs, entrada, { concluir = false, atuais = new Map() } =
       }
       case 'NUMERO': {
         const n = paraNumero(bruto);
-        if (Number.isNaN(n) || Math.abs(n) > MAX_NUMERO) erros[chave] = 'Informe um número válido.';
+        if (def.min !== undefined && def.max !== undefined) {
+          if (!Number.isInteger(n) || n < def.min || n > def.max) erros[chave] = `Informe um número inteiro entre ${def.min} e ${def.max}.`;
+          else itens.push({ perguntaId: def.id, opcaoId: null, valorTexto: null, valorNum: n });
+        } else if (Number.isNaN(n) || Math.abs(n) > MAX_NUMERO) erros[chave] = 'Informe um número válido.';
         else itens.push({ perguntaId: def.id, opcaoId: null, valorTexto: null, valorNum: Math.round(n * 10000) / 10000 });
         break;
       }
@@ -80,7 +89,11 @@ function validarExtras(defs, entrada, { concluir = false, atuais = new Map() } =
         const escolhidas = unicos.map((c) => def.opcoes.find((o) => o.codigo === c));
         if (escolhidas.some((o) => !o)) erros[chave] = 'Opção inválida.';
         else if (escolhidas.some((o) => !o.ativa && !jaEscolhidas.has(o.id))) erros[chave] = 'Há uma opção que não está mais disponível.';
-        else for (const o of escolhidas) itens.push({ perguntaId: def.id, opcaoId: o.id, valorTexto: null, valorNum: null });
+        else {
+          const detalhe = String(detalhes?.[def.codigo] ?? '').trim();
+          if (detalhe.length > MAX_DETALHE) erros[`detalhes.${def.codigo}`] = `Use no máximo ${MAX_DETALHE} caracteres.`;
+          for (const o of escolhidas) itens.push({ perguntaId: def.id, opcaoId: o.id, valorTexto: o.pedeDetalhe && detalhe ? detalhe : null, valorNum: null });
+        }
         break;
       }
       default: break;
@@ -155,6 +168,7 @@ function definicaoPublica(def, { obrigatoria = !!def.obrigatoria } = {}) {
 }
 
 const numeroBr = (n) => String(Number(n)).replace('.', ',');
+const ordemExibicao = (a, b) => a.secao - b.secao || (b.oficial ? 1 : 0) - (a.oficial ? 1 : 0) || a.ordem - b.ordem || a.id - b.id;
 
 // Transforma as linhas de UM dono em { mapa, lista }:
 //   mapa  : { "<código>": valor } no formato da API (para preencher o formulário);
@@ -167,8 +181,9 @@ function formatarRespostas(formulario, linhas, { tipoQuestionario = 'INICIAL' } 
     porPergunta.get(l.perguntaId).push(l);
   }
   const mapa = {};
+  const detalhes = {};
   const lista = [];
-  const defs = [...estado.extrasTodas(formulario)].sort((a, b) => a.secao - b.secao || a.ordem - b.ordem || a.id - b.id);
+  const defs = [...estado.extrasTodas(formulario)].sort(ordemExibicao);
   for (const def of defs) {
     const ls = porPergunta.get(def.id);
     if (!ls || !ls.length) continue;
@@ -187,18 +202,26 @@ function formatarRespostas(formulario, linhas, { tipoQuestionario = 'INICIAL' } 
         resposta = os.map(rotuloOpcao).join('; ');
       }
     }
+    // complemento da opção que pede detalhe ("Outras: ____")
+    const comDetalhe = (def.tipo === 'ESCOLHA' || def.tipo === 'MULTIPLA') ? ls.find((l) => l.valorTexto) : null;
+    if (comDetalhe) {
+      detalhes[def.codigo] = comDetalhe.valorTexto;
+      const o = opcao(comDetalhe.opcaoId);
+      if (o) resposta = resposta.replace(rotuloOpcao(o), `${rotuloOpcao(o)}: ${comDetalhe.valorTexto}`);
+    }
     mapa[def.codigo] = valor;
     lista.push({
       codigo: def.codigo,
       pergunta: tipoQuestionario === 'FINAL' && def.textoFinal ? def.textoFinal : def.texto,
-      tipo: def.tipo, secao: def.secao, ativa: def.ativa, valor, resposta,
+      tipo: def.tipo, secao: def.secao, ativa: def.ativa, oficial: !!def.oficial, campo: def.campo || null, valor, resposta,
+      ...(comDetalhe ? { detalhe: comDetalhe.valorTexto } : {}),
     });
   }
-  return { mapa, lista };
+  return { mapa, detalhes, lista };
 }
 
 async function carregarRespostas(executor, formulario, donoId, opcoes) {
-  if (!donoId) return { mapa: {}, lista: [] };
+  if (!donoId) return { mapa: {}, detalhes: {}, lista: [] };
   const linhas = (await linhasDeDonos(executor, formulario, [donoId])).get(donoId);
   return formatarRespostas(formulario, linhas, opcoes);
 }

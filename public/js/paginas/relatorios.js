@@ -1,4 +1,4 @@
-// Relatórios — Individual Familiar (.docx), Semestral/Prestação de Contas (.docx) e exportação CSV.
+// Relatórios — Relatório Final Familiar (.docx; modelo oficial 4), Semestral/Prestação de Contas (.docx) e exportação CSV.
 // Convenções: docs/CONVENCOES.md ("Como criar uma página").
 import { iniciarPagina } from '../layout.js';
 import { api } from '../api.js';
@@ -20,7 +20,7 @@ try {
 }
 
 const ABAS = [
-  { chave: 'individual', rotulo: 'Individual familiar', montar: montarIndividual },
+  { chave: 'individual', rotulo: 'Relatório final familiar', montar: montarIndividual },
   { chave: 'semestral', rotulo: 'Semestral / Prestação de contas', montar: montarSemestral },
   { chave: 'exportar', rotulo: 'Exportar planilhas (CSV)', montar: montarExportar },
 ];

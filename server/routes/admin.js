@@ -294,7 +294,7 @@ function tabelaApoio(req) {
 
 function validarApoio(tabela, corpo) {
   const problemas = {};
-  const nome = texto(corpo.nome, 150);
+  const nome = texto(corpo.nome, tabela === 'frase_registro' ? 300 : 150); // a frase-sugestão do registro é um texto mais longo
   if (!nome) problemas.nome = 'Informe o nome.';
   const ordem = corpo.ordem === undefined || corpo.ordem === null || corpo.ordem === '' ? 0 : Number(corpo.ordem);
   if (!Number.isInteger(ordem) || ordem < 0 || ordem > 9999) problemas.ordem = 'Informe um número inteiro de 0 a 9999.';

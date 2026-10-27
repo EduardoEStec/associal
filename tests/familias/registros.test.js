@@ -107,9 +107,66 @@ test('validarRegistro: tipo "Outro" exige descrição; descrição é descartada
   assert.equal(registros.validarRegistro({ ...valido, tipoContatoOutro: 'lixo' }, base).dados.tipoContatoOutro, null);
 });
 
-test('validarRegistro: resumo acima de 1000 caracteres é recusado', () => {
-  const r = registros.validarRegistro({ ...valido, resumo: 'x'.repeat(1001) }, { hoje, dataInicio: diasAtras(10), tiposAtivos });
+test('validarRegistro: observações do profissional aceitam até 2000 caracteres (M1)', () => {
+  const ok = registros.validarRegistro({ ...valido, resumo: 'x'.repeat(2000) }, { hoje, dataInicio: diasAtras(10), tiposAtivos });
+  assert.ok(!ok.erros.resumo);
+  const r = registros.validarRegistro({ ...valido, resumo: 'x'.repeat(2001) }, { hoje, dataInicio: diasAtras(10), tiposAtivos });
   assert.ok(r.erros.resumo);
+});
+
+// ---------------------------------------------------------------------------
+// M1 — registro periódico (modelo oficial 2): mês, uso do Armazém, orientações, aceite de foto
+// ---------------------------------------------------------------------------
+
+const usosAtivos = [{ id: 1 }, { id: 2 }, { id: 3 }];
+const orientacoesAtivas = [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }, { id: 5, exigeTexto: true }];
+const regra = (extra) => registros.validarRegistro({ ...valido, ...extra }, { hoje, dataInicio: diasAtras(60), tiposAtivos, usosAtivos, orientacoesAtivas });
+
+test('M1 normalizarMes: aceita AAAA-MM e AAAA-MM-DD e devolve o dia 1', () => {
+  assert.strictEqual(registros.normalizarMes('2026-10'), '2026-10-01');
+  assert.strictEqual(registros.normalizarMes('2026-10-17'), '2026-10-01');
+  assert.strictEqual(registros.normalizarMes(undefined), undefined);
+  assert.strictEqual(registros.normalizarMes(''), null);
+  assert.strictEqual(registros.normalizarMes('2026-13'), false);
+  assert.strictEqual(registros.normalizarMes('outubro'), false);
+});
+
+test('M1 campos novos ausentes => undefined (não mexe no que já está gravado)', () => {
+  const r = regra({});
+  assert.deepStrictEqual(r.erros, {});
+  for (const campo of ['mesReferencia', 'usoArmazemId', 'orientacaoIds', 'orientacaoOutro', 'familiaAceitaFoto']) assert.strictEqual(r.dados[campo], undefined, campo);
+});
+
+test('M1 mês de referência: não pode ser futuro nem anterior ao início do acompanhamento', () => {
+  assert.strictEqual(regra({ mesReferencia: hoje.slice(0, 7) }).dados.mesReferencia, `${hoje.slice(0, 7)}-01`);
+  assert.ok(regra({ mesReferencia: '2999-01' }).erros.mesReferencia);
+  assert.ok(regra({ mesReferencia: '2001-01' }).erros.mesReferencia);
+  assert.ok(regra({ mesReferencia: 'xx' }).erros.mesReferencia);
+});
+
+test('M1 uso do Armazém: só ids da lista; tentativa sem contato limpa', () => {
+  assert.strictEqual(regra({ usoArmazemId: 2 }).dados.usoArmazemId, 2);
+  assert.ok(regra({ usoArmazemId: 99 }).erros.usoArmazemId);
+  assert.strictEqual(regra({ usoArmazemId: null }).dados.usoArmazemId, null);
+  assert.strictEqual(regra({ houveContato: false, usoArmazemId: 2 }).dados.usoArmazemId, null);
+});
+
+test('M1 orientações: várias; "Outros" pede o texto; sem contato limpa', () => {
+  assert.deepStrictEqual(regra({ orientacaoIds: [1, 2, 2] }).dados.orientacaoIds, [1, 2]);
+  assert.ok(regra({ orientacaoIds: [9] }).erros.orientacaoIds);
+  assert.ok(regra({ orientacaoIds: 'x' }).erros.orientacaoIds);
+  assert.ok(regra({ orientacaoIds: [1, 5] }).erros.orientacaoOutro);
+  const ok = regra({ orientacaoIds: [5], orientacaoOutro: 'Curso de culinária' });
+  assert.deepStrictEqual(ok.erros, {});
+  assert.strictEqual(ok.dados.orientacaoOutro, 'Curso de culinária');
+  assert.strictEqual(regra({ orientacaoIds: [1], orientacaoOutro: 'sobra' }).dados.orientacaoOutro, null);
+  assert.deepStrictEqual(regra({ houveContato: false, orientacaoIds: [1] }).dados.orientacaoIds, []);
+});
+
+test('M1 aceite de foto: booleano', () => {
+  assert.strictEqual(regra({ familiaAceitaFoto: true }).dados.familiaAceitaFoto, true);
+  assert.strictEqual(regra({ familiaAceitaFoto: false }).dados.familiaAceitaFoto, false);
+  assert.ok(regra({ familiaAceitaFoto: 'talvez' }).erros.familiaAceitaFoto);
 });
 
 // ---------------------------------------------------------------------------
@@ -199,6 +256,10 @@ const baseHandlers = (sobreAc = {}) => [
   { teste: /INSERT INTO auditoria/, resp: () => [] },
   { teste: /FROM configuracao/, resp: () => [{ chave: 'alerta_sem_contato_dias', valor: '30' }] },
   { teste: /FROM tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }, { id: 5, nome: 'Outro', exigeTexto: true }] },
+  { teste: /FROM uso_armazem WHERE ativo = 1/, resp: () => [
+    { lista: 'USO', id: 1, nome: 'Utilizou regularmente', exigeTexto: false }, { lista: 'USO', id: 3, nome: 'Não utilizou no período', exigeTexto: false },
+    { lista: 'ORI', id: 1, nome: 'Orientação sobre CadÚnico', exigeTexto: false }, { lista: 'ORI', id: 5, nome: 'Outros', exigeTexto: true },
+    { lista: 'FRA', id: 1, nome: 'Atendimento realizado; situação familiar mantida.', exigeTexto: false }] },
   { teste: /FROM (acompanhamento_meta|registro_meta)/, resp: () => [] },
 ];
 
@@ -338,5 +399,120 @@ test('linha do tempo: filtra atendimentos pelas unidades permitidas e valida o f
     const at = chamadas.find((c) => /FROM atendimento a/.test(c.sql));
     assert.match(at.sql, /a\.unidade_id IN \(@un0, @un1\)/);
     assert.equal(at.params.pessoa, 5);
+  } finally { await srv.fechar(); }
+});
+
+// ---------------------------------------------------------------------------
+// M1 — registro periódico (modelo oficial 2): rotas com banco simulado
+// ---------------------------------------------------------------------------
+
+test('M1 criar registro com mês, uso do Armazém, orientações e aceite de foto grava os campos novos e a N:N', async () => {
+  handlers = [
+    ...baseHandlers(),
+    { teste: /INSERT INTO acompanhamento_registro\s*\(/, resp: () => [{ id: 61 }] },
+    { teste: /acompanhamento_registro_orientacao/, resp: () => [] },
+  ];
+  chamadas.length = 0;
+  const srv = await iniciar(coordenador);
+  try {
+    const mes = hoje.slice(0, 7);
+    const r = await srv.chamar('POST', '/acompanhamentos/100/registros', {
+      ...valido, dataRegistro: hoje, mesReferencia: mes, usoArmazemId: 1, orientacaoIds: [1, 5], orientacaoOutro: 'Curso', familiaAceitaFoto: true,
+    });
+    assert.equal(r.status, 201, JSON.stringify(r.corpo));
+    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_registro\s*\(/.test(c.sql));
+    assert.equal(ins.params.uso, 1);
+    assert.equal(ins.params.orientacaoOutro, 'Curso');
+    assert.equal(ins.params.aceitaFoto, true);
+    assert.equal(ins.params.mes[1], `${mes}-01`);
+    const nn = chamadas.filter((c) => /INSERT INTO acompanhamento_registro_orientacao/.test(c.sql));
+    assert.deepEqual(nn.map((c) => c.params.o), [1, 5]);
+    // uso fora da lista => 400 por campo
+    const ruim = await srv.chamar('POST', '/acompanhamentos/100/registros', { ...valido, dataRegistro: hoje, usoArmazemId: 42 });
+    assert.equal(ruim.status, 400);
+    assert.ok(ruim.corpo.erro.detalhes.usoArmazemId);
+  } finally { await srv.fechar(); }
+});
+
+test('M1 criar registro sem os campos novos continua válido (mês = mês da data) e não consulta as listas', async () => {
+  handlers = [...baseHandlers(), { teste: /INSERT INTO acompanhamento_registro\s*\(/, resp: () => [{ id: 62 }] }];
+  chamadas.length = 0;
+  const srv = await iniciar(coordenador);
+  try {
+    assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros', { ...valido, dataRegistro: hoje })).status, 201);
+    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_registro\s*\(/.test(c.sql));
+    assert.equal(ins.params.mes[1], `${hoje.slice(0, 7)}-01`);
+    assert.equal(ins.params.uso, null);
+    assert.equal(ins.params.aceitaFoto, false);
+    assert.ok(!chamadas.some((c) => /FROM uso_armazem/.test(c.sql)));
+  } finally { await srv.fechar(); }
+});
+
+test('M1 listar registros devolve os campos novos, as listas de apoio e as fotos com data', async () => {
+  handlers = [
+    ...baseHandlers(),
+    { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
+    { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
+    { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [{
+      id: 1, dataRegistro: new Date('2026-03-10'), mesReferencia: new Date('2026-03-01'), tipoContatoId: 1, tipoContatoNome: 'Visita domiciliar',
+      houveContato: true, situacao: 'IGUAL', resumo: 'Obs', usuarioId: 20, autorNome: 'Ana', criadoEm: new Date(), alteradoEm: null,
+      usoArmazemId: 1, usoArmazemNome: 'Utilizou regularmente', orientacaoOutro: null, familiaAceitaFoto: true,
+      orientacoesJson: '[{"id":1,"nome":"Orientação sobre CadÚnico","exige_texto":false}]',
+      fotosJson: '[{"id":7,"legenda":"Cozinha","data_foto":"2026-03-10"}]' }] },
+  ];
+  const srv = await iniciar(coordenador);
+  try {
+    const r = await srv.chamar('GET', '/acompanhamentos/100/registros');
+    assert.equal(r.status, 200);
+    assert.equal(r.corpo.usosArmazem.length, 2);
+    assert.equal(r.corpo.frases[0].nome, 'Atendimento realizado; situação familiar mantida.');
+    assert.ok(r.corpo.orientacoes.some((o) => o.exigeTexto));
+    const reg = r.corpo.registros[0];
+    assert.equal(reg.mesReferencia, '2026-03-01');
+    assert.deepEqual(reg.usoArmazem, { id: 1, nome: 'Utilizou regularmente' });
+    assert.equal(reg.orientacoes[0].nome, 'Orientação sobre CadÚnico');
+    assert.equal(reg.familiaAceitaFoto, true);
+    assert.deepEqual(reg.fotos, [{ id: 7, legenda: 'Cozinha', dataFoto: '2026-03-10', url: '/api/familias/acompanhamentos/100/registros/1/fotos/7' }]);
+  } finally { await srv.fechar(); }
+});
+
+test('M1 fotos do registro: outra unidade 404; sem o aceite da família 409; foto de registro anulado 404', async () => {
+  handlers = baseHandlers();
+  let srv = await iniciar(assistenteA); // unidade 1; o acompanhamento 100 é da unidade 2
+  try {
+    for (const [metodo, url] of [
+      ['POST', '/acompanhamentos/100/registros/1/fotos'], ['GET', '/acompanhamentos/100/registros/1/fotos/3'],
+      ['PATCH', '/acompanhamentos/100/registros/1/fotos/3'], ['DELETE', '/acompanhamentos/100/registros/1/fotos/3'],
+    ]) assert.equal((await srv.chamar(metodo, url, metodo === 'GET' ? undefined : {})).status, 404, `${metodo} ${url}`);
+  } finally { await srv.fechar(); }
+
+  handlers = [
+    ...baseHandlers(),
+    { teste: /FROM acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => [{ id: 1, acompanhamentoId: 100, usuarioId: 20, anuladoEm: null, dataRegistro: new Date('2026-03-10'), familiaAceitaFoto: false }] },
+    { teste: /FROM acompanhamento_registro_foto f/, resp: () => [] },
+  ];
+  srv = await iniciar(coordenador);
+  try {
+    const r = await srv.chamar('POST', '/acompanhamentos/100/registros/1/fotos', {});
+    assert.equal(r.status, 409);
+    assert.match(r.corpo.erro.mensagem, /não aceitou fotos/);
+    assert.equal((await srv.chamar('DELETE', '/acompanhamentos/100/registros/1/fotos/3')).status, 404, 'foto inexistente (ou de registro anulado)');
+  } finally { await srv.fechar(); }
+});
+
+test('M1 editar: desmarcar o aceite com fotos anexadas é recusado', async () => {
+  const registro = [{ id: 9, acompanhamentoId: 100, usuarioId: 20, anuladoEm: null, familiaAceitaFoto: true }];
+  handlers = [
+    ...baseHandlers(),
+    { teste: /FROM acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => registro },
+    { teste: /FROM acompanhamento_registro r JOIN tipo_contato tc ON tc\.id = r\.tipo_contato_id WHERE r\.id = @id/, resp: () => [{ id: 1, exigeTexto: false }] },
+    { teste: /COUNT\(\*\) AS n FROM acompanhamento_registro_foto/, resp: () => [{ n: 2 }] },
+    { teste: /^\s*UPDATE acompanhamento_registro/, resp: () => [] },
+  ];
+  const srv = await iniciar(coordenador);
+  try {
+    const r = await srv.chamar('PUT', '/acompanhamentos/100/registros/9', { ...valido, dataRegistro: hoje, familiaAceitaFoto: false });
+    assert.equal(r.status, 400);
+    assert.match(r.corpo.erro.detalhes.familiaAceitaFoto, /Remova as fotos/);
   } finally { await srv.fechar(); }
 });

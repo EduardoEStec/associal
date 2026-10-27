@@ -9,6 +9,7 @@
 
 const { consultar } = require('../db');
 const estado = require('./catalogo-estado');
+const m1 = require('./modelos-m1');
 
 const TTL_MS = 20 * 1000;
 const NOVA_TENTATIVA_MS = 5 * 1000;
@@ -32,6 +33,9 @@ function opcaoDoCatalogo(o) {
     equivaleId: o.equivaleAId ?? null,
     equivaleCodigo: o.equivaleCodigo ?? null,
     equivalePosicao: o.equivalePosicao === null || o.equivalePosicao === undefined ? null : Number(o.equivalePosicao),
+    pontos: o.pontos === null || o.pontos === undefined ? null : Number(o.pontos),
+    pedeDetalhe: booleano(o.pedeDetalhe),
+    equivalePontos: o.equivalePontos === null || o.equivalePontos === undefined ? null : Number(o.equivalePontos),
   };
 }
 
@@ -42,10 +46,22 @@ function montarCatalogo(perguntas, opcoes) {
     if (!porPergunta.has(o.perguntaId)) porPergunta.set(o.perguntaId, []);
     porPergunta.get(o.perguntaId).push(opcaoDoCatalogo(o));
   }
-  const cat = { textos: {}, opcoes: {}, extras: { QUESTIONARIO: [], PESQUISA: [], ATENDIMENTO: [] }, pesquisaTextos: {} };
+  const cat = {
+    textos: {}, opcoes: {}, pesquisaTextos: {}, m1: { QUESTIONARIO_INICIAL: [], QUESTIONARIO_FINAL: [] },
+    extras: { QUESTIONARIO: [], QUESTIONARIO_INICIAL: [], QUESTIONARIO_FINAL: [], PESQUISA: [], ATENDIMENTO: [] },
+  };
   for (const p of perguntas) {
     const lista = porPergunta.get(p.id) || [];
-    if (booleano(p.oficial)) {
+    if (m1.FORMULARIOS_M1.includes(p.formulario)) {
+      // modelos M1: perguntas oficiais e adicionais juntas (todas respondidas em dbo.resposta_extra)
+      const padrao = m1.PERGUNTAS_PADRAO[p.formulario].find((x) => x.codigo === p.codigo);
+      cat.m1[p.formulario].push({
+        id: p.id, formulario: p.formulario, codigo: p.codigo, campo: p.campo || null, oficial: booleano(p.oficial),
+        secao: p.secao, tipo: p.tipo, texto: p.texto, textoFinal: p.textoFinal || null, ajuda: p.ajuda || null,
+        obrigatoria: booleano(p.obrigatoria), ordem: p.ordem, ativa: booleano(p.ativa), opcoes: lista,
+        min: padrao?.min, max: padrao?.max,
+      });
+    } else if (booleano(p.oficial)) {
       if (p.formulario === 'QUESTIONARIO' && p.campo) {
         cat.textos[p.campo] = { texto: p.texto, textoFinal: p.textoFinal || null, ajuda: p.ajuda || null };
         if (p.tipo === 'ESCOLHA') cat.opcoes[p.campo] = lista;
@@ -77,8 +93,8 @@ async function carregar() {
     `SELECT id, formulario, secao, codigo, oficial, campo, tipo, texto, texto_final, ajuda, obrigatoria, ordem, ativa
        FROM catalogo_pergunta ORDER BY formulario, secao, ordem, id`);
   const opcoes = await consultar(
-    `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao,
-            o.equivale_a_id, eq.codigo AS equivale_codigo, eq.posicao AS equivale_posicao
+    `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao, o.pontos, o.pede_detalhe,
+            o.equivale_a_id, eq.codigo AS equivale_codigo, eq.posicao AS equivale_posicao, eq.pontos AS equivale_pontos
        FROM catalogo_opcao o LEFT JOIN catalogo_opcao eq ON eq.id = o.equivale_a_id
       ORDER BY o.pergunta_id, o.ordem, o.id`);
   estado.definir(montarCatalogo(perguntas, opcoes));

@@ -67,7 +67,7 @@ Tipo: Visita institucional / Ação na unidade / Palestra / Roda de conversa / O
 ## Módulo 3 — Acompanhamento Familiar
 Família = responsável familiar (pessoa) + membros (nome, idade/nasc., gênero, parentesco, trabalha?).
 Acompanhamento: unidade, assistente, data início, status (Em andamento / Concluído / Desligado).
-**Questionário INICIAL e FINAL** com as mesmas perguntas (versão "hoje"); prazo entre eles configurável pelo COORDENADOR (config `prazo_questionario_final_dias`); sistema sinaliza finais vencendo/vencidos.
+**Questionário INICIAL e FINAL** conforme os modelos oficiais (M1; perguntas **diferentes** em cada um, comparados por pares equivalentes — `docs/modelos/MAPEAMENTO.md`); os questionários do formato anterior continuam visíveis, só para leitura; prazo entre eles configurável pelo COORDENADOR (config `prazo_questionario_final_dias`); sistema sinaliza finais vencendo/vencidos.
 Perguntas (do modelo "QUESTIONÁRIO FAMILIAR ATUALIZADO"):
 1. Demográficos: a) composição familiar (membros); b) renda mensal média (R$); c) nº membros com renda; d) recebe auxílio governamental? (não/sim: qual — Bolsa Família, BPC/LOAS, Tarifa Social Energia, Auxílio Gás, outro)
 2. Alimentos: a) acesso a alimentos in natura (não tinha; 1-2x/sem; 2-3x/sem; diário); b) frequência consumo frutas/verduras/legumes (1-2x; 3-4x; 5+ x/sem); c) qualidade da alimentação (melhorou muito; melhorou um pouco; não melhorou; piorou); d) saúde/bem-estar nutricional (grande melhoria; pequena; nenhuma)
@@ -78,7 +78,7 @@ Perguntas (do modelo "QUESTIONÁRIO FAMILIAR ATUALIZADO"):
 Comparação inicial × final: por família e consolidada por unidade/período (renda, frequência de consumo, poupança, economia, etc.).
 
 ## Módulo 4 — Relatórios
-- **Relatório Individual Familiar** (.docx), seções: identificação; 1 Introdução; 2 Objetivo; 3 Metodologia; 4 Diagnóstico Inicial; 5 Impacto na Comunidade; 6 Feedback dos Beneficiários; 7 Considerações finais; local/data; assinatura Assistente Social + CRESS. Pré-preenchido com dados do questionário; textos editáveis antes de gerar.
+- **Relatório Final Familiar** (.docx, modelo oficial 4; substitui o antigo Relatório Individual) e os questionários inicial e final e o registro periódico no formato dos modelos oficiais, para impressão e assinatura. Seções do relatório: identificação; 1 Introdução; 2 Objetivo; 3 Metodologia; 4 Diagnóstico Inicial; 5 Impacto na Comunidade; 6 Feedback dos Beneficiários; 7 Considerações finais; local/data; assinatura Assistente Social + CRESS. Pré-preenchido com dados do questionário; textos editáveis antes de gerar.
 - **Relatório Semestral / Prestação de Contas** (.docx): período, unidades; 1 Introdução; 2 Atividades (2.1 atendimentos — total; 2.2 encaminhamentos — total e instituições; 2.3 visitas — total e lista por unidade; 2.4 outras ações); 3 Empoderamento econômico (nº famílias acompanhadas, resultados da comparação, relatos); 4 Considerações finais; Anexos com fotos por unidade. Assinatura do Coordenador.
 - Modelos originais: `C:\Users\Eduardo Oliveira\Documents\ASSOCIAL\`.
 

@@ -46,6 +46,12 @@
 .q-sim-nao .q-opcao { flex: 1; justify-content: center; }
 .q-detalhe { margin-top: var(--esp-3); padding-top: var(--esp-3); border-top: 1px dashed var(--cor-borda); }
 .q-detalhe[hidden], .campo[hidden] { display: none; }
+/* cabeçalho do formulário em papel (unidade, assistente, datas, responsável, meta) */
+.q-ident { margin-bottom: var(--esp-4); }
+.q-ident .fam-dados { margin-bottom: var(--esp-3); }
+.q-meta { margin: 0 0 var(--esp-2); }
+/* complemento de opção que pede detalhe ("Outras: ____"): sem a linha tracejada de separação dos detalhes antigos */
+.q-pergunta > .q-detalhe { margin-top: var(--esp-2); padding-top: 0; border-top: 0; }
 .q-nav {
   position: sticky; bottom: calc(var(--altura-menu-inferior) + env(safe-area-inset-bottom)); z-index: 20;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--esp-3);

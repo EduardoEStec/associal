@@ -136,10 +136,10 @@ const iso = (v) => String(v).slice(0, 10);
     let pessoaId;
     let registro1;
 
-    await teste('apoio: 5 tipos de contato semeados e editáveis pelo ADMIN', async () => {
+    await teste('apoio: 5 tipos de contato ativos (modelo oficial 2) e editáveis pelo ADMIN', async () => {
       const apoio = await a.req('GET', '/api/apoio');
       assert.deepStrictEqual(apoio.corpo.tipoContato.map((t) => t.nome),
-        ['Visita domiciliar', 'Atendimento no Armazém', 'Telefone', 'WhatsApp', 'Outro']);
+        ['Atendimento presencial', 'Visita domiciliar', 'Contato telefônico', 'WhatsApp', 'Outro']);
       assert.ok(apoio.corpo.tipoContato.find((t) => t.nome === 'Outro').exigeTexto);
       const lista = await adm.req('GET', '/api/admin/apoio/tipo_contato');
       assert.strictEqual(lista.status, 200);
@@ -199,7 +199,7 @@ const iso = (v) => String(v).slice(0, 10);
     await teste('tentativa sem sucesso NÃO conta como contato', async () => {
       const url = `/api/familias/acompanhamentos/${acId}/registros`;
       const tipos = (await a.req('GET', url)).corpo.tiposContato;
-      const tel = tipos.find((t) => t.nome === 'Telefone').id;
+      const tel = tipos.find((t) => t.nome === 'Contato telefônico').id;
       const r = await a.req('POST', url, { dataRegistro: dias(-2), tipoContatoId: tel, houveContato: false, situacao: 'MELHORANDO', resumo: 'Não atendeu' });
       assert.strictEqual(r.status, 201, JSON.stringify(r.corpo));
       const lista = await a.req('GET', url);

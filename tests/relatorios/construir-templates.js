@@ -1,7 +1,8 @@
 'use strict';
 
-// Gera server/templates/individual.docx e semestral.docx (templates docxtemplater) a partir do modelo
+// Gera server/templates/semestral.docx (template docxtemplater) a partir do modelo
 // original da INTECS — preserva papel timbrado (cabeçalho), estilos, margens e fontes; troca só o corpo.
+// O relatório final familiar (individual.docx) e os questionários vêm de construir-templates-m1.js (modelos oficiais M1).
 //
 //   node tests/relatorios/construir-templates.js ["C:\caminho\4.Modelo RELATÓRIO INDIVIDUAL FAMILIAR ....docx"]
 //
@@ -79,40 +80,6 @@ function tabela(lista, colunas) {
 const espaco = () => par('', { depois: 120 });
 
 // ---------- corpos ----------
-function corpoIndividual() {
-  return [
-    vazio(), vazio(),
-    titulo('RELATÓRIO INDIVIDUAL FAMILIAR'),
-    vazio(),
-    par('Nome: {nome}'),
-    par('Responsável Familiar: {responsavel}'),
-    par('CPF: {cpf}        CadÚnico: {nis}'),
-    par('Contato: {contato}        Endereço: {endereco}'),
-    par('Unidade: {unidade}'),
-    vazio(),
-    secao('1. Introdução'), textoLista('introducao'),
-    secao('2. Objetivo'), textoLista('objetivo'),
-    secao('3. Metodologia'), textoLista('metodologia'),
-    secao('4. Diagnóstico Inicial'),
-    subsecao('Situação Socioeconômica Identificada:'), textoLista('diagnostico'),
-    secao('5. Impacto na Comunidade'),
-    subsecao('Melhoria das escolhas alimentares.'), textoLista('impactoAlimentar'),
-    subsecao('Desafios e Oportunidades:'), textoLista('impactoDesafios'),
-    subsecao('Impactos Econômicos:'), textoLista('impactoEconomico'),
-    // F5: aparece só quando há evolução (índice de progresso com 2 ou mais pontos) ou texto
-    abre('temEvolucao'), subsecao('Evolução durante o acompanhamento:'), textoLista('evolucao'), par('{@evolucaoTabela}'), par('', { depois: 120 }), fecha('temEvolucao'),
-    secao('6. Feedback dos Beneficiários'), textoLista('feedback'),
-    secao('7. Considerações finais'), textoLista('consideracoes'),
-    vazio(),
-    par('{localData}', { jc: 'right' }),
-    vazio(), vazio(),
-    par('___________________________________________', { jc: 'center' }),
-    par('{assinaturaNome}', { jc: 'center' }),
-    par('{assinaturaCargo}', { jc: 'center' }),
-    par('{cressLinha}', { jc: 'center' }),
-  ].join('');
-}
-
 function corpoSemestral() {
   const visitas = [
     { titulo: 'Data', largura: 1, campo: 'data' },
@@ -303,5 +270,4 @@ if (!fs.existsSync(origem)) {
   console.error(`Modelo original não encontrado: ${origem}\nInforme o caminho como argumento.`);
   process.exit(1);
 }
-gerar('individual.docx', corpoIndividual());
 gerar('semestral.docx', corpoSemestral());

@@ -145,6 +145,9 @@ async function previaIndividual(req, acompanhamentoId) {
   else if (!d.inicial.concluido) avisos.push('O questionário inicial está em rascunho (não concluído).');
   if (!d.final) avisos.push('O questionário final ainda não foi preenchido: impacto e feedback ficam em branco para você completar.');
   else if (!d.final.concluido) avisos.push('O questionário final está em rascunho (não concluído).');
+  if (d.inicial && d.final && (d.inicial.modelo === 'M1') !== (d.final.modelo === 'M1')) {
+    avisos.push('Os questionários inicial e final foram aplicados em formatos diferentes (o inicial no formato anterior): o impacto descreve só a situação final, sem comparação por pares.');
+  }
   const u = req.usuario;
   return {
     acompanhamento: {
@@ -178,9 +181,10 @@ async function gerarIndividual(req, acompanhamentoId) {
   const local = lerTextoCurto(corpo.local, 'local', 80, 'São Paulo/SP');
   const u = req.usuario;
 
-  const tabelaEvolucao = evolucaoRel.tabelasEvolucaoXml(d.evolucao);
+  const tabelaEvolucao = evolucaoRel.tabelasEvolucaoXml(d.evolucao, 'Times New Roman');
   const buffer = docx.renderizar('individual', {
     ...ident,
+    cpfNis: [ident.cpf, ident.nis].filter(Boolean).join(' / '),
     ...Object.fromEntries(CHAVES_INDIVIDUAL.map((c) => [c, paragrafos(t[c])])),
     temEvolucao: !!tabelaEvolucao || paragrafos(t.evolucao).length > 0,
     evolucaoTabela: tabelaEvolucao,
@@ -189,7 +193,7 @@ async function gerarIndividual(req, acompanhamentoId) {
     assinaturaCargo: cargoAssinatura(u.perfil, 'individual'),
     cressLinha: linhaCress(u.cress),
   });
-  return { buffer, nomeArquivo: `Relatorio_Individual_Familiar_${d.acompanhamento.unidadeSigla}_${acompanhamentoId}_${data}.docx` };
+  return { buffer, nomeArquivo: `Relatorio_Final_Familiar_${d.acompanhamento.unidadeSigla}_${acompanhamentoId}_${data}.docx` };
 }
 
 // ---------- Relatório Semestral ----------
@@ -355,7 +359,10 @@ async function csvAcoes(req, consulta) {
   };
 }
 
-const ROTULO_FORMULARIO_CSV = { QUESTIONARIO: 'Questionário familiar', PESQUISA: 'Pesquisa de satisfação', ATENDIMENTO: 'Atendimento' };
+const ROTULO_FORMULARIO_CSV = {
+  QUESTIONARIO: 'Questionário familiar (formato anterior)', QUESTIONARIO_INICIAL: 'Questionário inicial', QUESTIONARIO_FINAL: 'Questionário final',
+  PESQUISA: 'Pesquisa de satisfação', ATENDIMENTO: 'Atendimento',
+};
 const ROTULO_MOMENTO_CSV = {
   INICIAL: 'Inicial', FINAL: 'Final', REAVALIACAO: 'Reavaliação', SEMESTRAL: 'Semestral', AVULSA: 'Avulsa', Atendimento: '',
 };

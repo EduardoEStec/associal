@@ -1,8 +1,10 @@
 # Catálogo de perguntas e opções (P1 + P2)
 
-A coordenação (COORDENADOR) e o ADMIN configuram, em **Administração > Perguntas e opções**, três formulários:
-**Questionário Individual Familiar** (`QUESTIONARIO`), **Pesquisa de satisfação** (`PESQUISA`) e **Novo atendimento** (`ATENDIMENTO`).
-Migração: `database/085_catalogo_perguntas.sql` (idempotente; no SQL Server real fica na fila do fim, com backup).
+A coordenação (COORDENADOR) e o ADMIN configuram, em **Administração > Perguntas e opções**, quatro formulários:
+**Questionário inicial** (`QUESTIONARIO_INICIAL`) e **Questionário final** (`QUESTIONARIO_FINAL`) — os modelos oficiais M1, com perguntas diferentes —,
+**Pesquisa de satisfação** (`PESQUISA`) e **Novo atendimento** (`ATENDIMENTO`). O `QUESTIONARIO` antigo (formato anterior à M1) só pode ser consultado e renomeado.
+Migrações: `database/085_catalogo_perguntas.sql` (P2) e `database/086_questionarios_m1.sql` (M1); idempotentes; no SQL Server real ficam na fila do fim, com backup.
+Mapeamento pergunta do papel → código → uso: [docs/modelos/MAPEAMENTO.md](modelos/MAPEAMENTO.md).
 
 ## Permissões (P1)
 
@@ -26,11 +28,29 @@ Leitura das perguntas pelos formulários (`GET /api/apoio/perguntas/:formulario`
 8. **Catálogo em memória.** `server/services/catalogo.js` carrega o catálogo do banco (TTL de 20 s e recarga imediata após cada edição); sem as tabelas (migração não aplicada) vale o padrão do código (`catalogo-estado.js`), igual ao anterior à P2.
 9. **Auditoria**: toda criação, alteração, ativação/desativação, ordem e exclusão grava em `dbo.auditoria` (`catalogo_pergunta`, `catalogo_opcao`), com o texto antes/depois; só o ADMIN consulta.
 
+## Modelos oficiais M1 (questionário inicial e final)
+
+1. **Perguntas oficiais no catálogo.** As 14 perguntas do inicial e as 21 do final (`oficial = 1`, `formulario = QUESTIONARIO_INICIAL | QUESTIONARIO_FINAL`) têm **código do papel** (`"2.1"`), `campo` semântico (`fonteRenda`) e opções com código estável (`TRABALHO_INFORMAL`). A semente vem de `server/services/modelos-m1.js`.
+2. **Respostas genéricas.** Oficiais e adicionais ficam em `resposta_extra`, ligadas ao `questionario` (`modelo = 'M1'`); o complemento "Outras: ____" fica em `valor_texto` da linha da opção que tem `pede_detalhe`. O `questionario` antigo continua com as colunas fixas (`modelo = 'LEGADO'`, só leitura quando concluído).
+3. **Pontuação.** `catalogo_opcao.pontos` (0–100; vazio = não pontua) alimenta o índice v2 e a comparação por pares. Opção acrescentada: *vale como* uma opção oficial (usa os pontos dela) ou *não pontua*; só pergunta oficial que pontua pede essa escolha (a fonte de renda, por exemplo, não pede).
+4. **Texto, ordem e opções** das oficiais: a coordenação renomeia e acrescenta; código, tipo, campo e pontos oficiais nunca mudam. Adicionais ficam no fim da seção (`E0001`… por formulário) e valem só para o formulário em que foram criadas (o inicial e o final têm catálogos separados).
+5. **Reavaliação rápida** usa 5 perguntas oficiais do final (1.3, 2.4, 2.5, 2.6, 2.7) e nunca tem adicionais.
+
+### API dos questionários M1
+
+- `GET /api/familias/questionario/modelo?tipo=INICIAL|REAVALIACAO|FINAL` → `{ tipo, modelo: "M1", formulario, blocos: [{ numero, titulo, perguntas: [{ codigo, campo, extra, tipo: texto|numero|booleano|escolha|multipla, texto, ajuda, obrigatoria, min?, max?, opcoes?: [{ valor, rotulo, ativa, pedeDetalhe }] }] }] }`. Com `&modelo=LEGADO`, o modelo do formato anterior.
+- `GET /api/familias/acompanhamentos/:id/questionarios/:tipo` → `{ modelo: "M1", respostas: { "<código>": valor }, detalhes: { "<código>": texto }, respostasLegiveis: [{ codigo, pergunta, resposta, oficial, … }], cabecalho: { unidade, assistente, dataInicio, dataPrevista, meta, responsavel: { nome, cpf, nis, telefone, endereco } }, sugestoes, podeEditar, bloqueio }`. Questionário legado: `modelo: "LEGADO"` com o formato anterior.
+- `PUT …/questionarios/:tipo` aceita `{ dataAplicacao, respostas, detalhes, concluir }`. `respostas` ausente = não mexe no gravado; valor vazio limpa; erros em `erro.detalhes["extras.<código>"]` e `["detalhes.<código>"]`. Questionário legado concluído: **409**.
+- `GET …/comparacao` → `modelo: "M1"`: `itens` (6 pares: `chave`, `inicial`, `final` com `codigo/valor/rotulo/pontos`, `tendencia`, `aproximado`), `comparativas` (1.4, 2.8, 3.4), `resumo`, `outras` (demais respostas) e `extrasAdicionais`. Legado: formato anterior; formatos diferentes: `completo: false, mista: true`.
+- `GET …/indicadores` → pontos com `modelo` e `versaoRegra` (2 para M1, 1 para o legado); dimensões sem item (Economia e Autonomia nos modelos oficiais) vêm com `itensTotal: 0` e nível vazio.
+- `GET /api/relatorios/formulario/:acompanhamentoId/INICIAL|FINAL` → `.docx` do modelo 1 ou 3 (preenchido ou em branco); legado: 409.
+- `GET /api/admin/perguntas?formulario=QUESTIONARIO_INICIAL|QUESTIONARIO_FINAL|…` e demais rotas de edição iguais às da P2; `POST` no formulário `QUESTIONARIO` (antigo) devolve 409.
+
 ## Tabelas
 
-- `catalogo_pergunta` — `formulario`, `secao`, `codigo`, `oficial`, `campo` (oficial do questionário: nome do campo na API), `tipo`, `texto`, `texto_final` (questionário: texto do FINAL), `ajuda`, `obrigatoria`, `ordem`, `ativa`.
-- `catalogo_opcao` — `pergunta_id`, `codigo`, `texto`, `texto_final`, `ordem`, `ativa`, `base` (opção oficial, define a escala), `posicao` (0 = pior), `equivale_a_id` (acrescentada: vale como esta base; `NULL` = não pontua).
-- `resposta_extra` — `pergunta_id`, dono, `opcao_id`, `valor_texto`, `valor_num` (sim/não = 1/0).
+- `catalogo_pergunta` — `formulario` (`QUESTIONARIO_INICIAL`, `QUESTIONARIO_FINAL`, `QUESTIONARIO`, `PESQUISA`, `ATENDIMENTO`), `secao`, `codigo`, `oficial`, `campo` (oficial do questionário: nome do campo na API), `tipo`, `texto`, `texto_final` (questionário: texto do FINAL), `ajuda`, `obrigatoria`, `ordem`, `ativa`.
+- `catalogo_opcao` — `pergunta_id`, `codigo`, `texto`, `texto_final`, `ordem`, `ativa`, `base` (opção oficial, define a escala), `posicao` (0 = pior), `equivale_a_id` (acrescentada: vale como esta base; `NULL` = não pontua), `pontos` (M1: 0–100 na regra v2; `NULL` = não pontua), `pede_detalhe` (M1: "Outras: ____").
+- `resposta_extra` — `pergunta_id`, dono, `opcao_id`, `valor_texto` (texto livre ou complemento da opção), `valor_num` (sim/não = 1/0). Nos questionários M1 guarda também as respostas às perguntas oficiais.
 
 ## API de administração (COORDENADOR e ADMIN)
 

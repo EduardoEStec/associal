@@ -13,6 +13,8 @@ const { numero, moeda, percentual } = require('./relatorios-textos');
 const indice = require('./indice-dados');
 const estado = require('./catalogo-estado');
 const extras = require('./extras');
+const qm1 = require('./questionario-m1');
+const modelosM1 = require('./modelos-m1');
 
 // ---------- escopo de unidades ----------
 
@@ -132,14 +134,20 @@ async function carregarIndividual(req, acompanhamentoId) {
   const inicial = questionarios.find((q) => q.tipo === 'INICIAL') || null;
   const final = questionarios.find((q) => q.tipo === 'FINAL') || null;
 
-  const beneficiosInicial = inicial
+  // modelos oficiais M1: respostas lidas de resposta_extra (por código de pergunta)
+  const lerM1 = async (q, formulario, tipoQuestionario) => (q && q.modelo === 'M1'
+    ? extras.carregarRespostas({ consultar }, formulario, q.id, { tipoQuestionario }) : null);
+  const inicialM1 = await lerM1(inicial, 'QUESTIONARIO_INICIAL', 'INICIAL');
+  const finalM1 = await lerM1(final, 'QUESTIONARIO_FINAL', 'FINAL');
+
+  const beneficiosInicial = inicial && inicial.modelo !== 'M1'
     ? (await consultar(
       `SELECT b.nome FROM questionario_beneficio qb JOIN beneficio b ON b.id = qb.beneficio_id
         WHERE qb.questionario_id = @q ORDER BY b.ordem, b.nome`,
       { q: inicial.id },
     )).map((l) => l.nome)
     : [];
-  const destinosFinal = final
+  const destinosFinal = final && final.modelo !== 'M1'
     ? (await consultar(
       `SELECT d.nome FROM questionario_destino_economia qd JOIN destino_economia d ON d.id = qd.destino_economia_id
         WHERE qd.questionario_id = @q ORDER BY d.ordem, d.nome`,
@@ -147,12 +155,12 @@ async function carregarIndividual(req, acompanhamentoId) {
     )).map((l) => l.nome)
     : [];
 
-  // perguntas adicionais criadas pela coordenação (P2), respondidas no inicial e no final
-  const extrasInicial = inicial ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', inicial.id, { tipoQuestionario: 'INICIAL' })).lista : [];
-  const extrasFinal = final ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', final.id, { tipoQuestionario: 'FINAL' })).lista : [];
+  // perguntas adicionais criadas pela coordenação (P2), respondidas no inicial e no final (formato anterior)
+  const extrasInicial = inicial && inicial.modelo !== 'M1' ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', inicial.id, { tipoQuestionario: 'INICIAL' })).lista : [];
+  const extrasFinal = final && final.modelo !== 'M1' ? (await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', final.id, { tipoQuestionario: 'FINAL' })).lista : [];
 
   const evolucao = await carregarEvolucao(req, acompanhamentoId);
-  return { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal, evolucao };
+  return { acompanhamento, responsavel, membros, inicial, final, inicialM1, finalM1, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal, evolucao };
 }
 
 // ---------- Relatório Semestral ----------
@@ -323,7 +331,7 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   const questionarios = await consultar(
     `SELECT q.*, ac.unidade_id
        FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
-      WHERE ${w} AND q.concluido = 1
+      WHERE ${w} AND q.concluido = 1 AND q.tipo IN ('INICIAL', 'FINAL')
         AND EXISTS (SELECT 1 FROM questionario qf WHERE qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL'
                        AND qf.concluido = 1 AND qf.data_aplicacao BETWEEN @ini AND @fim)
         AND EXISTS (SELECT 1 FROM questionario qi WHERE qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL' AND qi.concluido = 1)`, p);
@@ -332,8 +340,30 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
     if (!porAcomp.has(q.acompanhamentoId)) porAcomp.set(q.acompanhamentoId, {});
     porAcomp.get(q.acompanhamentoId)[q.tipo === 'INICIAL' ? 'inicial' : 'final'] = q;
   }
-  const pares = [...porAcomp.values()].filter((x) => x.inicial && x.final);
-  const comparacao = consolidar(pares);
+  const completos = [...porAcomp.values()].filter((x) => x.inicial && x.final);
+  const pares = completos.filter((x) => x.inicial.modelo !== 'M1' && x.final.modelo !== 'M1'); // formato anterior
+  const paresM1Linhas = completos.filter((x) => x.inicial.modelo === 'M1' && x.final.modelo === 'M1');
+
+  // modelos oficiais M1: respostas lidas de resposta_extra
+  const paresM1 = [];
+  if (paresM1Linhas.length) {
+    const lidasI = await extras.linhasDeDonos({ consultar }, modelosM1.FORMULARIO_INICIAL, paresM1Linhas.map((x) => x.inicial.id));
+    const lidasF = await extras.linhasDeDonos({ consultar }, modelosM1.FORMULARIO_FINAL, paresM1Linhas.map((x) => x.final.id));
+    for (const x of paresM1Linhas) {
+      const ri = extras.formatarRespostas(modelosM1.FORMULARIO_INICIAL, lidasI.get(x.inicial.id) || [], { tipoQuestionario: 'INICIAL' });
+      const rf = extras.formatarRespostas(modelosM1.FORMULARIO_FINAL, lidasF.get(x.final.id) || [], { tipoQuestionario: 'FINAL' });
+      paresM1.push({ unidadeId: x.final.unidadeId, questionarioId: x.final.id, inicial: ri, final: rf });
+    }
+  }
+  const comparacaoLegado = pares.length ? consolidar(pares) : null;
+  const comparacaoM1 = paresM1.length ? qm1.consolidarM1(paresM1) : null;
+  const comparacao = {
+    pares: pares.length + paresM1.length,
+    indicadores: [...(comparacaoLegado?.indicadores || []), ...(comparacaoM1?.indicadores || [])],
+    distribuicoes: [...(comparacaoLegado?.distribuicoes || []), ...(comparacaoM1?.distribuicoes || [])],
+    ...(comparacaoM1 ? { m1: { porPar: comparacaoM1.porPar, porComparativa: comparacaoM1.porComparativa } } : {}),
+  };
+  if (!comparacaoLegado && !comparacaoM1) Object.assign(comparacao, consolidar([]));
 
   // --- relatos (respostas abertas do questionário FINAL; anônimos: só a unidade) ---
   const relatos = [];
@@ -347,6 +377,19 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
         unidadeId: q.unidadeId,
         sigla: unidadePorId.get(q.unidadeId)?.sigla || '',
         pergunta,
+        texto,
+      });
+    }
+  }
+  for (const par of paresM1) {
+    for (const codigo of ['4.1', '4.2', '4.3', '4.4']) {
+      const texto = String(par.final.mapa[codigo] || '').trim();
+      if (!texto) continue;
+      relatos.push({
+        id: `${par.questionarioId}.${codigo}`,
+        unidadeId: par.unidadeId,
+        sigla: unidadePorId.get(par.unidadeId)?.sigla || '',
+        pergunta: qm1.rotuloPergunta(modelosM1.FORMULARIO_FINAL, codigo),
         texto,
       });
     }
@@ -372,7 +415,7 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
       outrasAcoes: outrasAcoes.length,
       participantes: acoes.reduce((t, a) => t + (a.qtdParticipantes || 0), 0),
       familias: familiasTotal,
-      pares: pares.length,
+      pares: pares.length + paresM1.length,
     },
     atendimentosPorUnidade: porUnidade,
     encaminhamentosPorInstituicao: encPorInstituicao,
@@ -496,29 +539,32 @@ async function respostasExtrasPeriodo(req, { dataInicio, dataFim, unidadeIds }) 
   const selecionadas = resolverEscopo(req, unidadeIds);
   const unidades = new Map((await unidadesPorId(selecionadas)).map((u) => [u.id, u.sigla]));
   const periodo = (p) => { p.ini = [tipos.Date, dataInicio]; p.fim = [tipos.Date, dataFim]; return p; };
+  const consultaQuestionarios = (p, condicao) => `SELECT q.id AS dono_id, q.data_aplicacao AS data, ac.unidade_id, q.tipo AS momento
+       FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
+      WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND q.concluido = 1 AND q.data_aplicacao BETWEEN @ini AND @fim
+        AND ${condicao} AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.questionario_id = q.id)`;
   const consultas = {
     ATENDIMENTO: (p) => `SELECT a.id AS dono_id, a.data_atendimento AS data, a.unidade_id, 'Atendimento' AS momento
        FROM atendimento a WHERE ${filtroUnidades(req, 'a.unidade_id', selecionadas, p)} AND a.data_atendimento BETWEEN @ini AND @fim
         AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.atendimento_id = a.id)`,
-    QUESTIONARIO: (p) => `SELECT q.id AS dono_id, q.data_aplicacao AS data, ac.unidade_id, q.tipo AS momento
-       FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
-      WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND q.concluido = 1 AND q.data_aplicacao BETWEEN @ini AND @fim
-        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.questionario_id = q.id)`,
+    QUESTIONARIO: (p) => consultaQuestionarios(p, "q.modelo <> 'M1'"),
+    QUESTIONARIO_INICIAL: (p) => consultaQuestionarios(p, "q.modelo = 'M1' AND q.tipo = 'INICIAL'"),
+    QUESTIONARIO_FINAL: (p) => consultaQuestionarios(p, "q.modelo = 'M1' AND q.tipo = 'FINAL'"),
     PESQUISA: (p) => `SELECT pr.id AS dono_id, pr.data_aplicacao AS data, ac.unidade_id, pr.momento
        FROM pesquisa_resposta pr JOIN acompanhamento ac ON ac.id = pr.acompanhamento_id
       WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND pr.situacao = 'CONCLUIDA' AND pr.data_aplicacao BETWEEN @ini AND @fim
         AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.pesquisa_resposta_id = pr.id)`,
   };
   const saida = [];
-  for (const formulario of estado.FORMULARIOS) {
+  for (const formulario of estado.TODOS_FORMULARIOS) {
     const p = periodo({});
     const donos = await consultar(consultas[formulario](p), p);
     if (!donos.length) continue;
     const linhasPorDono = await extras.linhasDeDonos({ consultar }, formulario, donos.map((d) => d.donoId));
     for (const d of donos) {
-      const tipoQuestionario = formulario === 'QUESTIONARIO' && d.momento === 'FINAL' ? 'FINAL' : 'INICIAL';
+      const tipoQuestionario = formulario.startsWith('QUESTIONARIO') && d.momento === 'FINAL' ? 'FINAL' : 'INICIAL';
       const { lista } = extras.formatarRespostas(formulario, linhasPorDono.get(d.donoId) || [], { tipoQuestionario });
-      for (const x of lista) {
+      for (const x of lista.filter((y) => !y.oficial)) { // só as perguntas adicionais; as oficiais dos modelos não vão neste CSV
         saida.push({
           formulario, data: d.data, unidade: unidades.get(d.unidadeId) || '', registro: d.donoId, momento: d.momento,
           codigo: x.codigo, pergunta: x.pergunta, resposta: x.resposta,

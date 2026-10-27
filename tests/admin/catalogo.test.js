@@ -155,7 +155,8 @@ test('ÍNDICE DE PROGRESSO com opção nova: igual ao da base equivalente; "não
   assert.equal(semPontuar.itens.some((i) => i.campo === 'acessoAlimentosInNatura'), false);
   // a fórmula e a escala das outras perguntas não mudaram
   assert.equal(dim(respostas({ acessoAlimentosInNatura: 'NAO_TINHA' })).itens.find((i) => i.campo === 'acessoAlimentosInNatura').pontos, 0);
-  assert.equal(indice.VERSAO_REGRA, 1);
+  assert.equal(indice.VERSAO_REGRA_LEGADO, 1);
+  assert.equal(indice.calcularIndice(respostas(), { tipo: 'FINAL' }).versaoRegra, 1, 'questionário no formato anterior segue na regra v1');
 });
 
 // ---------- perguntas extras no modelo ----------
@@ -213,7 +214,7 @@ test('extras: obrigatória só vale ao concluir; vazio limpa a resposta; falta d
 
 test('extras: erros por tipo (número, sim/não, opção desconhecida, lista, texto longo, formato do objeto)', () => {
   const r = extras.validarExtras(DEFS, {
-    [cod(1)]: 'x'.repeat(1001), [cod(2)]: 'abc', [cod(3)]: 'talvez', [cod(4)]: 'OP99', [cod(5)]: 'OP01',
+    [cod(1)]: 'x'.repeat(2001), [cod(2)]: 'abc', [cod(3)]: 'talvez', [cod(4)]: 'OP99', [cod(5)]: 'OP01',
   }, { concluir: false });
   assert.deepEqual(Object.keys(r.erros).sort(), ['extras.E0001', 'extras.E0002', 'extras.E0003', 'extras.E0004', 'extras.E0005']);
   assert.ok(extras.validarExtras(DEFS, [], {}).erros.extras);

@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  VERSAO_REGRA, calcularIndice, classificarVariacao, compararPontos, montarEvolucao, situacaoReavaliacao,
+  VERSAO_REGRA, VERSAO_REGRA_LEGADO, calcularIndice, classificarVariacao, compararPontos, montarEvolucao, situacaoReavaliacao,
 } = require('../../server/services/indice-progresso');
 const { validarRespostas, montarModelo, PERGUNTAS_REAVALIACAO } = require('../../server/services/questionario');
 
@@ -95,7 +95,7 @@ test('índice geral = média simples das dimensões com nível; nunca conta dime
 
 test('registra a versão da regra e os parâmetros usados', () => {
   const r = calcularIndice(base(), { tipo: 'FINAL', salarioMinimo: SM });
-  assert.equal(r.versaoRegra, VERSAO_REGRA);
+  assert.equal(r.versaoRegra, VERSAO_REGRA_LEGADO);
   assert.equal(r.parametros.salarioMinimo, SM);
   assert.equal(r.parametros.rendaPerCapita, 400);
 });

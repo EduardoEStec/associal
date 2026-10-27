@@ -1,6 +1,8 @@
 'use strict';
 
-// Edição do catálogo de perguntas e opções (P2) pela coordenação e pelo ADMIN. Montado em /api/admin/perguntas (routes/admin.js).
+// Edição do catálogo de perguntas e opções (P2/M1) pela coordenação e pelo ADMIN. Montado em /api/admin/perguntas (routes/admin.js).
+// Formulários: QUESTIONARIO_INICIAL e QUESTIONARIO_FINAL (modelos oficiais M1), PESQUISA e ATENDIMENTO. QUESTIONARIO (formato
+// anterior) só pode ser consultado e renomeado: não recebe perguntas novas.
 // Regras:
 //   - perguntas OFICIAIS só têm o texto (e a ajuda) renomeados; as opções oficiais são renomeadas, e a coordenação pode
 //     ACRESCENTAR opções informando com qual opção oficial a nova "vale" no índice de progresso e na comparação (ou que não pontua);
@@ -15,8 +17,10 @@ const { texto, lancarSeErros, inteiroPositivo } = require('../lib/validacao');
 const catalogo = require('./catalogo');
 const estado = require('./catalogo-estado');
 const { BLOCOS, COLUNAS } = require('./questionario');
+const m1 = require('./modelos-m1');
 
-const FORMULARIOS = estado.FORMULARIOS;
+const FORMULARIOS = estado.TODOS_FORMULARIOS;
+const LEGADO = estado.FORMULARIO_LEGADO;
 const TIPOS_EXTRA = Object.freeze(['TEXTO', 'NUMERO', 'SIM_NAO', 'ESCOLHA', 'MULTIPLA']);
 const MIN_OPCOES_ATIVAS = 2;
 const MAX_PERGUNTAS_POR_FORMULARIO = 60;
@@ -24,11 +28,17 @@ const MAX_OPCOES = 30;
 
 const SECOES = Object.freeze({
   QUESTIONARIO: BLOCOS.map((b) => ({ numero: b.numero, titulo: b.titulo })),
+  QUESTIONARIO_INICIAL: m1.SECOES.QUESTIONARIO_INICIAL,
+  QUESTIONARIO_FINAL: m1.SECOES.QUESTIONARIO_FINAL,
   PESQUISA: [{ numero: 1, titulo: 'Perguntas da pesquisa' }],
   ATENDIMENTO: [{ numero: 1, titulo: 'Informações adicionais do atendimento' }],
 });
 const ROTULO_FORMULARIO = Object.freeze({
-  QUESTIONARIO: 'Questionário Individual Familiar', PESQUISA: 'Pesquisa de satisfação', ATENDIMENTO: 'Novo atendimento',
+  QUESTIONARIO: 'Questionário (formato anterior)',
+  QUESTIONARIO_INICIAL: 'Questionário inicial',
+  QUESTIONARIO_FINAL: 'Questionário final',
+  PESQUISA: 'Pesquisa de satisfação',
+  ATENDIMENTO: 'Novo atendimento',
 });
 
 // Listas (tabelas de apoio) que alimentam as perguntas oficiais de múltipla escolha: editadas na aba Listas.
@@ -38,9 +48,12 @@ const ehVerdadeiro = (v) => v === true || v === 1 || v === '1' || v === 'true';
 
 // ---------- leitura ----------
 
-function exigirFormulario(valor) {
+function exigirFormulario(valor, { paraCriar = false } = {}) {
   const f = String(valor || '').toUpperCase();
-  if (!FORMULARIOS.includes(f)) throw erros.validacao({ formulario: 'Escolha o questionário, a pesquisa ou o atendimento.' });
+  if (!FORMULARIOS.includes(f)) throw erros.validacao({ formulario: 'Escolha o questionário inicial, o final, a pesquisa ou o atendimento.' });
+  if (paraCriar && f === LEGADO) {
+    throw erros.conflito('O questionário no formato anterior é somente leitura: acrescente a pergunta ao questionário inicial ou ao final.');
+  }
   return f;
 }
 
@@ -60,7 +73,7 @@ async function listar(formularioEntrada) {
             (SELECT COUNT(*) FROM resposta_extra r WHERE r.pergunta_id = p.id) AS respostas
        FROM catalogo_pergunta p WHERE p.formulario = @formulario ORDER BY p.secao, p.oficial DESC, p.ordem, p.id`, { formulario });
   const opcoes = await consultar(
-    `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao, o.equivale_a_id,
+    `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao, o.pontos, o.pede_detalhe, o.equivale_a_id,
             eq.codigo AS equivale_codigo, eq.texto AS equivale_texto,
             (SELECT COUNT(*) FROM resposta_extra r WHERE r.opcao_id = o.id) AS respostas
        FROM catalogo_opcao o
@@ -68,18 +81,21 @@ async function listar(formularioEntrada) {
        LEFT JOIN catalogo_opcao eq ON eq.id = o.equivale_a_id
       WHERE p.formulario = @formulario ORDER BY o.pergunta_id, o.ordem, o.id`, { formulario });
 
+  // formato anterior: as perguntas oficiais têm colunas fixas em dbo.questionario; nos demais tudo vive em resposta_extra
   const usoOficial = new Map();
   for (const p of perguntas) {
-    if (p.oficial && p.tipo === 'ESCOLHA') usoOficial.set(p.id, await usoDasOpcoesOficiais(p.campo));
+    if (formulario === LEGADO && p.oficial && p.tipo === 'ESCOLHA') usoOficial.set(p.id, await usoDasOpcoesOficiais(p.campo));
   }
   const porPergunta = new Map();
   for (const o of opcoes) {
     const p = perguntas.find((x) => x.id === o.perguntaId);
-    const respostas = p.oficial ? (usoOficial.get(p.id)?.get(o.codigo) || 0) : o.respostas;
+    const respostas = formulario === LEGADO && p.oficial ? (usoOficial.get(p.id)?.get(o.codigo) || 0) : o.respostas;
     if (!porPergunta.has(o.perguntaId)) porPergunta.set(o.perguntaId, []);
     porPergunta.get(o.perguntaId).push({
       id: o.id, codigo: o.codigo, texto: o.texto, textoFinal: o.textoFinal, ordem: o.ordem, ativa: !!o.ativa, base: !!o.base,
-      equivaleCodigo: o.equivaleCodigo, equivaleTexto: o.equivaleTexto, pontua: !!o.base || o.equivaleAId !== null, respostas,
+      equivaleCodigo: o.equivaleCodigo, equivaleTexto: o.equivaleTexto, respostas,
+      pontua: o.base ? (formulario === LEGADO || o.pontos !== null) : o.equivaleAId !== null,
+      pedeDetalhe: !!o.pedeDetalhe,
     });
   }
 
@@ -92,10 +108,11 @@ async function listar(formularioEntrada) {
       perguntas: perguntas.filter((p) => p.secao === s.numero).map((p) => ({
         id: p.id, codigo: p.codigo, oficial: !!p.oficial, tipo: p.tipo, texto: p.texto, textoFinal: p.textoFinal, ajuda: p.ajuda,
         obrigatoria: !!p.obrigatoria, ordem: p.ordem, ativa: !!p.ativa,
-        respostas: p.oficial ? null : p.respostas,
+        respostas: formulario === LEGADO && p.oficial ? null : p.respostas,
+        campo: p.campo,
         opcoes: porPergunta.get(p.id) || [],
-        // perguntas de lista (benefícios, destinos) têm as opções na aba Listas
-        apoio: p.oficial ? APOIO_DA_PERGUNTA[p.campo] || (p.tipo === 'MULTIPLA' ? 'destino_economia' : null) : null,
+        // formato anterior: perguntas de lista (benefícios, destinos) têm as opções na aba Listas
+        apoio: formulario === LEGADO && p.oficial ? APOIO_DA_PERGUNTA[p.campo] || (p.tipo === 'MULTIPLA' ? 'destino_economia' : null) : null,
       })),
     })),
   };
@@ -109,7 +126,7 @@ function validarTextoPergunta(corpo, { formulario, oficial }) {
   if (!t || t.length < 3) problemas.texto = 'Escreva a pergunta (mínimo de 3 caracteres).';
   const ajuda = texto(corpo.ajuda, 300);
   let textoFinal = null;
-  if (formulario === 'QUESTIONARIO') {
+  if (formulario === LEGADO) {
     textoFinal = texto(corpo.textoFinal, 500) || t;
   }
   if (oficial && !t) problemas.texto = 'A pergunta oficial não pode ficar sem texto.';
@@ -138,14 +155,23 @@ const respostasDaPergunta = async (executor, perguntaId) =>
   (await executor.consultarUm('SELECT COUNT(*) AS n FROM resposta_extra WHERE pergunta_id = @perguntaId', { perguntaId })).n;
 
 async function respostasDaOpcao(executor, pergunta, opcao) {
-  if (!pergunta.oficial) return (await executor.consultarUm('SELECT COUNT(*) AS n FROM resposta_extra WHERE opcao_id = @id', { id: opcao.id })).n;
+  if (!(pergunta.oficial && pergunta.formulario === LEGADO)) return (await executor.consultarUm('SELECT COUNT(*) AS n FROM resposta_extra WHERE opcao_id = @id', { id: opcao.id })).n;
   const coluna = COLUNAS[pergunta.campo];
   if (!coluna) return 0;
   return (await executor.consultarUm(`SELECT COUNT(*) AS n FROM questionario WHERE ${coluna} = @codigo`, { codigo: opcao.codigo })).n;
 }
 
+// A pergunta oficial entra no índice/comparação? Formato anterior: sempre. M1: só se alguma opção oficial tem pontos.
+async function perguntaPontua(executor, pergunta) {
+  if (pergunta.formulario === LEGADO) return true;
+  const r = await executor.consultarUm('SELECT COUNT(*) AS n FROM catalogo_opcao WHERE pergunta_id = @id AND base = 1 AND pontos IS NOT NULL', { id: pergunta.id });
+  return r.n > 0;
+}
+
 // Opção acrescentada a pergunta OFICIAL: `equivaleA` (código de uma opção base) ou `naoPontua`. Devolve o id da base ou null.
+// Pergunta oficial que não pontua (ex.: fonte de renda) dispensa a escolha.
 async function resolverEquivalencia(executor, pergunta, corpo, problemas) {
+  if (!(await perguntaPontua(executor, pergunta))) return null;
   const naoPontua = ehVerdadeiro(corpo.naoPontua);
   const codigo = texto(corpo.equivaleA, 40);
   if (naoPontua) return null;
@@ -154,7 +180,8 @@ async function resolverEquivalencia(executor, pergunta, corpo, problemas) {
     return null;
   }
   const base = await executor.consultarUm(
-    'SELECT id FROM catalogo_opcao WHERE pergunta_id = @perguntaId AND codigo = @codigo AND base = 1', { perguntaId: pergunta.id, codigo });
+    `SELECT id FROM catalogo_opcao WHERE pergunta_id = @perguntaId AND codigo = @codigo AND base = 1${pergunta.formulario === LEGADO ? '' : ' AND pontos IS NOT NULL'}`,
+    { perguntaId: pergunta.id, codigo });
   if (!base) { problemas.equivaleA = 'Escolha uma das opções oficiais da pergunta.'; return null; }
   return base.id;
 }
@@ -177,7 +204,7 @@ async function atualizado(req) {
 // ---------- perguntas ----------
 
 async function criarPergunta(req, corpo) {
-  const formulario = exigirFormulario(corpo.formulario);
+  const formulario = exigirFormulario(corpo.formulario, { paraCriar: true });
   const secao = Number(corpo.secao ?? 1);
   const problemas = {};
   if (!SECOES[formulario].some((s) => s.numero === secao)) problemas.secao = 'Escolha a seção.';
@@ -279,7 +306,7 @@ async function excluirPergunta(req, id) {
 
 // ids = TODAS as perguntas extras da seção, na nova ordem
 async function ordenarPerguntas(req, corpo) {
-  const formulario = exigirFormulario(corpo.formulario);
+  const formulario = exigirFormulario(corpo.formulario, { paraCriar: true });
   const secao = Number(corpo.secao ?? 1);
   const ids = Array.isArray(corpo.ids) ? corpo.ids.map(inteiroPositivo) : null;
   if (!ids || ids.includes(null)) throw erros.validacao({ ids: 'Lista de perguntas inválida.' });
@@ -313,7 +340,7 @@ async function exigirPerguntaDeEscolha(executor, perguntaId) {
 async function criarOpcao(req, perguntaId, corpo) {
   const resultado = await transacao(async (tx) => {
     const p = await exigirPerguntaDeEscolha(tx, perguntaId);
-    if (p.oficial && p.formulario !== 'QUESTIONARIO') throw erros.conflito('Esta pergunta não aceita novas opções.');
+    if (p.oficial && ![LEGADO, ...m1.FORMULARIOS_M1].includes(p.formulario)) throw erros.conflito('Esta pergunta não aceita novas opções.');
     const problemas = {};
     const { t, textoFinal } = validarOpcaoTexto(corpo, problemas);
     let equivaleAId = null;

@@ -225,7 +225,7 @@ async function detalhar(req, id) {
       `SELECT id, nome, data_nascimento, idade, genero_id, parentesco, trabalha
          FROM familia_membro WHERE familia_id = @familia ORDER BY id`, { familia: ac.familiaId }),
     consultar(
-      `SELECT id, tipo, data_aplicacao, concluido, alterado_em, criado_em
+      `SELECT id, tipo, data_aplicacao, concluido, modelo, alterado_em, criado_em
          FROM questionario WHERE acompanhamento_id = @id`, { id: ac.id }),
     consultarUm('SELECT id, sigla, nome FROM unidade WHERE id = @id', { id: ac.unidadeId }),
     consultarUm('SELECT id, nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
@@ -235,8 +235,8 @@ async function detalhar(req, id) {
   const resumoQ = (tipo) => {
     const q = questionarios.find((x) => x.tipo === tipo);
     return q
-      ? { existe: true, id: q.id, concluido: !!q.concluido, dataAplicacao: q.dataAplicacao }
-      : { existe: false, id: null, concluido: false, dataAplicacao: null };
+      ? { existe: true, id: q.id, concluido: !!q.concluido, dataAplicacao: q.dataAplicacao, modelo: q.modelo === 'M1' ? 'M1' : 'LEGADO' }
+      : { existe: false, id: null, concluido: false, dataAplicacao: null, modelo: null };
   };
   const inicial = resumoQ('INICIAL');
   const final = resumoQ('FINAL');

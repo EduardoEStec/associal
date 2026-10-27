@@ -65,6 +65,12 @@ const assistenteA = { id: 10, perfil: 'ASSISTENTE', unidades: [{ id: 1, sigla: '
 const coordenador = { id: 20, perfil: 'COORDENADOR', unidades: [{ id: 1, sigla: 'BRA' }, { id: 2, sigla: 'TIR' }] };
 const admin = { id: 30, perfil: 'ADMIN', unidades: [{ id: 1 }, { id: 2 }] };
 
+// Cabeçalho dos formulários (unidade, assistente, responsável, meta) lido pelos questionários M1
+const cabecalhoHandler = {
+  teste: /FROM acompanhamento a\s+JOIN unidade un/,
+  resp: () => [{ unidadeNome: 'Tiradentes', assistenteNome: 'Ana Assistente', respNome: 'Maria da Silva', respCpf: '12345678909', respNis: '123', respTelefone: '11999998888', respEndereco: 'Rua A, 1', respBairro: 'Centro', meta: 'Meta do projeto' }],
+};
+
 // Acompanhamento 100 pertence à unidade 2. O mock imita o filtro de unidade do SQL (IN (@un0, ...)).
 const baseHandlers = () => [
   {
@@ -282,21 +288,24 @@ test('encerrar: CONCLUIDO exige questionário final concluído; DESLIGADO exige 
 
 test('questionário FINAL só depois do INICIAL concluído; tipo inválido => 404', async () => {
   handlers = [
+    cabecalhoHandler,
     ...baseHandlers(),
     { teste: /FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
-    { teste: /FROM questionario_(beneficio|destino_economia)/, resp: () => [] },
     { teste: /COUNT\(\*\) AS total FROM familia_membro/, resp: () => [{ total: 2 }] },
   ];
   const srv = await iniciar(coordenador);
   try {
-    let r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/FINAL', { concluir: false, rendaMensalMedia: 1000 });
+    let r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/FINAL', { concluir: false, respostas: { '1.3': 'ATE_500' } });
     assert.equal(r.status, 409);
     assert.match(r.corpo.erro.mensagem, /questionário inicial/);
 
     r = await srv.chamar('GET', '/acompanhamentos/100/questionarios/FINAL');
     assert.equal(r.status, 200);
+    assert.equal(r.corpo.modelo, 'M1');
     assert.equal(r.corpo.podeEditar, false);
-    assert.equal(r.corpo.sugestoes.qtdMembrosFamilia, 3);
+    assert.equal(r.corpo.sugestoes.qtdIntegrantes, 3);
+    assert.equal(r.corpo.cabecalho.unidade, 'Tiradentes');
+    assert.equal(r.corpo.cabecalho.responsavel.nome, 'Maria da Silva');
 
     r = await srv.chamar('GET', '/acompanhamentos/100/questionarios/INICIAL');
     assert.equal(r.corpo.podeEditar, true);
@@ -309,29 +318,34 @@ test('questionário FINAL só depois do INICIAL concluído; tipo inválido => 40
 
 test('questionário INICIAL: rascunho grava; conclusão incompleta => 400 com campos', async () => {
   handlers = [
+    cabecalhoHandler,
     ...baseHandlers(),
     { teste: /FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
-    { teste: /FROM questionario_(beneficio|destino_economia)/, resp: () => [] },
     { teste: /COUNT\(\*\) AS total FROM familia_membro/, resp: () => [{ total: 0 }] },
     { teste: /INSERT INTO questionario \(/, resp: () => [{ id: 900 }] },
-    { teste: /DELETE FROM questionario_/, resp: () => [] },
+    { teste: /(DELETE FROM|INSERT INTO) resposta_extra/, resp: () => [] },
+    { teste: /FROM resposta_extra/, resp: () => [] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(coordenador);
   try {
-    let r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/INICIAL', { concluir: true, rendaMensalMedia: 900 });
+    let r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/INICIAL', { concluir: true, respostas: { '2.2': 'ATE_500' } });
     assert.equal(r.status, 400);
-    assert.ok(r.corpo.erro.detalhes.avaliacaoArmazem);
-    assert.ok(r.corpo.erro.detalhes.destinoEconomiaIds);
+    assert.ok(r.corpo.erro.detalhes['extras.2.1']);
+    assert.ok(r.corpo.erro.detalhes['extras.3.6']);
+    assert.ok(!r.corpo.erro.detalhes['extras.2.2']);
     assert.equal(chamadas.some((c) => /INSERT INTO questionario \(/.test(c.sql)), false);
 
-    r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/INICIAL', { concluir: false, rendaMensalMedia: 900, conseguePoupar: false });
+    r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/INICIAL', { concluir: false, respostas: { '1.1': 3, '2.1': 'TRABALHO_FORMAL' } });
     assert.equal(r.status, 200);
     const ins = chamadas.find((c) => /INSERT INTO questionario \(/.test(c.sql));
     assert.equal(ins.params.concluido, false);
     assert.equal(ins.params.tipo, 'INICIAL');
-    assert.equal(ins.params.conseguePoupar, false);
-    assert.deepEqual(ins.params.rendaMensalMedia[1], 900);
+    assert.match(ins.sql, /'M1'/);
+    const respostas = chamadas.filter((c) => /INSERT INTO resposta_extra/.test(c.sql));
+    assert.equal(respostas.length, 2);
+    assert.ok(respostas.some((c) => c.params.num[1] === 3));
+    assert.ok(respostas.some((c) => c.params.opcao !== null && c.params.opcao !== undefined));
   } finally { await srv.fechar(); }
 });
 
@@ -385,6 +399,13 @@ test('modelo do questionário é servido (FINAL em texto presente)', async () =>
     const r = await srv.chamar('GET', '/questionario/modelo?tipo=FINAL');
     assert.equal(r.status, 200);
     assert.equal(r.corpo.tipo, 'FINAL');
-    assert.equal(r.corpo.blocos.length, 5);
+    assert.equal(r.corpo.modelo, 'M1');
+    assert.equal(r.corpo.blocos.length, 4);
+    assert.equal(r.corpo.blocos.flatMap((b) => b.perguntas).length, 21);
+    const i = await srv.chamar('GET', '/questionario/modelo?tipo=INICIAL');
+    assert.equal(i.corpo.blocos.length, 3);
+    const leg = await srv.chamar('GET', '/questionario/modelo?tipo=FINAL&modelo=LEGADO');
+    assert.equal(leg.corpo.modelo, 'LEGADO');
+    assert.equal(leg.corpo.blocos.length, 5);
   } finally { await srv.fechar(); }
 });

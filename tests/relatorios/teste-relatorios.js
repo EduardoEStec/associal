@@ -118,13 +118,13 @@ async function main() {
     });
     assert.equal(r.status, 200);
     assert.match(r.headers.get('content-type'), /wordprocessingml/);
-    assert.match(r.headers.get('content-disposition'), /Relatorio_Individual_Familiar_BRA_10_2026-10-20\.docx/);
+    assert.match(r.headers.get('content-disposition'), /Relatorio_Final_Familiar_BRA_10_2026-10-20\.docx/);
     const buf = Buffer.from(await r.arrayBuffer());
     salvar('individual.docx', buf);
     const { texto, zip } = textoDocx(buf);
-    assert.match(texto, /RELATÓRIO INDIVIDUAL FAMILIAR/);
+    assert.match(texto, /RELATÓRIO FINAL FAMILIAR/);
     assert.match(texto, /Responsável Familiar: Maria da Silva Santos/);
-    assert.match(texto, /CPF: 529\.982\.247-25/);
+    assert.match(texto, /CPF\/CadÚnico: 529\.982\.247-25/);
     assert.match(texto, /Contato: \(11\) 99999-0000/);
     assert.match(texto, /Primeira linha editada\.\nSegunda linha & "aspas" <tag>\./);
     assert.match(texto, /Situação Socioeconômica Identificada/);
@@ -419,8 +419,8 @@ async function main() {
       assert.match(csv.headers.get('content-type'), /text\/csv/);
       const t = await csv.text();
       assert.match(t, /FORMULÁRIO;DATA;UNIDADE;Nº DO REGISTRO;MOMENTO;CÓDIGO DA PERGUNTA;PERGUNTA;RESPOSTA/);
-      assert.match(t, /Questionário familiar;10\/02\/2026;BRA;101;Inicial;E0001;O que mudou na rotina\?;Almoço juntos todo dia/);
-      assert.match(t, /Questionário familiar;12\/05\/2026;BRA;102;Final;E0002;Onde compra frutas\?;Feira/);
+      assert.match(t, /Questionário familiar \(formato anterior\);10\/02\/2026;BRA;101;Inicial;E0001;O que mudou na rotina\?;Almoço juntos todo dia/);
+      assert.match(t, /Questionário familiar \(formato anterior\);12\/05\/2026;BRA;102;Final;E0002;Onde compra frutas\?;Feira/);
       assert.doesNotMatch(t, /Maria da Silva|529\.982/, 'sem nome nem CPF');
       assert.equal((await chamar('/exportar/perguntas-extras.csv')).status, 403, 'assistente não exporta');
     } finally {

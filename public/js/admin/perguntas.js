@@ -1,15 +1,19 @@
-// Aba Perguntas e opções: a coordenação (e o ADMIN) configura os três formulários — questionário familiar, pesquisa de
-// satisfação e novo atendimento. Perguntas oficiais só mudam de texto; perguntas adicionais podem ser criadas, ordenadas,
-// desativadas e excluídas (sem respostas). Opções novas em pergunta oficial dizem como pontuam no índice de progresso.
+// Aba Perguntas e opções: a coordenação (e o ADMIN) configura os formulários — questionário inicial, questionário final
+// (modelos oficiais), pesquisa de satisfação e novo atendimento. O questionário no formato anterior só pode ser consultado e
+// renomeado. Perguntas oficiais só mudam de texto; perguntas adicionais podem ser criadas, ordenadas, desativadas e excluídas
+// (sem respostas). Opções novas em pergunta oficial que pontua dizem como pontuam no índice de progresso.
 import { api } from '../api.js';
 import { h, toast, confirmar, carregando } from '../ui.js';
 import { campo, caixa, modalFormulario, vazio } from './comum.js';
 
 const FORMULARIOS = [
-  { valor: 'QUESTIONARIO', rotulo: 'Questionário individual familiar' },
+  { valor: 'QUESTIONARIO_INICIAL', rotulo: 'Questionário inicial' },
+  { valor: 'QUESTIONARIO_FINAL', rotulo: 'Questionário final' },
   { valor: 'PESQUISA', rotulo: 'Pesquisa de satisfação' },
   { valor: 'ATENDIMENTO', rotulo: 'Novo atendimento' },
+  { valor: 'QUESTIONARIO', rotulo: 'Questionário (formato anterior, só consulta)' },
 ];
+const LEGADO = 'QUESTIONARIO';
 const ROTULO_TIPO = {
   TEXTO: 'Texto livre', NUMERO: 'Número', SIM_NAO: 'Sim ou não', ESCOLHA: 'Escolha uma opção', MULTIPLA: 'Escolha várias opções',
   MOEDA: 'Valor em reais', NPS: 'Nota de 0 a 10', LIKERT: 'Concordância (1 a 5)',
@@ -42,7 +46,7 @@ export async function montarPerguntas(raiz) {
     return h('section', { class: 'card perg-secao' },
       h('div', { class: 'perg-secao-topo' },
         h('h2', {}, dados.secoes.length > 1 ? `${s.numero}. ${s.titulo}` : s.titulo),
-        h('button', { type: 'button', class: 'btn btn-pequeno', onclick: () => abrirPergunta(dados, s, null) }, 'Nova pergunta')),
+        formulario === LEGADO ? null : h('button', { type: 'button', class: 'btn btn-pequeno', onclick: () => abrirPergunta(dados, s, null) }, 'Nova pergunta')),
       s.perguntas.length ? h('ul', { class: 'perg-lista' }, s.perguntas.map((p) => linha(dados, s, p, extras))) : vazio('Nenhuma pergunta nesta seção.'));
   }
 
@@ -99,7 +103,7 @@ export async function montarPerguntas(raiz) {
 
   function abrirPergunta(dados, s, p) {
     const editando = !!p;
-    const questionario = formulario === 'QUESTIONARIO';
+    const questionario = formulario === LEGADO;
     const tipoSel = editando ? null : selecao('Tipo de resposta', 'tipo', dados.tipos.map((t) => ({ valor: t, rotulo: ROTULO_TIPO[t] })), 'TEXTO');
     const secaoSel = !editando || !p.oficial
       ? (dados.secoes.length > 1 ? selecao('Seção', 'secao', dados.secoes.map((x) => ({ valor: x.numero, rotulo: `${x.numero}. ${x.titulo}` })), p?.secao ?? s.numero) : null)
@@ -148,8 +152,9 @@ export async function montarPerguntas(raiz) {
   // ---------- opções ----------
 
   function desenharOpcoes(p, caixaOpcoes) {
-    const base = p.opcoes.filter((o) => o.base);
-    const oficialDeEscolha = p.oficial && p.tipo === 'ESCOLHA';
+    const base = p.opcoes.filter((o) => o.base && o.pontua);
+    // só pergunta oficial que entra no índice/comparação pede "vale como" (ex.: fonte de renda não pontua)
+    const oficialDeEscolha = p.oficial && ['ESCOLHA', 'MULTIPLA'].includes(p.tipo) && base.length > 0;
     const dicas = oficialDeEscolha
       ? 'Ao acrescentar uma opção, indique com qual opção oficial ela vale no índice de progresso e na comparação inicial × final (ou que não pontua). Opções já usadas não podem ser excluídas: desative-as.'
       : 'Opções já usadas em respostas não podem ser excluídas: desative-as para que deixem de aparecer.';
@@ -197,8 +202,8 @@ export async function montarPerguntas(raiz) {
   }
 
   function abrirOpcao(p, base, o) {
-    const oficialDeEscolha = p.oficial && p.tipo === 'ESCOLHA';
-    const questionario = formulario === 'QUESTIONARIO';
+    const oficialDeEscolha = p.oficial && ['ESCOLHA', 'MULTIPLA'].includes(p.tipo) && base.length > 0;
+    const questionario = formulario === LEGADO;
     const editaValeComo = oficialDeEscolha && (!o || !o.base);
     const valeComo = editaValeComo
       ? selecao('Vale, no índice de progresso e na comparação, como', 'valeComo',
@@ -233,7 +238,7 @@ export async function montarPerguntas(raiz) {
   seletor.querySelector('select').addEventListener('change', (e) => { formulario = e.target.value; carregar(); });
   raiz.append(
     h('div', { class: 'admin-barra' }, seletor),
-    h('p', { class: 'texto-pequeno' }, 'Aqui você muda o texto das perguntas, acrescenta opções e cria perguntas novas. Nada que já tem resposta é apagado: só se desativa. Cada alteração fica registrada na auditoria.'),
+    h('p', { class: 'texto-pequeno' }, 'Aqui você muda o texto das perguntas, acrescenta opções e cria perguntas novas nos questionários inicial e final, na pesquisa e no atendimento. Nada que já tem resposta é apagado: só se desativa. Cada alteração fica registrada na auditoria.'),
     area);
   await carregar();
 }

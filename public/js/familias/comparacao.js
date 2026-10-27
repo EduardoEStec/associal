@@ -2,6 +2,7 @@
 import { api } from '../api.js';
 import { h, carregando, formatarData, formatarMoeda, formatarNumero } from '../ui.js';
 import { cabecalhoPagina, formatarValor, montar } from './util.js';
+import { renderComparacaoM1 } from './comparacao-m1.js';
 
 const TENDENCIA = {
   melhorou: { classe: 'cmp-melhorou', simbolo: '▲', texto: 'Melhorou' },
@@ -54,6 +55,7 @@ function variacao(item) {
 export async function renderComparacao({ conteudo }, acId) {
   montar(conteudo, carregando());
   const c = await api.get(`/api/familias/acompanhamentos/${acId}/comparacao`);
+  if (c.completo && c.modelo === 'M1') { renderComparacaoM1({ conteudo }, acId, c); return; }
   const voltar = { href: `#/a/${acId}`, texto: c.responsavel.nome || 'Família' };
 
   if (!c.completo) {

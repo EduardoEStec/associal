@@ -9,6 +9,7 @@
 // ou "não pontua" (fora do índice e da comparação).
 
 const { QUESTIONARIO } = require('../lib/dominios');
+const m1 = require('./modelos-m1');
 
 // Do PIOR para o MELHOR.
 const ESCALAS = Object.freeze({
@@ -27,9 +28,15 @@ const ROTULOS_FINAL_PADRAO = Object.freeze({
   acessoAlimentosInNatura: { NAO_TINHA: 'Não tem acesso' },
 });
 
-const FORMULARIOS = Object.freeze(['QUESTIONARIO', 'PESQUISA', 'ATENDIMENTO']);
+// Formulários que a coordenação configura. QUESTIONARIO é o formato anterior à M1 (só leitura: não se criam perguntas nele).
+const FORMULARIO_LEGADO = 'QUESTIONARIO';
+const FORMULARIOS = Object.freeze([...m1.FORMULARIOS_M1, 'PESQUISA', 'ATENDIMENTO']);
+const TODOS_FORMULARIOS = Object.freeze([FORMULARIO_LEGADO, ...FORMULARIOS]);
 
-const VAZIO = Object.freeze({ textos: {}, opcoes: {}, extras: { QUESTIONARIO: [], PESQUISA: [], ATENDIMENTO: [] }, pesquisaTextos: {} });
+const VAZIO = Object.freeze({
+  textos: {}, opcoes: {}, pesquisaTextos: {}, m1: {},
+  extras: { QUESTIONARIO: [], QUESTIONARIO_INICIAL: [], QUESTIONARIO_FINAL: [], PESQUISA: [], ATENDIMENTO: [] },
+});
 let atual = VAZIO;
 
 // `cat`: { textos: {campo: {texto, textoFinal, ajuda}}, opcoes: {campo: [opcao]}, extras: {FORM: [def]}, pesquisaTextos: {codigo: texto} }
@@ -88,15 +95,61 @@ function rotuloOpcao(campo, codigo, tipo = 'INICIAL') {
 const textoPergunta = (campo) => atual.textos[campo] || null;
 const textoPesquisa = (codigo) => atual.pesquisaTextos[codigo] ?? null;
 
+// ---------- modelos M1 (questionário inicial e final) ----------
+
+// Catálogo padrão do código (ids sintéticos): vale quando o banco ainda não tem a migração 086 e nos testes unitários.
+let padraoM1 = null;
+function catalogoPadraoM1() {
+  if (padraoM1) return padraoM1;
+  padraoM1 = {};
+  let id = 1;
+  for (const form of m1.FORMULARIOS_M1) {
+    padraoM1[form] = m1.PERGUNTAS_PADRAO[form].map((p, i) => {
+      const pergunta = {
+        id: id++, formulario: form, codigo: p.codigo, campo: p.campo, oficial: true, secao: p.secao, tipo: p.tipo, texto: p.texto,
+        textoFinal: null, ajuda: null, obrigatoria: !!p.obrigatoria, ordem: (i + 1) * 10, ativa: true, min: p.min, max: p.max,
+      };
+      pergunta.opcoes = (p.opcoes || []).map((o, k) => ({
+        id: id++, codigo: o.codigo, texto: o.texto, textoFinal: null, ordem: (k + 1) * 10, ativa: true, base: true, posicao: k,
+        pontos: o.pontos, pedeDetalhe: o.pedeDetalhe, equivaleId: null, equivaleCodigo: null, equivalePontos: null,
+      }));
+      return pergunta;
+    });
+  }
+  return padraoM1;
+}
+
+const ordenar = (a, b) => a.secao - b.secao || (b.oficial ? 1 : 0) - (a.oficial ? 1 : 0) || a.ordem - b.ordem || a.id - b.id;
+
+// Todas as perguntas (oficiais e adicionais, ativas ou não) de um formulário M1 em ordem de exibição.
+function m1Todas(formulario) {
+  const lista = atual.m1[formulario] && atual.m1[formulario].length ? atual.m1[formulario] : (catalogoPadraoM1()[formulario] || []);
+  return [...lista].sort(ordenar);
+}
+const m1Ativas = (formulario) => m1Todas(formulario).filter((p) => p.ativa);
+const perguntaM1 = (formulario, codigo) => m1Todas(formulario).find((p) => p.codigo === codigo) || null;
+const perguntaM1PorCampo = (formulario, campo) => m1Todas(formulario).find((p) => p.campo === campo) || null;
+
+// Pontos (0 a 100) da opção escolhida numa pergunta M1 de escolha: opção oficial = os dela; acrescentada = os da opção em que "vale como".
+// null = não pontua (opção informativa, "não pontua" ou código desconhecido).
+function pontosM1(formulario, codigoPergunta, codigoOpcao) {
+  const o = perguntaM1(formulario, codigoPergunta)?.opcoes.find((x) => x.codigo === codigoOpcao);
+  if (!o) return null;
+  const pontos = o.base ? o.pontos : o.equivalePontos;
+  return pontos === null || pontos === undefined ? null : Number(pontos);
+}
+
 // ---------- extras ----------
 
-// Definições ATIVAS, em ordem (seção, ordem).
+// Definições ATIVAS, em ordem (seção, ordem). Nos formulários M1 inclui também as perguntas oficiais (todas são respondidas
+// da mesma forma: dbo.resposta_extra); nos demais, só as adicionais criadas pela coordenação.
 function extras(formulario) {
+  if (m1.FORMULARIOS_M1.includes(formulario)) return m1Ativas(formulario);
   return (atual.extras[formulario] || []).filter((d) => d.ativa).sort((a, b) => a.secao - b.secao || a.ordem - b.ordem || a.id - b.id);
 }
-const extrasTodas = (formulario) => atual.extras[formulario] || [];
+const extrasTodas = (formulario) => (m1.FORMULARIOS_M1.includes(formulario) ? m1Todas(formulario) : atual.extras[formulario] || []);
 
 module.exports = {
-  ESCALAS, FORMULARIOS, definir, restaurarPadrao, obter, opcoesDe, escalaDe, ehCodigoValido, opcaoAtiva, posicaoNaEscala, rotuloOpcao,
+  ESCALAS, FORMULARIOS, TODOS_FORMULARIOS, FORMULARIO_LEGADO, catalogoPadraoM1, m1Todas, m1Ativas, perguntaM1, perguntaM1PorCampo, pontosM1, definir, restaurarPadrao, obter, opcoesDe, escalaDe, ehCodigoValido, opcaoAtiva, posicaoNaEscala, rotuloOpcao,
   textoPergunta, textoPesquisa, extras, extrasTodas,
 };

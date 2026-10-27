@@ -6,10 +6,18 @@
 //
 // Mudou a fórmula? Aumente VERSAO_REGRA: o instantâneo (acompanhamento_indice) guarda a versão com que cada
 // número foi calculado e `scripts/recalcular-indices.js` refaz os já gravados.
+//
+// Versão 1: questionário no formato anterior (LEGADO), 4 dimensões sobre as colunas fixas antigas.
+// Versão 2 (M1): modelos oficiais inicial e final. O índice usa só os itens com PAR equivalente nos dois questionários
+//   (docs/modelos/MAPEAMENTO.md): ALIMENTACAO (4 pares) e RENDA (1 par). ECONOMIA e AUTONOMIA não têm par nos modelos oficiais
+//   e ficam sem nível (null) — as perguntas comparativas do final (1.4, 2.8, 3.4) entram na comparação por pares, não no índice.
 
 const estado = require('./catalogo-estado');
+const m1 = require('./modelos-m1');
 
-const VERSAO_REGRA = 1;
+const VERSAO_REGRA_LEGADO = 1;
+const VERSAO_REGRA = 2;
+const versaoDoModelo = (modelo) => (modelo === 'M1' ? VERSAO_REGRA : VERSAO_REGRA_LEGADO);
 const TOLERANCIA_PADRAO = 5;
 const SALARIO_MINIMO_PADRAO = 1621;
 
@@ -84,9 +92,49 @@ function pontuarItem(item, r, { salarioMinimo }) {
   }
 }
 
-// `respostas`: o objeto de montarRespostas (campos do questionário). `tipo`: INICIAL | REAVALIACAO | FINAL.
+// Regra v2 (M1). `respostas`: { modelo: 'M1', mapa: { "<código da pergunta>": resposta } } do questionário do `tipo`.
+function calcularIndiceM1(respostas, { tipo = 'FINAL' } = {}) {
+  const formulario = m1.formularioDoTipo(tipo);
+  const lado = tipo === 'INICIAL' ? 'inicial' : 'final';
+  const mapa = respostas.mapa || {};
+  const dimensoes = {};
+  for (const dim of DIMENSOES) {
+    const pares = m1.PARES.filter((p) => p.indice === dim);
+    const detalhe = [];
+    for (const par of pares) {
+      const codigo = par[lado];
+      const valor = mapa[codigo];
+      const pontos = valor === undefined || valor === null ? null : estado.pontosM1(formulario, codigo, valor);
+      if (pontos !== null) detalhe.push({ campo: par.chave, pontos: arredondar(pontos), peso: 1 });
+    }
+    // só existe com pelo menos metade dos itens da dimensão respondidos; senão fica vazio (nunca zero)
+    const suficiente = pares.length > 0 && detalhe.length >= pares.length / 2;
+    dimensoes[dim] = {
+      nivel: suficiente ? arredondar(detalhe.reduce((s, d) => s + d.pontos, 0) / detalhe.length) : null,
+      itensValidos: detalhe.length,
+      itensTotal: pares.length,
+      itens: detalhe,
+    };
+  }
+  const niveis = DIMENSOES.map((d) => dimensoes[d].nivel).filter((n) => n !== null);
+  return {
+    versaoRegra: VERSAO_REGRA,
+    tipo,
+    dimensoes,
+    geral: {
+      nivel: niveis.length ? arredondar(niveis.reduce((s, n) => s + n, 0) / niveis.length) : null,
+      dimensoes: niveis.length,
+      dimensoesTotal: DIMENSOES.filter((d) => dimensoes[d].itensTotal > 0).length,
+    },
+    parametros: { regra: 'M1' },
+  };
+}
+
+// `respostas`: o objeto de montarRespostas (campos do questionário LEGADO) ou { modelo: 'M1', mapa } (regra v2).
+// `tipo`: INICIAL | REAVALIACAO | FINAL.
 // Devolve { versaoRegra, tipo, dimensoes: {DIM: {nivel, itensValidos, itensTotal, itens[]}}, geral: {nivel, dimensoes}, parametros }.
 function calcularIndice(respostas, { tipo = 'FINAL', salarioMinimo = SALARIO_MINIMO_PADRAO } = {}) {
+  if (respostas && respostas.modelo === 'M1') return calcularIndiceM1(respostas, { tipo });
   const r = respostas || {};
   const dimensoes = {};
 
@@ -117,7 +165,7 @@ function calcularIndice(respostas, { tipo = 'FINAL', salarioMinimo = SALARIO_MIN
   const renda = numero(r.rendaMensalMedia);
   const membros = numero(r.qtdMembrosFamilia);
   return {
-    versaoRegra: VERSAO_REGRA,
+    versaoRegra: VERSAO_REGRA_LEGADO,
     tipo,
     dimensoes,
     geral: {
@@ -189,12 +237,15 @@ function situacaoReavaliacao({ status, inicialConcluido, reavaliacaoConcluida, f
 
 module.exports = {
   VERSAO_REGRA,
+  VERSAO_REGRA_LEGADO,
+  versaoDoModelo,
   TOLERANCIA_PADRAO,
   SALARIO_MINIMO_PADRAO,
   DIMENSOES,
   ROTULO_DIMENSAO,
   ORDEM_TIPO,
   calcularIndice,
+  calcularIndiceM1,
   classificarVariacao,
   compararPontos,
   montarEvolucao,

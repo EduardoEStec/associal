@@ -4,7 +4,10 @@
 //   GET  /opcoes                              unidades, semestre atual, assinatura
 //   GET  /individual/acompanhamentos          famílias acompanhadas (para escolher)
 //   GET  /individual/:id/previa               textos padrão para editar
-//   POST /individual/:id                      gera o .docx (com os textos editados)
+//   POST /individual/:id                      gera o RELATÓRIO FINAL FAMILIAR (modelo oficial 4) em .docx, com os textos editados
+//   GET  /formulario/:id/:tipo                questionário INICIAL ou FINAL (modelos oficiais 1 e 3) em .docx, preenchido ou em branco
+//   GET  /registro-periodico/:id              registros, observações editáveis e fotos do acompanhamento (modelo oficial 2)
+//   POST /registro-periodico/:id/docx         gera o .docx do registro periódico
 //   GET  /semestral/previa                    números, relatos e fotos candidatos
 //   POST /semestral                           gera o .docx
 //   GET  /foto/:id                            miniatura de foto (autenticada, com checagem de unidade)
@@ -16,6 +19,8 @@ const { inteiroPositivo, texto } = require('../lib/validacao');
 const { registrarAuditoria } = require('../lib/auditoria');
 const servico = require('../services/relatorios');
 const dados = require('../services/relatorios-dados');
+const registroPeriodico = require('../services/relatorios-registro');
+const formularios = require('../services/relatorios-formularios');
 
 const router = express.Router();
 
@@ -57,6 +62,28 @@ router.post('/individual/:id', async (req, res) => {
   const id = idDaRota(req);
   const { buffer, nomeArquivo } = await servico.gerarIndividual(req, id);
   await registrarAuditoria(req, 'CONSULTAR', 'relatorio_individual', id, { formato: 'docx' });
+  servico.enviarPara(res, buffer, nomeArquivo, DOCX);
+});
+
+// ---------- questionários inicial e final (modelos oficiais 1 e 3) ----------
+
+router.get('/formulario/:id/:tipo', async (req, res) => {
+  const id = idDaRota(req);
+  const { buffer, nomeArquivo, concluido } = await formularios.gerarQuestionario(req, id, req.params.tipo);
+  await registrarAuditoria(req, 'CONSULTAR', 'relatorio_questionario', id, { formato: 'docx', tipo: String(req.params.tipo).toUpperCase(), concluido });
+  servico.enviarPara(res, buffer, nomeArquivo, DOCX);
+});
+
+// ---------- registro periódico (modelo oficial 2) ----------
+
+router.get('/registro-periodico/:id', async (req, res) => {
+  res.json(await registroPeriodico.previa(req, idDaRota(req)));
+});
+
+router.post('/registro-periodico/:id/docx', async (req, res) => {
+  const id = idDaRota(req);
+  const { buffer, nomeArquivo } = await registroPeriodico.gerar(req, id);
+  await registrarAuditoria(req, 'CONSULTAR', 'relatorio_registro_periodico', id, { formato: 'docx' });
   servico.enviarPara(res, buffer, nomeArquivo, DOCX);
 });
 

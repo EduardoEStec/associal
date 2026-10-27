@@ -20,15 +20,22 @@ function cartaoQuestionario({ titulo, tipo, resumo, acId, escrita, bloqueado, te
   else if (resumo.existe) situacao = h('span', { class: 'badge badge-aviso' }, icone('editar'), 'Rascunho salvo');
   else situacao = h('span', { class: 'badge' }, 'Não iniciado');
 
+  const legado = resumo.modelo === 'LEGADO';
+  if (legado) situacao = h('span', {}, situacao, ' ', h('span', { class: 'badge' }, 'Formato anterior'));
+
   let acao;
   if (bloqueado) acao = h('p', { class: 'texto-pequeno texto-suave' }, textoBloqueio);
   else {
-    const editar = escrita && !encerrado;
+    const editar = escrita && !encerrado && !(legado && resumo.concluido); // formato anterior concluído é só leitura
     const texto = resumo.concluido ? (editar ? 'Revisar / corrigir' : 'Ver respostas') : (editar ? (resumo.existe ? 'Continuar' : 'Iniciar questionário') : 'Ver respostas');
     acao = h('a', { class: `btn ${resumo.concluido ? 'btn-secundario' : ''}`, href: `#/a/${acId}/q/${tipo}` }, texto);
   }
+  // modelos oficiais 1 e 3 em .docx (preenchido, ou em branco se ainda não aplicado) para impressão e assinatura
+  const imprimir = !legado && !bloqueado
+    ? h('a', { class: 'btn btn-secundario btn-pequeno', href: `/api/relatorios/formulario/${acId}/${tipo}`, download: '' }, resumo.concluido ? 'Documento para imprimir (.docx)' : 'Formulário em branco (.docx)')
+    : null;
   return h('div', { class: 'card fam-q-card' },
-    h('h3', {}, titulo), h('div', {}, situacao), acao);
+    h('h3', {}, titulo), h('div', {}, situacao), acao, imprimir);
 }
 
 export async function renderDetalhe({ usuario, conteudo, navegar }, id, aba = 'resumo', opcoes = {}) {

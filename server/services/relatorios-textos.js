@@ -5,6 +5,7 @@
 
 const estado = require('./catalogo-estado');
 const evolucaoTexto = require('./relatorios-evolucao');
+const textosM1 = require('./relatorios-textos-m1');
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -81,11 +82,18 @@ const INDIVIDUAL_FIXOS = Object.freeze({
     + 'locais usuárias do programa Armazém Solidário surge como uma estratégia essencial para contribuir não apenas para o '
     + 'acesso a alimentos de qualidade, mas também para a autonomia e o direito dos munícipes, visando integrar ações que '
     + 'fortaleçam a capacidade financeira e o poder de compra das famílias.',
+  // modelo oficial 4 (docs/modelos/4-relatorio-final-familiar)
   objetivo:
-    'Empoderamento econômico dos beneficiários: acompanhar famílias para avaliar impactos na renda e na segurança alimentar.\n'
-    + 'Indicador: Número de famílias apoiadas no projeto (01).\n'
-    + 'Meios de Verificação: Acompanhamento individual das famílias, aplicação de questionários, relatórios de impacto '
-    + 'econômico e feedback dos beneficiários.',
+    'Contribuir para o empoderamento econômico de 10 famílias locais vinculadas ao projeto, considerando os impactos observados '
+    + 'do Armazém Solidário na economia familiar e na segurança alimentar durante o período de acompanhamento.\n'
+    + 'Indicador: Número de famílias apoiadas na unidade (01).\n'
+    + 'Meios de Verificação: Questionários iniciais e finais; registros de acompanhamento individual; relatórios de impacto '
+    + 'econômico e de segurança alimentar; feedback das famílias.',
+  // frase do modelo oficial 4 (seção 3, Metodologia)
+  instrumentos:
+    'Os instrumentos utilizados permitiram observar aspectos relacionados à situação econômica, capacidade de reserva financeira, '
+    + 'despesas familiares, acesso aos alimentos, qualidade e variedade da alimentação, frequência de utilização do Armazém e '
+    + 'percepção da família sobre as mudanças ocorridas durante o acompanhamento.',
 });
 
 function gerarMetodologia({ unidadeNome, dataInicio, inicial, final }) {
@@ -97,10 +105,11 @@ function gerarMetodologia({ unidadeNome, dataInicio, inicial, final }) {
   if (inicial?.dataAplicacao) aplic.push(`questionário inicial em ${dataBr(inicial.dataAplicacao)}`);
   if (final?.dataAplicacao) aplic.push(`questionário final em ${dataBr(final.dataAplicacao)}`);
   linhas.push(
-    'Monitoramento e Avaliação: acompanhamento individual da família por meio de entrevistas e aplicação do questionário '
-    + `familiar${aplic.length ? ` (${listaTexto(aplic)})` : ''}, permitindo comparar a situação da família antes e depois `
-    + 'do acompanhamento quanto à renda, ao acesso e consumo de alimentos, à capacidade de poupança e à percepção sobre o Armazém Solidário.',
+    'Monitoramento e Avaliação: acompanhamento individual da família por meio de entrevistas, registros periódicos de acompanhamento '
+    + `e aplicação dos questionários inicial e final${aplic.length ? ` (${listaTexto(aplic)})` : ''}, permitindo comparar a situação da família antes e depois `
+    + 'do acompanhamento quanto à renda, ao acesso e consumo de alimentos e à percepção sobre o Armazém Solidário.',
   );
+  linhas.push(INDIVIDUAL_FIXOS.instrumentos);
   return linhas.join('\n');
 }
 
@@ -284,20 +293,34 @@ function gerarConsideracoesIndividual({ final }) {
     + 'socioassistencial, conforme as necessidades identificadas, garantindo a continuidade e a ampliação dos resultados alcançados.';
 }
 
+// Relatório Final Familiar (modelo oficial 4). Cada seção usa o formato do questionário correspondente: M1 (modelos oficiais) ou
+// o formato anterior (LEGADO), que continua sendo lido para os acompanhamentos antigos.
 function montarIndividual(dados) {
-  const { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal } = dados;
-  const impacto = gerarImpacto({ inicial, final, destinosFinal });
+  const { acompanhamento, responsavel, membros, inicial, final, beneficiosInicial, destinosFinal, extrasInicial, extrasFinal, inicialM1, finalM1 } = dados;
+  let impacto;
+  let comparado = null;
+  if (finalM1) {
+    ({ comparado, ...impacto } = textosM1.impactoM1(inicialM1, finalM1));
+  } else {
+    impacto = gerarImpacto({ inicial, final, destinosFinal });
+  }
+  const diagnostico = inicialM1
+    ? (textosM1.diagnosticoM1(inicialM1).concat(textosM1.linhasExtras(inicialM1.lista, 'Perguntas adicionais do questionário inicial:'))).join('\n')
+    : gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio: acompanhamento.dataInicio, extrasInicial });
+  const feedbackM1 = finalM1 ? textosM1.feedbackM1(finalM1) : null;
   return {
     introducao: INDIVIDUAL_FIXOS.introducao,
     objetivo: INDIVIDUAL_FIXOS.objetivo,
     metodologia: gerarMetodologia({
       unidadeNome: acompanhamento.unidadeNome, dataInicio: acompanhamento.dataInicio, inicial, final,
     }),
-    diagnostico: gerarDiagnostico({ responsavel, membros, inicial, beneficiosInicial, dataInicio: acompanhamento.dataInicio, extrasInicial }),
+    diagnostico,
     ...impacto,
     evolucao: evolucaoTexto.gerarTextoEvolucao(dados.evolucao),
-    feedback: gerarFeedback({ final, extrasFinal }),
-    consideracoes: gerarConsideracoesIndividual({ final }),
+    feedback: finalM1
+      ? (feedbackM1.join('\n') || 'Registre aqui depoimentos ou análises baseadas no feedback da família.')
+      : gerarFeedback({ final, extrasFinal }),
+    consideracoes: finalM1 ? textosM1.consideracoesM1(comparado, dados.evolucao?.contatos) : gerarConsideracoesIndividual({ final }),
   };
 }
 

@@ -29,11 +29,11 @@ router.get('/', async (req, res) => {
   res.json(dados);
 });
 
-// GET /api/apoio/perguntas/:formulario (QUESTIONARIO | PESQUISA | ATENDIMENTO) — perguntas extras ATIVAS criadas pela coordenação (P2)
+// GET /api/apoio/perguntas/:formulario (QUESTIONARIO_INICIAL | QUESTIONARIO_FINAL | PESQUISA | ATENDIMENTO) — perguntas extras ATIVAS criadas pela coordenação (P2)
 router.get('/perguntas/:formulario', (req, res) => {
   const formulario = String(req.params.formulario).toUpperCase();
   if (!estado.FORMULARIOS.includes(formulario)) throw erros.naoEncontrado('Formulário inexistente.');
-  res.json(estado.extras(formulario).map((d) => extras.definicaoPublica(d, formulario === 'PESQUISA' ? { obrigatoria: false } : undefined)));
+  res.json(estado.extras(formulario).filter((d) => !d.oficial).map((d) => extras.definicaoPublica(d, formulario === 'PESQUISA' ? { obrigatoria: false } : undefined)));
 });
 
 router.get('/:tabela', async (req, res) => {

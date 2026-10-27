@@ -53,7 +53,8 @@ function gerarTextoEvolucao(evolucao) {
   const para = NOME_PONTO[comparacao.para].toLowerCase();
   if (g.diferenca !== null) {
     const veredito = { melhorou: 'indicando melhora', igual: 'sem mudança relevante', piorou: 'indicando piora' }[g.selo];
-    linhas.push(`O índice de progresso da família (de 0 a 100, que reúne alimentação, renda e trabalho, economia e poupança e autonomia) passou de ${num(g.antes)} no ${de} para ${num(g.depois)} no ${para}, variação de ${sinal(g.diferenca)} pontos, ${veredito} (considera-se melhora ou piora uma diferença de ${tolerancia} pontos ou mais).`);
+    const ativas = dimensoesAtivas(pontos).map((d) => ROTULO_DIMENSAO[d].toLowerCase());
+    linhas.push(`O índice de progresso da família (de 0 a 100, que reúne ${ativas.join(', ').replace(/, ([^,]*)$/, ' e $1')}) passou de ${num(g.antes)} no ${de} para ${num(g.depois)} no ${para}, variação de ${sinal(g.diferenca)} pontos, ${veredito} (considera-se melhora ou piora uma diferença de ${tolerancia} pontos ou mais).`);
   }
   if (pontos.some((p) => p.tipo === 'REAVALIACAO')) linhas.push('A reavaliação rápida, feita na metade do acompanhamento, está incluída na tabela abaixo.');
   const destaques = DIMENSOES.filter((d) => comparacao.dimensoes[d].selo === 'melhorou').map((d) => ROTULO_DIMENSAO[d].toLowerCase());
@@ -62,10 +63,15 @@ function gerarTextoEvolucao(evolucao) {
   return linhas.join('\n');
 }
 
+// Dimensões que têm itens na regra do modelo (nos modelos oficiais M1, Economia e Autonomia não têm par entre inicial e final)
+const dimensoesAtivas = (pontos) => DIMENSOES.filter((d) => pontos.some((p) => p.dimensoes[d].itensTotal > 0));
+
 // ---------- tabela (XML do Word) ----------
 
+const FONTE = { atual: 'Arial' };
+
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const rpr = (b) => `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${b ? '<w:b/><w:bCs/>' : ''}<w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>`;
+const rpr = (b) => `<w:rPr><w:rFonts w:ascii="${FONTE.atual}" w:hAnsi="${FONTE.atual}" w:cs="${FONTE.atual}"/>${b ? '<w:b/><w:bCs/>' : ''}<w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>`;
 const celula = (texto, largura, { b = false, jc = 'left', fundo } = {}) =>
   `<w:tc><w:tcPr><w:tcW w:w="${largura}" w:type="dxa"/>${fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${fundo}"/>` : ''}</w:tcPr>`
   + `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/><w:jc w:val="${jc}"/>${rpr(b)}</w:pPr>`
@@ -87,7 +93,7 @@ function tabelaEvolucaoXml(evolucao) {
   const linha = (celulas, cab = false) => `<w:tr><w:trPr><w:cantSplit/>${cab ? '<w:tblHeader/>' : ''}</w:trPr>${celulas.join('')}</w:tr>`;
 
   const cab = linha(colunas.map((c, i) => celula(c.titulo, larg[i], { b: true, jc: c.jc, fundo: 'D9E2D5' })), true);
-  const corpo = [...DIMENSOES, 'GERAL'].map((dim) => {
+  const corpo = [...dimensoesAtivas(pontos), 'GERAL'].map((dim) => {
     const geral = dim === 'GERAL';
     const comp = geral ? evolucao.comparacao.geral : evolucao.comparacao.dimensoes[dim];
     const valores = pontos.map((p) => (geral ? p.geral.nivel : p.dimensoes[dim].nivel));
@@ -126,8 +132,13 @@ function tabelaMetasXml(evolucao) {
 const PARAGRAFO_VAZIO = '<w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr></w:p>';
 
 // Tabela do índice + (quando houver) metas, separadas por um parágrafo vazio. Retorna '' quando não há nada.
-function tabelasEvolucaoXml(evolucao) {
-  return [tabelaEvolucaoXml(evolucao), tabelaMetasXml(evolucao)].filter(Boolean).join(PARAGRAFO_VAZIO);
+function tabelasEvolucaoXml(evolucao, fonte = 'Arial') {
+  FONTE.atual = fonte;
+  try {
+    return [tabelaEvolucaoXml(evolucao), tabelaMetasXml(evolucao)].filter(Boolean).join(PARAGRAFO_VAZIO);
+  } finally {
+    FONTE.atual = 'Arial';
+  }
 }
 
 module.exports = { temEvolucao, temConteudo, gerarTextoEvolucao, tabelaEvolucaoXml, tabelaMetasXml, tabelasEvolucaoXml };

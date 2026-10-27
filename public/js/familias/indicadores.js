@@ -123,8 +123,8 @@ function cartaoReavaliacao(dados, { id, escrita }) {
     botao = h('a', { class: 'btn btn-secundario', href: `#/a/${id}/q/REAVALIACAO` }, pode ? 'Revisar / corrigir' : 'Ver respostas');
   } else if (r.situacao === 'PENDENTE' || r.situacao === 'AGENDADA') {
     texto = r.situacao === 'PENDENTE'
-      ? `Reavaliação rápida pendente (prevista para ${formatarData(r.dataPrevista)}): cerca de 9 perguntas, menos de 3 minutos. Dá um terceiro ponto ao gráfico.`
-      : `Reavaliação rápida prevista para ${formatarData(r.dataPrevista)}: cerca de 9 perguntas, menos de 3 minutos.`;
+      ? `Reavaliação rápida pendente (prevista para ${formatarData(r.dataPrevista)}): cerca de 5 perguntas, menos de 3 minutos. Dá um terceiro ponto ao gráfico.`
+      : `Reavaliação rápida prevista para ${formatarData(r.dataPrevista)}: cerca de 5 perguntas, menos de 3 minutos.`;
     if (pode) botao = h('a', { class: `btn ${r.situacao === 'PENDENTE' ? '' : 'btn-secundario'}`, href: `#/a/${id}/q/REAVALIACAO` }, r.existe ? 'Continuar reavaliação' : 'Aplicar reavaliação');
   } else if (r.situacao === 'DISPENSADA') texto = 'O questionário final já foi concluído: a reavaliação rápida não é mais necessária.';
   else texto = encerrado ? 'Acompanhamento encerrado.' : 'A reavaliação rápida fica disponível depois do questionário inicial.';
@@ -147,14 +147,24 @@ export async function renderIndicadores({ id, d, escrita }) {
   partes.push(cartaoResumo(dados));
   partes.push(h('div', { class: 'card' },
     h('h3', {}, 'Por dimensão'),
-    h('ul', { class: 'ind-linhas' }, DIMENSOES.map((dim) => linhaDimensao(dados, dim, dados.rotulos[dim])))));
+    // dimensões sem nenhum item na regra do modelo (ex.: Economia e Autonomia nos modelos oficiais) não aparecem
+    h('ul', { class: 'ind-linhas' }, DIMENSOES.filter((dim) => dados.pontos.some((p) => p.dimensoes[dim].itensTotal > 0))
+      .map((dim) => linhaDimensao(dados, dim, dados.rotulos[dim])))));
   partes.push(grafico(dados));
   partes.push(cartaoReavaliacao(dados, { id, escrita }));
+  const soM1 = dados.pontos.every((p) => p.modelo === 'M1');
   partes.push(h('details', { class: 'card ind-como' },
     h('summary', {}, 'Como o índice é calculado'),
+    soM1 ? [
+      h('p', { class: 'texto-pequeno' }, 'Os questionários inicial e final têm perguntas diferentes. O índice usa só as perguntas que têm um par equivalente nos dois: '
+        + 'segurança alimentar (alimentos suficientes, redução da quantidade ou qualidade, refeição deixada de fazer e frutas, verduras e legumes) e a faixa de renda familiar. '
+        + 'Cada resposta vale de 0 a 100 pontos (100 = melhor situação) e a dimensão é a média das respostas. As perguntas de percepção do final (1.4, 2.8, 3.4) aparecem na comparação, não no índice.'),
+      h('p', { class: 'texto-pequeno' }, `Semáforo: melhorou ou piorou quando a diferença é de ${dados.tolerancia} pontos ou mais; abaixo disso, igual. Regra versão ${dados.versaoRegra}.`),
+    ] : [
     h('p', { class: 'texto-pequeno' }, 'Cada resposta vira uma pontuação de 0 a 100 (a posição da resposta na escala; sim = 100, não = 0). A dimensão é a média dos itens respondidos e só aparece se pelo menos metade deles tiver resposta. O índice geral é a média das dimensões. As respostas de "melhorou?" pesam metade no questionário inicial.'),
     h('p', { class: 'texto-pequeno' }, `A renda é comparada por pessoa (renda ÷ número de pessoas) em faixas do salário mínimo de referência (R$ ${numero(dados.salarioMinimo)}): até ¼, de ¼ a ½, de ½ a 1 e acima de 1.`),
     h('p', { class: 'texto-pequeno' }, `Semáforo: melhorou ou piorou quando a diferença é de ${dados.tolerancia} pontos ou mais; abaixo disso, igual. Regra versão ${dados.versaoRegra}.`),
+    ],
     dados.pontos.some((p) => p.desatualizado) ? h('p', { class: 'aviso aviso-aviso' }, 'Há pontos calculados com uma versão anterior da regra. Peça à TI para recalcular os índices.') : null));
   return partes.filter(Boolean);
 }

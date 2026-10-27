@@ -1,31 +1,53 @@
-// Questionário familiar em 5 etapas (um bloco por passo), pensado para aplicar no celular com a família.
-// Rascunho salvo automaticamente no servidor; o mesmo roteiro serve para INICIAL e FINAL ("hoje").
+// Questionário familiar dos modelos oficiais (M1): INICIAL e FINAL têm perguntas diferentes, uma seção por etapa,
+// pensado para aplicar no celular com a família. Rascunho salvo automaticamente no servidor.
+// Perguntas, textos, opções e perguntas adicionais vêm do catálogo (GET /api/familias/questionario/modelo).
+// Questionário no formato anterior (LEGADO) abre em ./questionario-legado.js (concluído = somente leitura).
 import { api, ErroApi } from '../api.js';
-import { h, toast, carregando, confirmar, mostrarErrosCampos } from '../ui.js';
+import { h, toast, carregando, confirmar, mostrarErrosCampos, formatarData, formatarCpf } from '../ui.js';
 import { consumirRetorno } from '../retorno-atendimento.js';
-import { carregarApoio, cabecalhoPagina, podeEscrever, isoDia, montar } from './util.js';
+import { formatarTelefone } from '../telefone.js';
+import { cabecalhoPagina, podeEscrever, isoDia, montar, textoOuTraco } from './util.js';
+import { renderQuestionarioLegado } from './questionario-legado.js';
 
 const AUTOSAVE_MS = 1500;
-const LIMITES_FAIXA = {
-  ATE_100: [-Infinity, 100], DE_101_200: [100, 200], DE_201_300: [200, 300], ACIMA_300: [300, Infinity],
-};
-const CHAVE_APOIO = { beneficio: 'beneficio', destino_economia: 'destinoEconomia' };
+const NOME_TIPO = { INICIAL: 'Questionário inicial', REAVALIACAO: 'Reavaliação rápida', FINAL: 'Questionário final' };
 
 const paraTexto = (v) => (v === null || v === undefined ? '' : String(v));
-const numeroBr = (v) => Number(String(v).replace(',', '.'));
+const vazio = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+
+// Idade em anos (data 'AAAA-MM-DD' ou número)
+function idadeDe(pessoa) {
+  if (pessoa.idade !== null && pessoa.idade !== undefined) return Number(pessoa.idade);
+  if (!pessoa.dataNascimento) return null;
+  const nasc = new Date(pessoa.dataNascimento);
+  if (Number.isNaN(nasc.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nasc.getUTCFullYear();
+  if (hoje.getMonth() < nasc.getUTCMonth() || (hoje.getMonth() === nasc.getUTCMonth() && hoje.getDate() < nasc.getUTCDate())) idade -= 1;
+  return idade >= 0 ? idade : null;
+}
+
+// Sugestão da faixa etária predominante a partir da ficha da família (a assistente confirma)
+function faixaPredominante(ficha) {
+  const idades = [ficha.responsavel, ...(ficha.membros || [])].map(idadeDe).filter((i) => i !== null);
+  if (!idades.length) return null;
+  const grupos = { CRIANCAS_ADOLESCENTES: 0, ADULTOS: 0, IDOSOS: 0 };
+  for (const i of idades) grupos[i < 18 ? 'CRIANCAS_ADOLESCENTES' : i < 60 ? 'ADULTOS' : 'IDOSOS'] += 1;
+  return Object.entries(grupos).sort((a, b) => b[1] - a[1])[0][0];
+}
 
 export async function renderQuestionario(ctx, acId, tipoUrl) {
   const { usuario, conteudo, navegar } = ctx;
   const pedido = String(tipoUrl).toUpperCase();
   const tipo = ['FINAL', 'REAVALIACAO'].includes(pedido) ? pedido : 'INICIAL';
-  const reavaliacao = tipo === 'REAVALIACAO';
-  const NOME_TIPO = { INICIAL: 'Questionário inicial', REAVALIACAO: 'Reavaliação rápida', FINAL: 'Questionário final' };
   montar(conteudo, carregando());
 
-  const [modelo, dados, apoio, ficha] = await Promise.all([
+  const dados = await api.get(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`);
+  if (dados.modelo === 'LEGADO') return renderQuestionarioLegado(ctx, acId, tipoUrl);
+
+  const reavaliacao = tipo === 'REAVALIACAO';
+  const [modelo, ficha] = await Promise.all([
     api.get('/api/familias/questionario/modelo', { tipo }),
-    api.get(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`),
-    carregarApoio(),
     api.get(`/api/familias/acompanhamentos/${acId}`),
   ]);
 
@@ -33,19 +55,28 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
   const jaConcluido = dados.concluido;
   const autosalvar = editavel && !jaConcluido; // concluído é validado por inteiro: só salva manualmente
 
-  const resp = { ...dados.respostas, extras: { ...dados.extras } }; // extras: respostas às perguntas adicionais (código -> valor)
-  resp.dataAplicacao = isoDia(dados.dataAplicacao) || dados.sugestoes.dataAplicacao;
-  if (resp.qtdMembrosFamilia === null) resp.qtdMembrosFamilia = dados.sugestoes.qtdMembrosFamilia;
+  const resp = { ...dados.respostas }; // código da pergunta -> valor
+  const detalhes = { ...dados.detalhes }; // código da pergunta -> complemento ("Outras: ...")
+  let dataAplicacao = isoDia(dados.dataAplicacao) || dados.sugestoes.dataAplicacao;
+  if (!dados.existe) {
+    if (tipo === 'INICIAL') {
+      if (vazio(resp['1.1'])) resp['1.1'] = dados.sugestoes.qtdIntegrantes;
+      const faixa = faixaPredominante(ficha);
+      const opcaoFaixa = modelo.blocos.flatMap((b) => b.perguntas).find((p) => p.codigo === '1.2');
+      if (vazio(resp['1.2']) && faixa && opcaoFaixa?.opcoes.some((o) => o.valor === faixa)) resp['1.2'] = faixa;
+    }
+  }
 
   const blocos = modelo.blocos;
   const total = blocos.length;
   let passo = 0;
   let errosPendentes = {};
 
-  // Campo -> passo (para levar o usuário ao primeiro erro)
+  // Campo de erro -> passo (para levar o usuário ao primeiro erro)
   const passoDoCampo = { dataAplicacao: 0 };
   blocos.forEach((b, i) => b.perguntas.forEach((p) => {
-    [p.campo, p.campoOutro, p.detalhe?.campo, p.detalhe?.campoOutro].filter(Boolean).forEach((c) => { passoDoCampo[c] = i; });
+    passoDoCampo[`extras.${p.codigo}`] = i;
+    passoDoCampo[`detalhes.${p.codigo}`] = i;
   }));
 
   // ---------- salvamento ----------
@@ -54,6 +85,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
   let salvando = null;
   let sujo = false;
 
+  const corpo = (concluir) => ({ dataAplicacao, respostas: resp, detalhes, concluir });
   function mostrarStatus(texto, erro = false) {
     status.textContent = texto;
     status.classList.toggle('q-status-erro', erro);
@@ -73,7 +105,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     if (!sujo) return;
     sujo = false;
     mostrarStatus('Salvando…');
-    salvando = api.put(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`, { ...resp, concluir: false });
+    salvando = api.put(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`, corpo(false));
     try {
       await salvando;
       mostrarStatus(`Rascunho salvo às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
@@ -91,149 +123,132 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     await descarregar();
   };
 
-  // Perguntas adicionais (criadas pela coordenação) têm campo "extras.<código>" e guardam a resposta em resp.extras
-  const ehExtra = (campo) => campo.startsWith('extras.');
-  const ler = (campo) => (ehExtra(campo) ? resp.extras[campo.slice(7)] : resp[campo]);
-  function definir(campo, valor) {
-    if (ehExtra(campo)) resp.extras[campo.slice(7)] = valor; else resp[campo] = valor;
-    delete errosPendentes[campo];
+  function definir(codigo, valor) {
+    if (vazio(valor)) delete resp[codigo]; else resp[codigo] = valor;
+    delete errosPendentes[`extras.${codigo}`];
+    agendar();
+  }
+  function definirDetalhe(codigo, valor) {
+    if (valor.trim()) detalhes[codigo] = valor; else delete detalhes[codigo];
+    delete errosPendentes[`detalhes.${codigo}`];
     agendar();
   }
 
   // ---------- construtores de pergunta ----------
   let contadorId = 0;
-  const novoId = (campo) => `q-${campo}-${contadorId++}`;
+  const novoId = (codigo) => `q-${codigo.replace(/\./g, '-')}-${contadorId++}`;
 
   function envolver(p, filhos, { grupo = false } = {}) {
     const idRotulo = novoId('rotulo');
-    const rotulo = h('span', { class: 'rotulo q-texto', id: idRotulo }, p.extra ? null : h('span', { class: 'q-codigo' }, `${p.codigo}.`), p.extra ? p.texto : ` ${p.texto}`);
+    const rotulo = h('span', { class: 'rotulo q-texto', id: idRotulo },
+      p.extra ? null : h('span', { class: 'q-codigo' }, `${p.codigo}.`), p.extra ? p.texto : ` ${p.texto}`);
     return h('div', { class: 'campo q-pergunta', role: grupo ? 'group' : null, 'aria-labelledby': grupo ? idRotulo : null },
       rotulo, p.ajuda ? h('span', { class: 'ajuda' }, p.ajuda) : null, filhos);
   }
 
-  function opcaoRadio(campo, valor, rotulo, marcado, aoMudar) {
-    const input = h('input', { type: 'radio', name: campo, value: valor });
+  function opcaoRadio(name, valor, rotulo, marcado, aoMudar) {
+    const input = h('input', { type: 'radio', name, value: valor });
     input.checked = marcado;
     input.addEventListener('change', () => { if (input.checked) aoMudar(valor); });
     return h('label', { class: 'opcao q-opcao' }, input, h('span', {}, rotulo));
   }
 
-  function campoNumero(p) {
-    const moeda = p.tipo === 'moeda';
-    const id = novoId(p.campo);
-    const valor = ler(p.campo);
-    const input = h('input', {
-      class: 'input q-input', id, name: p.campo, type: moeda ? 'text' : 'number',
-      inputmode: moeda || p.extra ? 'decimal' : 'numeric', min: p.min, max: p.max, step: p.extra ? 'any' : null, autocomplete: 'off',
-      placeholder: moeda ? 'R$ 0,00' : null,
+  // Complemento das opções que pedem detalhe ("Outras: ____"): aparece quando a opção está marcada
+  function campoDetalhe(p, escolhidas) {
+    const entrada = h('input', {
+      class: 'input q-input', type: 'text', id: novoId(`${p.codigo}-detalhe`), name: `detalhes.${p.codigo}`, maxlength: 200,
+      placeholder: 'Qual?', 'aria-label': `Complemento da pergunta ${p.codigo}`,
     });
-    input.value = moeda && valor !== null && valor !== '' && !Number.isNaN(Number(valor))
-      ? String(valor).replace('.', ',') : paraTexto(valor);
-    input.addEventListener('input', () => definir(p.campo, input.value === '' ? null : input.value));
-    return input;
+    entrada.value = paraTexto(detalhes[p.codigo]);
+    entrada.addEventListener('input', () => definirDetalhe(p.codigo, entrada.value));
+    const caixa = h('div', { class: 'campo q-detalhe' }, entrada);
+    const atualizar = () => { caixa.hidden = !p.opcoes.some((o) => o.pedeDetalhe && escolhidas().includes(o.valor)); };
+    atualizar();
+    return { caixa, atualizar };
   }
 
-  function campoBooleano(p, aoMudar) {
-    const v = ler(p.campo);
-    return h('div', { class: 'opcoes q-sim-nao' },
-      opcaoRadio(p.campo, 'true', 'Sim', v === true, () => { definir(p.campo, true); aoMudar?.(true); }),
-      opcaoRadio(p.campo, 'false', 'Não', v === false, () => { definir(p.campo, false); aoMudar?.(false); }));
+  const visiveis = (p, atuais) => p.opcoes.filter((o) => o.ativa !== false || atuais.includes(o.valor));
+
+  function perguntaEscolha(p) {
+    const name = `extras.${p.codigo}`;
+    const atual = () => (resp[p.codigo] ? [resp[p.codigo]] : []);
+    const detalhe = p.opcoes.some((o) => o.pedeDetalhe) ? campoDetalhe(p, atual) : null;
+    const lista = h('div', { class: 'opcoes' }, visiveis(p, atual()).map((o) => opcaoRadio(name, o.valor, o.rotulo, resp[p.codigo] === o.valor, (v) => {
+      definir(p.codigo, v);
+      detalhe?.atualizar();
+    })));
+    return envolver(p, [lista, detalhe?.caixa], { grupo: true });
   }
 
-  // Opção desativada pela coordenação só aparece para quem já tinha respondido com ela
-  function campoEscolha(p) {
-    return h('div', { class: 'opcoes' },
-      p.opcoes.filter((o) => o.ativa !== false || ler(p.campo) === o.valor)
-        .map((o) => opcaoRadio(p.campo, o.valor, o.rotulo, ler(p.campo) === o.valor, (x) => definir(p.campo, x))));
-  }
-
-  // Pergunta adicional de várias opções (códigos das opções do catálogo)
-  function campoMultiplaExtra(p) {
-    const marcados = new Set(ler(p.campo) || []);
-    const caixas = p.opcoes.filter((o) => o.ativa !== false || marcados.has(o.valor)).map((o) => {
-      const input = h('input', { type: 'checkbox', name: p.campo, value: o.valor });
+  function perguntaMultipla(p) {
+    const name = `extras.${p.codigo}`;
+    const marcados = new Set(resp[p.codigo] || []);
+    const detalhe = p.opcoes.some((o) => o.pedeDetalhe) ? campoDetalhe(p, () => [...marcados]) : null;
+    const caixas = visiveis(p, [...marcados]).map((o) => {
+      const input = h('input', { type: 'checkbox', name, value: o.valor });
       input.checked = marcados.has(o.valor);
       input.addEventListener('change', () => {
         if (input.checked) marcados.add(o.valor); else marcados.delete(o.valor);
-        definir(p.campo, [...marcados]);
+        definir(p.codigo, [...marcados]);
+        detalhe?.atualizar();
       });
       return h('label', { class: 'opcao q-opcao' }, input, h('span', {}, o.rotulo));
     });
-    return h('div', { class: 'opcoes' }, caixas);
+    return envolver(p, [h('div', { class: 'opcoes' }, caixas), detalhe?.caixa], { grupo: true });
   }
 
-  function campoTexto(p) {
-    const area = h('textarea', { class: 'textarea q-input', id: novoId(p.campo), name: p.campo, rows: 4, maxlength: 4000 });
-    area.value = paraTexto(ler(p.campo));
-    area.addEventListener('input', () => definir(p.campo, area.value));
-    return area;
-  }
-
-  // Múltipla escolha de tabela de apoio + texto "outro" quando a opção exige
-  function campoMultipla({ campo, apoioNome, campoOutro, rotuloOutro }) {
-    const lista = apoio[CHAVE_APOIO[apoioNome]] || [];
-    const marcados = new Set(resp[campo] || []);
-    const outro = h('input', { class: 'input q-input', type: 'text', id: novoId(campoOutro || campo), name: campoOutro || `${campo}Outro`, maxlength: 200, placeholder: rotuloOutro });
-    outro.value = paraTexto(resp[campoOutro]);
-    outro.addEventListener('input', () => definir(campoOutro, outro.value));
-    const campoOutroWrap = h('div', { class: 'campo' }, h('label', { for: outro.id }, rotuloOutro), outro);
-
-    const atualizarOutro = () => {
-      const exige = lista.some((o) => o.exigeTexto && marcados.has(o.id));
-      campoOutroWrap.hidden = !exige;
-    };
-    const caixas = lista.map((o) => {
-      const input = h('input', { type: 'checkbox', name: campo, value: String(o.id) });
-      input.checked = marcados.has(o.id);
-      input.addEventListener('change', () => {
-        if (input.checked) marcados.add(o.id); else marcados.delete(o.id);
-        definir(campo, [...marcados]);
-        atualizarOutro();
-      });
-      return h('label', { class: 'opcao q-opcao' }, input, h('span', {}, o.nome));
+  function perguntaNumero(p) {
+    const input = h('input', {
+      class: 'input q-input', id: novoId(p.codigo), name: `extras.${p.codigo}`, type: 'number',
+      inputmode: p.min !== undefined ? 'numeric' : 'decimal', min: p.min, max: p.max, step: p.min !== undefined ? 1 : 'any', autocomplete: 'off',
     });
-    atualizarOutro();
-    return h('div', {}, h('div', { class: 'opcoes' }, caixas), campoOutroWrap);
+    input.value = paraTexto(resp[p.codigo]);
+    input.addEventListener('input', () => definir(p.codigo, input.value === '' ? null : input.value));
+    return envolver(p, input);
   }
 
-  function perguntaCompleta(p) {
+  function perguntaTexto(p) {
+    const area = h('textarea', { class: 'textarea q-input', id: novoId(p.codigo), name: `extras.${p.codigo}`, rows: 4, maxlength: 2000 });
+    area.value = paraTexto(resp[p.codigo]);
+    area.addEventListener('input', () => definir(p.codigo, area.value));
+    return envolver(p, area);
+  }
+
+  function perguntaBooleano(p) {
+    const name = `extras.${p.codigo}`;
+    const v = resp[p.codigo];
+    return envolver(p, h('div', { class: 'opcoes q-sim-nao' },
+      opcaoRadio(name, 'true', 'Sim', v === true, () => definir(p.codigo, true)),
+      opcaoRadio(name, 'false', 'Não', v === false, () => definir(p.codigo, false))), { grupo: true });
+  }
+
+  function pergunta(p) {
     switch (p.tipo) {
-      case 'numero': return envolver(p, campoNumero(p));
-      case 'moeda': return envolver(p, campoNumero(p));
-      case 'texto': return envolver(p, campoTexto(p));
-      case 'escolha': {
-        const opcoes = campoEscolha(p);
-        if (!p.detalhe) return envolver(p, opcoes, { grupo: true });
-        // 3b: faixa + valor aproximado (o valor escolhe a faixa automaticamente)
-        const valor = campoNumero({ campo: p.detalhe.campo, tipo: 'moeda' });
-        valor.addEventListener('input', () => {
-          const n = numeroBr(valor.value);
-          if (valor.value === '' || Number.isNaN(n)) return;
-          const faixa = Object.entries(LIMITES_FAIXA).find(([, [min, max]]) => n > min && n <= max)?.[0];
-          if (faixa) {
-            definir(p.campo, faixa);
-            opcoes.querySelector(`input[value="${faixa}"]`).checked = true;
-          }
-        });
-        const wrap = h('div', { class: 'campo' }, h('label', { for: valor.id }, p.detalhe.rotulo), valor,
-          h('span', { class: 'ajuda' }, 'Ao digitar o valor, a faixa acima é escolhida sozinha.'));
-        return envolver(p, [opcoes, wrap], { grupo: true });
-      }
-      case 'booleano': {
-        if (!p.detalhe) return envolver(p, campoBooleano(p), { grupo: true });
-        // 1d: sim/não + quais auxílios
-        const detalhe = h('div', { class: 'q-detalhe' },
-          h('p', { class: 'rotulo' }, p.detalhe.rotulo),
-          campoMultipla({ campo: p.detalhe.campo, apoioNome: p.detalhe.apoio, campoOutro: p.detalhe.campoOutro, rotuloOutro: 'Qual outro auxílio?' }));
-        detalhe.hidden = resp[p.campo] !== true;
-        return envolver(p, [campoBooleano(p, (v) => { detalhe.hidden = !v; }), detalhe], { grupo: true });
-      }
-      case 'multipla-extra':
-        return envolver(p, campoMultiplaExtra(p), { grupo: true });
-      case 'multipla':
-        return envolver(p, campoMultipla({ campo: p.campo, apoioNome: p.apoio, campoOutro: p.campoOutro, rotuloOutro: 'Qual outro destino?' }), { grupo: true });
+      case 'numero': return perguntaNumero(p);
+      case 'texto': return perguntaTexto(p);
+      case 'escolha': return perguntaEscolha(p);
+      case 'multipla': return perguntaMultipla(p);
+      case 'booleano': return perguntaBooleano(p);
       default: return null;
     }
+  }
+
+  // Cabeçalho do formulário em papel: unidade, assistente, datas, meta e dados do responsável
+  function cartaoCabecalho() {
+    const c = dados.cabecalho;
+    const item = (rotulo, valor) => h('div', { class: 'fam-dado' }, h('dt', {}, rotulo), h('dd', {}, textoOuTraco(valor)));
+    return h('div', { class: 'card q-ident' },
+      h('dl', { class: 'fam-dados' },
+        item('Unidade', c.unidade),
+        item('Assistente social responsável', c.assistente),
+        item('Data de início do acompanhamento', c.dataInicio ? formatarData(c.dataInicio) : null),
+        tipo === 'INICIAL' ? item('Data prevista para conclusão', c.dataPrevista ? formatarData(c.dataPrevista) : null) : null,
+        item('Responsável familiar', c.responsavel.nome),
+        item('CPF / CadÚnico', [c.responsavel.cpf && formatarCpf(c.responsavel.cpf), c.responsavel.nis].filter(Boolean).join(' · ')),
+        item('Contato', c.responsavel.telefone ? formatarTelefone(c.responsavel.telefone) : null),
+        item('Endereço / território', c.responsavel.endereco)),
+      tipo === 'INICIAL' && c.meta ? h('p', { class: 'texto-pequeno q-meta' }, h('strong', {}, 'Meta: '), c.meta) : null,
+      h('p', { class: 'texto-pequeno texto-suave' }, 'Esses dados vêm do cadastro da família. Para corrigi-los, use "Editar família".'));
   }
 
   // ---------- passos ----------
@@ -258,12 +273,14 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     form.addEventListener('submit', (e) => e.preventDefault());
 
     if (passo === 0) {
+      if (!reavaliacao) form.append(cartaoCabecalho());
       const data = h('input', { class: 'input', type: 'date', id: 'q-data', name: 'dataAplicacao', max: dados.sugestoes.dataAplicacao });
-      data.value = resp.dataAplicacao;
-      data.addEventListener('input', () => definir('dataAplicacao', data.value));
-      form.append(h('div', { class: 'campo' }, h('label', { for: 'q-data', class: 'obrigatorio' }, 'Data de aplicação do questionário'), data));
+      data.value = dataAplicacao;
+      data.addEventListener('input', () => { dataAplicacao = data.value; delete errosPendentes.dataAplicacao; agendar(); });
+      form.append(h('div', { class: 'campo' },
+        h('label', { for: 'q-data', class: 'obrigatorio' }, tipo === 'FINAL' ? 'Data final de aplicação do questionário' : 'Data de aplicação do questionário'), data));
     }
-    bloco.perguntas.forEach((p) => form.append(perguntaCompleta(p)));
+    bloco.perguntas.forEach((p) => form.append(pergunta(p)));
 
     const fs = h('fieldset', { class: 'q-conjunto', disabled: !editavel }, form);
     area.replaceChildren(fs);
@@ -309,7 +326,7 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     clearTimeout(temporizador);
     while (salvando) await salvando.catch(() => {});
     try {
-      await api.put(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`, { ...resp, concluir: true });
+      await api.put(`/api/familias/acompanhamentos/${acId}/questionarios/${tipo}`, corpo(true));
       sujo = false;
       toast.sucesso(jaConcluido ? 'Alterações salvas.' : 'Questionário concluído.');
       const voltarPara = consumirRetorno(acId); // veio do botão Formulário do atendimento
@@ -336,13 +353,12 @@ export async function renderQuestionario(ctx, acId, tipoUrl) {
     ? h('div', { class: 'aviso aviso-aviso' }, dados.bloqueio || 'Você pode consultar este questionário, mas não alterá-lo.')
     : null;
 
-  montar(conteudo, 
+  montar(conteudo,
     cabecalhoPagina(NOME_TIPO[tipo], { voltar: { href: reavaliacao ? `#/a/${acId}/indicadores` : `#/a/${acId}`, texto: nomeFamilia } }),
     aviso,
-    tipo !== 'INICIAL' && editavel
-      ? h('p', { class: 'texto-pequeno texto-suave' }, reavaliacao
-        ? 'Reavaliação rápida da metade do acompanhamento: só as perguntas de situação atual (cerca de 3 minutos).'
-        : 'As perguntas estão no presente ("hoje"): compare com o questionário inicial.') : null,
+    reavaliacao && editavel
+      ? h('p', { class: 'texto-pequeno texto-suave' }, 'Reavaliação rápida da metade do acompanhamento: só as perguntas de situação atual que têm par no questionário inicial (cerca de 3 minutos).')
+      : null,
     h('div', { class: 'card q-cabecalho' }, titulo, barra, pontos),
     area,
     h('div', { class: 'q-nav' }, status, h('div', { class: 'q-nav-botoes' }, botaoVoltar, botaoAvancar)),

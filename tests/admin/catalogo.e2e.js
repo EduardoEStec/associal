@@ -13,6 +13,7 @@ const bcrypt = require('bcrypt');
 const db = require('../../server/db');
 const familias = require('../../server/services/familias');
 const regras = require('../../server/services/indice-progresso');
+const { corpoInicial, corpoFinal } = require('../familias/m1-dados');
 
 const PORTA = process.env.TESTE_PORT || 3141;
 const BASE = `http://127.0.0.1:${PORTA}`;
@@ -138,21 +139,6 @@ async function esperarServidor() {
 let ok = 0;
 const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${nome}`); };
 
-const inicial = (extra = {}) => ({
-  dataAplicacao: dias(-60), qtdMembrosFamilia: 4, rendaMensalMedia: 1200, qtdMembrosComRenda: 1, recebeAuxilio: true, beneficioIds: [1],
-  acessoAlimentosInNatura: 'NAO_TINHA', frequenciaFrutasVerduras: 'UMA_DUAS', qualidadeAlimentacao: 'NAO_MELHOROU', saudeNutricional: 'NENHUMA',
-  conseguePoupar: false, economiaMensalFaixa: 'ATE_100', economiaMensalValor: 50, destinoEconomiaIds: [2],
-  capacidadePoupanca: 'NAO_CONSEGUE', gestaoFinanceira: 'SEM_MUDANCA', empoderadaDecisoes: false, melhoriaPlanejamento: false,
-  avaliacaoArmazem: 'BOA', recomendaria: true,
-  ...extra,
-});
-const final = (extra = {}) => ({
-  ...inicial(), dataAplicacao: dias(-1), acessoAlimentosInNatura: 'DIARIO', frequenciaFrutasVerduras: 'CINCO_OU_MAIS',
-  qualidadeAlimentacao: 'MELHOROU_MUITO', saudeNutricional: 'GRANDE_MELHORIA', conseguePoupar: true, economiaMensalFaixa: 'DE_201_300',
-  economiaMensalValor: 250, capacidadePoupanca: 'REGULARMENTE', gestaoFinanceira: 'MELHOROU', empoderadaDecisoes: true,
-  melhoriaPlanejamento: true, avaliacaoArmazem: 'OTIMA', ...extra,
-});
-
 (async () => {
   await travaDeSeguranca();
   const colisao = await db.consultar(
@@ -190,10 +176,10 @@ const final = (extra = {}) => ({
     // =====================================================================
     // P1 — permissões
     // =====================================================================
-    await teste('migração 085: catálogo semeado (30 perguntas e 28 opções oficiais), CHECKs fixos trocados por formato', async () => {
+    await teste('migração 085: catálogo semeado (65 perguntas e 140 opções oficiais: formato anterior, pesquisa e modelos M1), CHECKs fixos trocados por formato', async () => {
       const [t] = await db.consultar("SELECT (SELECT COUNT(*) FROM catalogo_pergunta WHERE oficial = 1) AS p, (SELECT COUNT(*) FROM catalogo_opcao WHERE base = 1) AS o, OBJECT_ID('dbo.resposta_extra') AS r");
-      assert.strictEqual(t.p, 30);
-      assert.strictEqual(t.o, 28);
+      assert.strictEqual(t.p, 65);
+      assert.strictEqual(t.o, 140);
       assert.ok(t.r);
       const ck = await db.consultar("SELECT name FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID('dbo.questionario') AND name IN ('ck_questionario_2a', 'ck_questionario_5a')");
       assert.strictEqual(ck.length, 0);
@@ -266,27 +252,33 @@ const final = (extra = {}) => ({
     const pergunta = (corpo) => coord.req('POST', '/api/admin/perguntas', corpo);
     const catalogoDe = async (cliente, formulario) => (await cliente.req('GET', `/api/admin/perguntas?formulario=${formulario}`)).corpo;
     const achar = (cat, codigo) => cat.secoes.flatMap((s) => s.perguntas).find((p) => p.codigo === codigo);
-    const oficialQ = (campoCodigo) => achar(catalogoQ0, campoCodigo);
-    let catalogoQ0;
+    const oficialQ = (codigo) => achar(catalogoI0, codigo);
+    let catalogoI0;
 
-    await teste('catálogo: editor do questionário traz 5 seções, 21 perguntas oficiais e as opções oficiais como base', async () => {
-      catalogoQ0 = await catalogoDe(coord, 'QUESTIONARIO');
-      assert.strictEqual(catalogoQ0.secoes.length, 5);
-      const todas = catalogoQ0.secoes.flatMap((s) => s.perguntas);
-      assert.strictEqual(todas.filter((p) => p.oficial).length, 21);
-      const p2a = achar(catalogoQ0, '2a');
-      assert.deepStrictEqual(p2a.opcoes.map((o) => o.codigo), ['NAO_TINHA', 'SEMANAL_1_2', 'SEMANAL_2_3', 'DIARIO']);
-      assert.ok(p2a.opcoes.every((o) => o.base && o.pontua));
-      const [{ n }] = await db.consultar("SELECT COUNT(*) AS n FROM questionario WHERE acesso_alimentos_in_natura = 'DIARIO'");
-      assert.strictEqual(p2a.opcoes.find((o) => o.codigo === 'DIARIO').respostas, n, 'o uso das opções oficiais vem das colunas do questionário');
-      assert.strictEqual(achar(catalogoQ0, '3c').apoio, 'destino_economia');
+    await teste('catálogo: editores dos questionários inicial (3 seções, 14 perguntas) e final (4 seções, 21); formato anterior só consulta', async () => {
+      catalogoI0 = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
+      assert.strictEqual(catalogoI0.secoes.length, 3);
+      assert.strictEqual(catalogoI0.secoes.flatMap((s) => s.perguntas).filter((p) => p.oficial).length, 14);
+      const fin = await catalogoDe(coord, 'QUESTIONARIO_FINAL');
+      assert.strictEqual(fin.secoes.length, 4);
+      assert.strictEqual(fin.secoes.flatMap((s) => s.perguntas).filter((p) => p.oficial).length, 21);
+      const p32 = achar(catalogoI0, '3.2');
+      assert.deepStrictEqual(p32.opcoes.map((o) => o.codigo), ['ALGUMAS_VEZES', 'FREQUENTEMENTE', 'RARAMENTE', 'NUNCA'], 'ordem do papel');
+      assert.ok(p32.opcoes.every((o) => o.base && o.pontua));
+      assert.ok(achar(catalogoI0, '2.1').opcoes.every((o) => o.base && !o.pontua), 'fonte de renda não pontua');
+      assert.strictEqual(achar(catalogoI0, '2.1').opcoes.find((o) => o.codigo === 'OUTRAS').pedeDetalhe, true);
+      const legado = await catalogoDe(coord, 'QUESTIONARIO');
+      assert.strictEqual(legado.secoes.length, 5);
+      assert.strictEqual(legado.secoes.flatMap((s) => s.perguntas).filter((p) => p.oficial).length, 21);
+      assert.strictEqual(achar(legado, '3c').apoio, 'destino_economia');
+      assert.strictEqual((await pergunta({ formulario: 'QUESTIONARIO', tipo: 'TEXTO', texto: `${PREFIXO} no formato anterior` })).status, 409, 'o formato anterior não recebe perguntas novas');
       const pesq = await catalogoDe(coord, 'PESQUISA');
       assert.strictEqual(pesq.secoes[0].perguntas.filter((p) => p.oficial).length, 9);
     });
 
-    let extraTexto; let extraNum; let extraEsc; let extraMult; let extraSim; let atEsc; let atTexto; let pqTexto; let pqEsc;
+    let extraTexto; let extraNum; let extraEsc; let extraMult; let extraSim; let extraFinal; let atEsc; let atTexto; let pqTexto; let pqEsc;
 
-    await teste('criar perguntas extras: validação (tipo, texto, opções) e criação nos três formulários', async () => {
+    await teste('criar perguntas extras: validação (tipo, texto, opções) e criação nos formulários', async () => {
       assert.strictEqual((await pergunta({ formulario: 'ATENDIMENTO', tipo: 'XYZ', texto: `${PREFIXO} tipo ruim` })).status, 400);
       assert.strictEqual((await pergunta({ formulario: 'ATENDIMENTO', tipo: 'TEXTO', texto: 'ab' })).status, 400);
       assert.strictEqual((await pergunta({ formulario: 'OUTRO', tipo: 'TEXTO', texto: `${PREFIXO} formulário ruim` })).status, 400);
@@ -299,11 +291,12 @@ const final = (extra = {}) => ({
       const novo = async (corpo) => { const x = await pergunta(corpo); assert.strictEqual(x.status, 201, x.texto); return x.corpo; };
       atTexto = await novo({ formulario: 'ATENDIMENTO', secao: 1, tipo: 'TEXTO', texto: `${PREFIXO} Como a pessoa conheceu o Armazém?`, obrigatoria: true });
       atEsc = await novo({ formulario: 'ATENDIMENTO', secao: 1, tipo: 'ESCOLHA', texto: `${PREFIXO} Primeira vez no Armazém?`, opcoes: ['Sim, primeira vez', 'Já veio antes', 'Não sabe informar'] });
-      extraTexto = await novo({ formulario: 'QUESTIONARIO', secao: 4, tipo: 'TEXTO', texto: `${PREFIXO} O que mudou na rotina da casa?`, textoFinal: `${PREFIXO} O que mudou na rotina da casa depois do projeto?` });
-      extraNum = await novo({ formulario: 'QUESTIONARIO', secao: 2, tipo: 'NUMERO', texto: `${PREFIXO} Quantas refeições por dia?` });
-      extraEsc = await novo({ formulario: 'QUESTIONARIO', secao: 2, tipo: 'ESCOLHA', texto: `${PREFIXO} Onde costuma comprar frutas?`, opcoes: ['Feira', 'Mercado', 'Armazém'], obrigatoria: true });
-      extraMult = await novo({ formulario: 'QUESTIONARIO', secao: 3, tipo: 'MULTIPLA', texto: `${PREFIXO} Quais gastos diminuíram?`, opcoes: ['Alimentação', 'Transporte', 'Remédios'] });
-      extraSim = await novo({ formulario: 'QUESTIONARIO', secao: 5, tipo: 'SIM_NAO', texto: `${PREFIXO} Indicou a vizinhos?` });
+      extraTexto = await novo({ formulario: 'QUESTIONARIO_INICIAL', secao: 3, tipo: 'TEXTO', texto: `${PREFIXO} O que mudou na rotina da casa?` });
+      extraNum = await novo({ formulario: 'QUESTIONARIO_INICIAL', secao: 2, tipo: 'NUMERO', texto: `${PREFIXO} Quantas refeições por dia?` });
+      extraEsc = await novo({ formulario: 'QUESTIONARIO_INICIAL', secao: 2, tipo: 'ESCOLHA', texto: `${PREFIXO} Onde costuma comprar frutas?`, opcoes: ['Feira', 'Mercado', 'Armazém'], obrigatoria: true });
+      extraMult = await novo({ formulario: 'QUESTIONARIO_INICIAL', secao: 3, tipo: 'MULTIPLA', texto: `${PREFIXO} Quais gastos diminuíram?`, opcoes: ['Alimentação', 'Transporte', 'Remédios'] });
+      extraSim = await novo({ formulario: 'QUESTIONARIO_INICIAL', secao: 3, tipo: 'SIM_NAO', texto: `${PREFIXO} Indicou a vizinhos?` });
+      extraFinal = await novo({ formulario: 'QUESTIONARIO_FINAL', secao: 4, tipo: 'TEXTO', texto: `${PREFIXO} O que mudou na rotina da casa depois do projeto?` });
       pqTexto = await novo({ formulario: 'PESQUISA', tipo: 'TEXTO', texto: `${PREFIXO} Algum recado para a equipe?`, obrigatoria: true });
       pqEsc = await novo({ formulario: 'PESQUISA', tipo: 'ESCOLHA', texto: `${PREFIXO} Como prefere ser avisado?`, opcoes: ['Telefone', 'Mensagem'] });
       assert.match(atTexto.codigo, /^E\d{4}$/);
@@ -313,7 +306,7 @@ const final = (extra = {}) => ({
       assert.strictEqual(achar(pesq, pqTexto.codigo).obrigatoria, false);
     });
 
-    await teste('formulários leem o catálogo: modelo do questionário, perguntas do atendimento (todos os perfis) e modelo da pesquisa', async () => {
+    await teste('formulários leem o catálogo: modelos inicial e final, perguntas do atendimento (todos os perfis) e modelo da pesquisa', async () => {
       const m = (await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL')).corpo;
       const b2 = m.blocos.find((x) => x.numero === 2);
       const ex = b2.perguntas.filter((p) => p.extra);
@@ -321,10 +314,10 @@ const final = (extra = {}) => ({
       assert.strictEqual(ex.find((p) => p.codigo === extraNum.codigo).tipo, 'numero');
       assert.strictEqual(ex.find((p) => p.codigo === extraEsc.codigo).obrigatoria, true);
       assert.deepStrictEqual(ex.find((p) => p.codigo === extraEsc.codigo).opcoes.map((o) => o.rotulo), ['Feira', 'Mercado', 'Armazém']);
-      assert.strictEqual(m.blocos.find((x) => x.numero === 3).perguntas.find((p) => p.extra).tipo, 'multipla-extra');
-      assert.match(m.blocos.find((x) => x.numero === 4).perguntas.find((p) => p.extra).texto, /rotina da casa\?$/);
+      assert.strictEqual(m.blocos.find((x) => x.numero === 3).perguntas.find((p) => p.extra && p.tipo === 'multipla').tipo, 'multipla');
       const f = (await a.req('GET', '/api/familias/questionario/modelo?tipo=FINAL')).corpo;
       assert.match(f.blocos.find((x) => x.numero === 4).perguntas.find((p) => p.extra).texto, /depois do projeto\?$/);
+      assert.strictEqual(f.blocos.flatMap((x) => x.perguntas).filter((p) => p.extra).length, 1, 'as extras do inicial não aparecem no final');
       const r = (await a.req('GET', '/api/familias/questionario/modelo?tipo=REAVALIACAO')).corpo;
       assert.strictEqual(r.blocos.flatMap((x) => x.perguntas).filter((p) => p.extra).length, 0, 'reavaliação rápida não tem extras');
 
@@ -334,59 +327,60 @@ const final = (extra = {}) => ({
     });
 
     await teste('renomear pergunta e opção OFICIAIS: o código não muda, o modelo mostra o texto novo', async () => {
-      const p2a = oficialQ('2a');
-      let r = await coord.req('PUT', `/api/admin/perguntas/${p2a.id}`, { texto: `${PREFIXO} Frequência de alimentos in natura?`, textoFinal: `${PREFIXO} Hoje, frequência de alimentos in natura?`, ajuda: '' });
+      const p32 = oficialQ('3.2');
+      let r = await coord.req('PUT', `/api/admin/perguntas/${p32.id}`, { texto: `${PREFIXO} Faltou comida para todos antes do projeto?`, ajuda: '' });
       assert.strictEqual(r.status, 200, r.texto);
-      const op = p2a.opcoes.find((o) => o.codigo === 'SEMANAL_1_2');
-      r = await coord.req('PUT', `/api/admin/perguntas/${p2a.id}/opcoes/${op.id}`, { texto: `${PREFIXO} Uma ou duas vezes por semana`, textoFinal: '' });
+      const op = p32.opcoes.find((o) => o.codigo === 'ALGUMAS_VEZES');
+      r = await coord.req('PUT', `/api/admin/perguntas/${p32.id}/opcoes/${op.id}`, { texto: `${PREFIXO} De vez em quando` });
       assert.strictEqual(r.status, 200, r.texto);
       const m = (await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL')).corpo;
-      const p = m.blocos[1].perguntas.find((x) => x.codigo === '2a');
-      assert.match(p.texto, /^P2E2E Frequência/);
-      assert.strictEqual(p.campo, 'acessoAlimentosInNatura');
-      assert.strictEqual(p.opcoes.find((o) => o.valor === 'SEMANAL_1_2').rotulo, `${PREFIXO} Uma ou duas vezes por semana`);
-      const f = (await a.req('GET', '/api/familias/questionario/modelo?tipo=FINAL')).corpo;
-      assert.match(f.blocos[1].perguntas.find((x) => x.codigo === '2a').texto, /^P2E2E Hoje/);
-      assert.strictEqual(f.blocos[1].perguntas.find((x) => x.codigo === '2a').opcoes.find((o) => o.valor === 'NAO_TINHA').rotulo, 'Não tem acesso', 'rótulo "hoje" original preservado');
+      const p = m.blocos[2].perguntas.find((x) => x.codigo === '3.2');
+      assert.match(p.texto, /^P2E2E Faltou/);
+      assert.strictEqual(p.campo, 'alimentosSuficientes');
+      assert.strictEqual(p.opcoes.find((o) => o.valor === 'ALGUMAS_VEZES').rotulo, `${PREFIXO} De vez em quando`);
       // pesquisa: renomeia a NPS
       const pesq = await catalogoDe(coord, 'PESQUISA');
       const nps = achar(pesq, 'NPS');
       assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${nps.id}`, { texto: `${PREFIXO} Nota de 0 a 10 para o projeto?` })).status, 200);
     });
 
-    await teste('pergunta oficial não se desativa nem se exclui; tipo e opção de pergunta sem opções recusados', async () => {
-      const p2b = oficialQ('2b');
-      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p2b.id}/ativa`, { ativa: false })).status, 409);
-      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p2b.id}`)).status, 409);
-      const p1b = oficialQ('1b');
-      assert.strictEqual((await coord.req('POST', `/api/admin/perguntas/${p1b.id}/opcoes`, { texto: `${PREFIXO} x` })).status, 409);
-      const base = p2b.opcoes[0];
-      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p2b.id}/opcoes/${base.id}`)).status, 409, 'opção oficial não se exclui');
+    await teste('pergunta oficial não se desativa nem se exclui; opção em pergunta sem opções e exclusão de opção oficial recusadas', async () => {
+      const p22 = oficialQ('2.2');
+      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p22.id}/ativa`, { ativa: false })).status, 409);
+      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p22.id}`)).status, 409);
+      const p11 = oficialQ('1.1');
+      assert.strictEqual((await coord.req('POST', `/api/admin/perguntas/${p11.id}/opcoes`, { texto: `${PREFIXO} x` })).status, 409);
+      const base = p22.opcoes[0];
+      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p22.id}/opcoes/${base.id}`)).status, 409, 'opção oficial não se exclui');
     });
 
     let opNova; let opNaoPontua;
-    await teste('acrescentar opção a pergunta OFICIAL exige dizer como pontua (vale como X, ou não pontua)', async () => {
-      const p2a = oficialQ('2a');
-      let r = await coord.req('POST', `/api/admin/perguntas/${p2a.id}/opcoes`, { texto: `${PREFIXO} Todo dia, com horta própria` });
+    await teste('acrescentar opção a pergunta OFICIAL que pontua exige dizer como (vale como X, ou não pontua); em pergunta que não pontua, não', async () => {
+      const p32 = oficialQ('3.2');
+      let r = await coord.req('POST', `/api/admin/perguntas/${p32.id}/opcoes`, { texto: `${PREFIXO} Só no fim do mês` });
       assert.strictEqual(r.status, 400);
       assert.ok(r.corpo.erro.detalhes.equivaleA);
-      r = await coord.req('POST', `/api/admin/perguntas/${p2a.id}/opcoes`, { texto: `${PREFIXO} Todo dia, com horta própria`, equivaleA: 'NAO_EXISTE' });
+      r = await coord.req('POST', `/api/admin/perguntas/${p32.id}/opcoes`, { texto: `${PREFIXO} Só no fim do mês`, equivaleA: 'NAO_EXISTE' });
       assert.strictEqual(r.status, 400);
-      r = await coord.req('POST', `/api/admin/perguntas/${p2a.id}/opcoes`, { texto: `${PREFIXO} Todo dia, com horta própria`, equivaleA: 'DIARIO' });
+      r = await coord.req('POST', `/api/admin/perguntas/${p32.id}/opcoes`, { texto: `${PREFIXO} Só no fim do mês`, equivaleA: 'NUNCA' });
       assert.strictEqual(r.status, 201, r.texto);
       opNova = r.corpo;
       assert.match(opNova.codigo, /^OP\d{2}$/);
-      r = await coord.req('POST', `/api/admin/perguntas/${p2a.id}/opcoes`, { texto: `${PREFIXO} Não sabe informar`, naoPontua: true });
+      r = await coord.req('POST', `/api/admin/perguntas/${p32.id}/opcoes`, { texto: `${PREFIXO} Não sabe informar`, naoPontua: true });
       assert.strictEqual(r.status, 201, r.texto);
       opNaoPontua = r.corpo;
-      r = await coord.req('POST', `/api/admin/perguntas/${p2a.id}/opcoes`, { texto: `${PREFIXO} Todo dia, com horta própria`, equivaleA: 'DIARIO' });
+      r = await coord.req('POST', `/api/admin/perguntas/${p32.id}/opcoes`, { texto: `${PREFIXO} Só no fim do mês`, equivaleA: 'NUNCA' });
       assert.strictEqual(r.status, 400, 'texto repetido');
-      const cat = await catalogoDe(coord, 'QUESTIONARIO');
-      const novas = achar(cat, '2a').opcoes.filter((o) => !o.base);
-      assert.deepStrictEqual(novas.map((o) => [o.codigo, o.pontua, o.equivaleCodigo]), [[opNova.codigo, true, 'DIARIO'], [opNaoPontua.codigo, false, null]]);
+      const cat = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
+      const novas = achar(cat, '3.2').opcoes.filter((o) => !o.base);
+      assert.deepStrictEqual(novas.map((o) => [o.codigo, o.pontua, o.equivaleCodigo]), [[opNova.codigo, true, 'NUNCA'], [opNaoPontua.codigo, false, null]]);
       const m = (await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL')).corpo;
-      const codigos = m.blocos[1].perguntas.find((x) => x.codigo === '2a').opcoes.map((o) => o.valor);
+      const codigos = m.blocos[2].perguntas.find((x) => x.codigo === '3.2').opcoes.map((o) => o.valor);
       assert.ok(codigos.includes(opNova.codigo) && codigos.includes(opNaoPontua.codigo));
+      // fonte de renda não pontua: aceita opção nova sem "vale como"
+      const p21 = oficialQ('2.1');
+      const neutra = await coord.req('POST', `/api/admin/perguntas/${p21.id}/opcoes`, { texto: `${PREFIXO} Venda de reciclados` });
+      assert.strictEqual(neutra.status, 201, neutra.texto);
     });
 
     let acA; let acB; let acC;
@@ -395,6 +389,9 @@ const final = (extra = {}) => ({
       assert.strictEqual(r.status, 201, r.texto);
       return r.corpo.acompanhamentoId;
     };
+    // `respostas` aceita as oficiais (código do papel) e as adicionais (E000x) no mesmo objeto
+    const inicial = (respostas = {}, corpo = {}) => corpoInicial(dias(-60), respostas, corpo);
+    const final = (respostas = {}, corpo = {}) => corpoFinal(dias(-1), respostas, corpo);
     const q = (cliente, ac, tipo, corpo, concluir = true) => cliente.req('PUT', `/api/familias/acompanhamentos/${ac}/questionarios/${tipo}`, { ...corpo, concluir });
     const nivelAlimentacao = async (ac) => {
       const [l] = await db.consultar("SELECT nivel, itens_validos FROM acompanhamento_indice WHERE acompanhamento_id = @ac AND dimensao = 'ALIMENTACAO' AND tipo = 'INICIAL'", { ac });
@@ -405,76 +402,76 @@ const final = (extra = {}) => ({
       acA = await nova(a, uA.id, CPF_A, 'Teste P2E2E A');
       acB = await nova(a, uA.id, CPF_B, 'Teste P2E2E B');
       acC = await nova(a, uA.id, CPF_C, 'Teste P2E2E C');
-      // A responde DIARIO (oficial); B responde a opção nova que vale como DIARIO; C responde a que não pontua
-      const extrasObrig = { [extraEsc.codigo]: 'OP01' };
-      let r = await q(a, acA, 'INICIAL', inicial({ acessoAlimentosInNatura: 'DIARIO', extras: extrasObrig }));
+      // A responde NUNCA (oficial); B responde a opção nova que vale como NUNCA; C responde a que não pontua
+      const obrig = { [extraEsc.codigo]: 'OP01' };
+      let r = await q(a, acA, 'INICIAL', inicial({ '3.2': 'NUNCA', ...obrig }));
       assert.strictEqual(r.status, 200, r.texto);
-      r = await q(a, acB, 'INICIAL', inicial({ acessoAlimentosInNatura: opNova.codigo, extras: extrasObrig }));
+      r = await q(a, acB, 'INICIAL', inicial({ '3.2': opNova.codigo, ...obrig }));
       assert.strictEqual(r.status, 200, r.texto);
-      assert.strictEqual(r.corpo.respostas.acessoAlimentosInNatura, opNova.codigo);
-      r = await q(a, acC, 'INICIAL', inicial({ acessoAlimentosInNatura: opNaoPontua.codigo, extras: extrasObrig }));
+      assert.strictEqual(r.corpo.respostas['3.2'], opNova.codigo);
+      r = await q(a, acC, 'INICIAL', inicial({ '3.2': opNaoPontua.codigo, ...obrig }));
       assert.strictEqual(r.status, 200, r.texto);
       const A = await nivelAlimentacao(acA);
       const B = await nivelAlimentacao(acB);
       const C = await nivelAlimentacao(acC);
-      assert.strictEqual(B.nivel, A.nivel, 'a opção nova vale exatamente como DIARIO');
+      assert.strictEqual(A.nivel, 25);
+      assert.strictEqual(B.nivel, A.nivel, 'a opção nova vale exatamente como NUNCA');
       assert.strictEqual(B.itens, A.itens);
       assert.strictEqual(C.itens, A.itens - 1, 'a que não pontua deixa de contar como item respondido');
-      assert.strictEqual((await q(a, acA, 'INICIAL', inicial({ acessoAlimentosInNatura: 'CODIGO_INVENTADO', extras: extrasObrig }))).status, 400);
+      assert.strictEqual((await q(a, acA, 'INICIAL', inicial({ '3.2': 'CODIGO_INVENTADO', ...obrig }))).status, 400);
     });
 
     await teste('perguntas extras do questionário: obrigatória só exigida ao concluir; rascunho aceita vazio; valores gravados e devolvidos', async () => {
       const acX = await nova(a, uA.id, CPF_X, 'Teste P2E2E X');
       // rascunho sem a obrigatória: tudo bem
-      let r = await q(a, acX, 'INICIAL', { rendaMensalMedia: 900 }, false);
+      let r = await q(a, acX, 'INICIAL', { respostas: { '2.2': 'ATE_500' } }, false);
       assert.strictEqual(r.status, 200, r.texto);
       // concluir sem a obrigatória: 400 no campo extras.<código>
       r = await q(a, acX, 'INICIAL', inicial());
       assert.strictEqual(r.status, 400);
       assert.ok(r.corpo.erro.detalhes[`extras.${extraEsc.codigo}`], JSON.stringify(r.corpo.erro.detalhes));
       // valores inválidos
-      r = await q(a, acX, 'INICIAL', inicial({ extras: { [extraEsc.codigo]: 'NAO_EXISTE' } }));
+      r = await q(a, acX, 'INICIAL', inicial({ [extraEsc.codigo]: 'NAO_EXISTE' }));
       assert.strictEqual(r.status, 400);
-      r = await q(a, acX, 'INICIAL', inicial({ extras: { [extraEsc.codigo]: 'OP01', [extraNum.codigo]: 'abc' } }));
+      r = await q(a, acX, 'INICIAL', inicial({ [extraEsc.codigo]: 'OP01', [extraNum.codigo]: 'abc' }));
       assert.strictEqual(r.status, 400);
       assert.ok(r.corpo.erro.detalhes[`extras.${extraNum.codigo}`]);
-      r = await q(a, acX, 'INICIAL', inicial({ extras: { [extraEsc.codigo]: 'OP01', [extraMult.codigo]: ['OP01', 'OP99'] } }));
+      r = await q(a, acX, 'INICIAL', inicial({ [extraEsc.codigo]: 'OP01', [extraMult.codigo]: ['OP01', 'OP99'] }));
       assert.strictEqual(r.status, 400);
       // completo
       r = await q(a, acX, 'INICIAL', inicial({
-        extras: { [extraEsc.codigo]: 'OP02', [extraNum.codigo]: '3,5', [extraMult.codigo]: ['OP01', 'OP03'], [extraSim.codigo]: false, [extraTexto.codigo]: '  Almoço juntos  ' },
+        [extraEsc.codigo]: 'OP02', [extraNum.codigo]: '3,5', [extraMult.codigo]: ['OP01', 'OP03'], [extraSim.codigo]: false, [extraTexto.codigo]: '  Almoço juntos  ',
       }));
       assert.strictEqual(r.status, 200, r.texto);
-      assert.deepStrictEqual(r.corpo.extras, {
+      const soExtras = (obj) => Object.fromEntries(Object.entries(obj).filter(([k]) => /^E\d{4}$/.test(k)));
+      assert.deepStrictEqual(soExtras(r.corpo.respostas), {
         [extraEsc.codigo]: 'OP02', [extraNum.codigo]: 3.5, [extraMult.codigo]: ['OP01', 'OP03'], [extraSim.codigo]: false, [extraTexto.codigo]: 'Almoço juntos',
       });
-      const lista = r.corpo.respostasExtras.map((x) => [x.pergunta.replace(`${PREFIXO} `, ''), x.resposta]);
+      const lista = r.corpo.respostasLegiveis.filter((x) => !x.oficial).map((x) => [x.pergunta.replace(`${PREFIXO} `, ''), x.resposta]);
       assert.deepStrictEqual(lista, [
         ['Quantas refeições por dia?', '3,5'], ['Onde costuma comprar frutas?', 'Mercado'],
-        ['Quais gastos diminuíram?', 'Alimentação; Remédios'], ['O que mudou na rotina da casa?', 'Almoço juntos'], ['Indicou a vizinhos?', 'Não'],
+        ['O que mudou na rotina da casa?', 'Almoço juntos'], ['Quais gastos diminuíram?', 'Alimentação; Remédios'], ['Indicou a vizinhos?', 'Não'],
       ]);
-      // sem `extras` no corpo: não apaga o que já está gravado
-      r = await q(a, acX, 'INICIAL', inicial());
+      // sem `respostas` no corpo: não apaga o que já está gravado
+      r = await q(a, acX, 'INICIAL', { dataAplicacao: dias(-60) });
       assert.strictEqual(r.status, 200, r.texto);
-      assert.strictEqual(r.corpo.respostasExtras.length, 5);
+      assert.strictEqual(r.corpo.respostasLegiveis.filter((x) => !x.oficial).length, 5);
       // limpar uma resposta opcional (enviada vazia)
-      r = await q(a, acX, 'INICIAL', inicial({ extras: { [extraEsc.codigo]: 'OP02', [extraNum.codigo]: '', [extraMult.codigo]: [] } }));
+      r = await q(a, acX, 'INICIAL', inicial({ [extraEsc.codigo]: 'OP02', [extraNum.codigo]: '', [extraMult.codigo]: [] }));
       assert.strictEqual(r.status, 200, r.texto);
-      assert.deepStrictEqual(Object.keys(r.corpo.extras).sort(), [extraEsc.codigo].sort());
-      assert.strictEqual((await db.consultar('SELECT COUNT(*) AS n FROM resposta_extra WHERE questionario_id = @id', { id: r.corpo.id }))[0].n, 1);
+      assert.deepStrictEqual(Object.keys(soExtras(r.corpo.respostas)).sort(), [extraEsc.codigo].sort());
     });
 
-    await teste('comparação da família traz as perguntas extras lado a lado; relatório individual (.docx) e CSV as incluem', async () => {
-      const extras = { [extraEsc.codigo]: 'OP02', [extraTexto.codigo]: 'Texto inicial P2' };
-      assert.strictEqual((await q(a, acA, 'INICIAL', inicial({ acessoAlimentosInNatura: 'DIARIO', extras }))).status, 200);
-      const rf = await q(a, acA, 'FINAL', final({ extras: { [extraEsc.codigo]: 'OP03', [extraTexto.codigo]: 'Texto final P2' } }));
+    await teste('comparação da família traz as perguntas adicionais; relatório final familiar (.docx) e CSV as incluem', async () => {
+      const obrig = { [extraEsc.codigo]: 'OP02', [extraTexto.codigo]: 'Texto inicial P2' };
+      assert.strictEqual((await q(a, acA, 'INICIAL', inicial({ '3.2': 'NUNCA', ...obrig }))).status, 200);
+      const rf = await q(a, acA, 'FINAL', final({ [extraFinal.codigo]: 'Texto final P2' }));
       assert.strictEqual(rf.status, 200, rf.texto);
       const c = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/comparacao`)).corpo;
       assert.strictEqual(c.completo, true);
-      const linha = c.extras.find((x) => x.codigo === extraTexto.codigo);
-      assert.strictEqual(linha.inicial, 'Texto inicial P2');
-      assert.strictEqual(linha.final, 'Texto final P2');
-      assert.strictEqual(c.extras.find((x) => x.codigo === extraEsc.codigo).final, 'Armazém');
+      assert.strictEqual(c.extrasAdicionais.inicial.find((x) => x.codigo === extraTexto.codigo).resposta, 'Texto inicial P2');
+      assert.strictEqual(c.extrasAdicionais.final.find((x) => x.codigo === extraFinal.codigo).resposta, 'Texto final P2');
+      assert.strictEqual(c.extrasAdicionais.inicial.find((x) => x.codigo === extraEsc.codigo).resposta, 'Mercado');
 
       const prev = (await a.req('GET', `/api/relatorios/individual/${acA}/previa`)).corpo;
       const texto = JSON.stringify(prev);
@@ -544,12 +541,12 @@ const final = (extra = {}) => ({
     });
 
     await teste('ordenar, desativar e reativar pergunta extra; desativada some do modelo mas mantém as respostas', async () => {
-      const cat = await catalogoDe(coord, 'QUESTIONARIO');
+      const cat = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
       const s2 = cat.secoes.find((s) => s.numero === 2).perguntas.filter((p) => !p.oficial);
       assert.deepStrictEqual(s2.map((p) => p.codigo), [extraNum.codigo, extraEsc.codigo].sort(), 'ordem de criação');
       const ids = s2.map((p) => p.id).reverse();
-      assert.strictEqual((await coord.req('PUT', '/api/admin/perguntas/ordem', { formulario: 'QUESTIONARIO', secao: 2, ids })).status, 204);
-      assert.strictEqual((await coord.req('PUT', '/api/admin/perguntas/ordem', { formulario: 'QUESTIONARIO', secao: 2, ids: [ids[0]] })).status, 400, 'lista incompleta');
+      assert.strictEqual((await coord.req('PUT', '/api/admin/perguntas/ordem', { formulario: 'QUESTIONARIO_INICIAL', secao: 2, ids })).status, 204);
+      assert.strictEqual((await coord.req('PUT', '/api/admin/perguntas/ordem', { formulario: 'QUESTIONARIO_INICIAL', secao: 2, ids: [ids[0]] })).status, 400, 'lista incompleta');
       const m = (await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL')).corpo;
       const ordem = m.blocos.find((x) => x.numero === 2).perguntas.filter((p) => p.extra).map((p) => p.codigo);
       assert.deepStrictEqual(ordem, s2.map((p) => p.codigo).reverse());
@@ -565,7 +562,7 @@ const final = (extra = {}) => ({
     });
 
     await teste('nunca apaga o que tem resposta: pergunta e opção usadas dão 409; sem resposta pode excluir', async () => {
-      const cat = await catalogoDe(coord, 'QUESTIONARIO');
+      const cat = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
       const emUso = achar(cat, extraEsc.codigo);
       assert.ok(emUso.respostas > 0);
       let r = await coord.req('DELETE', `/api/admin/perguntas/${emUso.id}`);
@@ -575,13 +572,13 @@ const final = (extra = {}) => ({
       r = await coord.req('DELETE', `/api/admin/perguntas/${emUso.id}/opcoes/${op.id}`);
       assert.strictEqual(r.status, 409);
       // opção oficial acrescentada e USADA: não exclui, não muda o quanto vale
-      const p2a = achar(cat, '2a');
-      const usada = p2a.opcoes.find((o) => o.codigo === opNova.codigo);
+      const p32 = achar(cat, '3.2');
+      const usada = p32.opcoes.find((o) => o.codigo === opNova.codigo);
       assert.ok(usada.respostas > 0);
-      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p2a.id}/opcoes/${usada.id}`)).status, 409);
-      r = await coord.req('PUT', `/api/admin/perguntas/${p2a.id}/opcoes/${usada.id}`, { texto: usada.texto, equivaleA: 'NAO_TINHA' });
+      assert.strictEqual((await coord.req('DELETE', `/api/admin/perguntas/${p32.id}/opcoes/${usada.id}`)).status, 409);
+      r = await coord.req('PUT', `/api/admin/perguntas/${p32.id}/opcoes/${usada.id}`, { texto: usada.texto, equivaleA: 'FREQUENTEMENTE' });
       assert.strictEqual(r.status, 409, 'mudar o valor de uma opção já usada alteraria índices antigos');
-      r = await coord.req('PUT', `/api/admin/perguntas/${p2a.id}/opcoes/${usada.id}`, { texto: `${usada.texto} (horta)`, equivaleA: 'DIARIO' });
+      r = await coord.req('PUT', `/api/admin/perguntas/${p32.id}/opcoes/${usada.id}`, { texto: `${usada.texto} (renomeada)`, equivaleA: 'NUNCA' });
       assert.strictEqual(r.status, 200, 'renomear é livre');
       // pergunta sem respostas: exclui
       const livre = await pergunta({ formulario: 'ATENDIMENTO', tipo: 'NUMERO', texto: `${PREFIXO} pergunta descartável` });
@@ -589,47 +586,46 @@ const final = (extra = {}) => ({
     });
 
     await teste('opção desativada: não aceita resposta nova, mas quem já respondeu com ela continua válido; mínimo de 2 ativas', async () => {
-      const cat = await catalogoDe(coord, 'QUESTIONARIO');
-      const p2a = achar(cat, '2a');
-      const usada = p2a.opcoes.find((o) => o.codigo === opNova.codigo);
-      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p2a.id}/opcoes/${usada.id}/ativa`, { ativa: false })).status, 200);
+      const cat = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
+      const p32 = achar(cat, '3.2');
+      const usada = p32.opcoes.find((o) => o.codigo === opNova.codigo);
+      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p32.id}/opcoes/${usada.id}/ativa`, { ativa: false })).status, 200);
       const m = (await a.req('GET', '/api/familias/questionario/modelo?tipo=INICIAL')).corpo;
-      assert.strictEqual(m.blocos[1].perguntas.find((x) => x.codigo === '2a').opcoes.find((o) => o.valor === opNova.codigo).ativa, false);
-      const extras = { [extraEsc.codigo]: 'OP01' };
+      assert.strictEqual(m.blocos[2].perguntas.find((x) => x.codigo === '3.2').opcoes.find((o) => o.valor === opNova.codigo).ativa, false);
+      const obrig = { [extraEsc.codigo]: 'OP01' };
       // B já tinha a opção: pode salvar de novo
-      let r = await q(a, acB, 'INICIAL', inicial({ acessoAlimentosInNatura: opNova.codigo, extras }));
+      let r = await q(a, acB, 'INICIAL', inicial({ '3.2': opNova.codigo, ...obrig }));
       assert.strictEqual(r.status, 200, r.texto);
       // outra família não pode escolhê-la agora
-      r = await q(a, acA, 'INICIAL', inicial({ acessoAlimentosInNatura: opNova.codigo, extras }));
+      r = await q(a, acA, 'INICIAL', inicial({ '3.2': opNova.codigo, ...obrig }));
       assert.strictEqual(r.status, 400);
-      assert.match(r.corpo.erro.detalhes.acessoAlimentosInNatura, /não está mais disponível/);
-      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p2a.id}/opcoes/${usada.id}/ativa`, { ativa: true })).status, 200);
+      assert.match(r.corpo.erro.detalhes['extras.3.2'], /não está mais disponível/);
+      assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${p32.id}/opcoes/${usada.id}/ativa`, { ativa: true })).status, 200);
       // pergunta de escolha precisa manter 2 opções ativas (a de 2 opções não perde nenhuma; a de 3 pode perder uma)
       const pe = await catalogoDe(coord, 'PESQUISA');
       const duas = achar(pe, pqEsc.codigo);
       assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${duas.id}/opcoes/${duas.opcoes[0].id}/ativa`, { ativa: false })).status, 409);
-      const tres = achar(await catalogoDe(coord, 'QUESTIONARIO'), extraMult.codigo);
+      const tres = achar(await catalogoDe(coord, 'QUESTIONARIO_INICIAL'), extraMult.codigo);
       assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${tres.id}/opcoes/${tres.opcoes[0].id}/ativa`, { ativa: false })).status, 200);
       assert.strictEqual((await coord.req('PATCH', `/api/admin/perguntas/${tres.id}/opcoes/${tres.opcoes[1].id}/ativa`, { ativa: false })).status, 409);
     });
 
-    await teste('comparação inicial × final com opção nova: usa a posição da opção equivalente', async () => {
-      // B: inicial com a opção nova (vale DIARIO); final com NAO_TINHA => piorou; A: inicial DIARIO, final DIARIO => igual
-      const extras = { [extraEsc.codigo]: 'OP01' };
-      assert.strictEqual((await q(a, acB, 'FINAL', final({ acessoAlimentosInNatura: 'NAO_TINHA', extras }))).status, 200);
+    await teste('comparação inicial × final com opção nova: usa a pontuação da opção equivalente', async () => {
+      // B: inicial com a opção nova (vale NUNCA = 100); final "Não" (0) => piorou; A: inicial NUNCA, final "Sim" => igual
+      assert.strictEqual((await q(a, acB, 'FINAL', final({ '2.5': 'NAO' }))).status, 200);
       const c = (await a.req('GET', `/api/familias/acompanhamentos/${acB}/comparacao`)).corpo;
-      const item = c.itens.find((i) => i.campo === 'acessoAlimentosInNatura');
+      const item = c.itens.find((i) => i.chave === 'alimentosSuficientes');
       assert.strictEqual(item.tendencia, 'piorou');
-      assert.match(item.inicialRotulo, /horta/);
+      assert.match(item.inicial.rotulo, /renomeada/);
       const ca = (await a.req('GET', `/api/familias/acompanhamentos/${acA}/comparacao`)).corpo;
-      assert.strictEqual(ca.itens.find((i) => i.campo === 'acessoAlimentosInNatura').tendencia, 'igual');
+      assert.strictEqual(ca.itens.find((i) => i.chave === 'alimentosSuficientes').tendencia, 'igual');
       // C: inicial "não pontua" => sem dados na comparação
-      assert.strictEqual((await q(a, acC, 'FINAL', final({ extras }))).status, 200);
+      assert.strictEqual((await q(a, acC, 'FINAL', final())).status, 200);
       const cc = (await a.req('GET', `/api/familias/acompanhamentos/${acC}/comparacao`)).corpo;
-      assert.strictEqual(cc.itens.find((i) => i.campo === 'acessoAlimentosInNatura').tendencia, 'sem_dados');
+      assert.strictEqual(cc.itens.find((i) => i.chave === 'alimentosSuficientes').tendencia, 'sem_dados');
       // o índice puro bate com o instantâneo do banco
       const [ger] = await db.consultar("SELECT nivel FROM acompanhamento_indice WHERE acompanhamento_id = @ac AND dimensao = 'GERAL' AND tipo = 'FINAL'", { ac: acA });
-      assert.ok(Number(ger.nivel) > 0 && regras.VERSAO_REGRA >= 1);
+      assert.ok(Number(ger.nivel) > 0 && regras.VERSAO_REGRA >= 2);
     });
 
     await teste('auditoria: toda mudança no catálogo fica registrada (só o ADMIN consulta)', async () => {
@@ -643,14 +639,12 @@ const final = (extra = {}) => ({
     });
 
     await teste('restaurar os textos oficiais renomeados pelo teste', async () => {
-      const cat = await catalogoDe(coord, 'QUESTIONARIO');
-      const p2a = achar(cat, '2a');
-      const orig = textosOriginais['QUESTIONARIO:2a'];
-      assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${p2a.id}`, { texto: orig.texto, textoFinal: orig.textoFinal, ajuda: '' })).status, 200);
-      const [ajudaOriginal] = await db.consultar("SELECT ajuda FROM catalogo_pergunta WHERE formulario = 'QUESTIONARIO' AND codigo = '2a'");
-      void ajudaOriginal;
-      const op = p2a.opcoes.find((o) => o.codigo === 'SEMANAL_1_2');
-      assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${p2a.id}/opcoes/${op.id}`, { texto: '1-2 vezes por semana', textoFinal: '' })).status, 200);
+      const cat = await catalogoDe(coord, 'QUESTIONARIO_INICIAL');
+      const p32 = achar(cat, '3.2');
+      const orig = textosOriginais['QUESTIONARIO_INICIAL:3.2'];
+      assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${p32.id}`, { texto: orig.texto, ajuda: '' })).status, 200);
+      const op = p32.opcoes.find((o) => o.codigo === 'ALGUMAS_VEZES');
+      assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${p32.id}/opcoes/${op.id}`, { texto: 'Algumas vezes' })).status, 200);
       const pesq = await catalogoDe(coord, 'PESQUISA');
       const nps = achar(pesq, 'NPS');
       assert.strictEqual((await coord.req('PUT', `/api/admin/perguntas/${nps.id}`, { texto: textosOriginais['PESQUISA:NPS'].texto })).status, 200);
