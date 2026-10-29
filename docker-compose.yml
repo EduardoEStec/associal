@@ -7,6 +7,7 @@ services:
   app:
     build: .
     image: associal:latest
+    container_name: associal
     restart: unless-stopped
     env_file: .env
     environment:
@@ -14,7 +15,14 @@ services:
       PORT: 3000
       UPLOAD_DIR: /app/uploads
     ports:
-      - "${PORT:-3000}:3000"
+      # Na VPS: BIND_ADDR=127.0.0.1 e PORT=3020 no .env — só o Nginx fala com a internet.
+      - "${BIND_ADDR:-0.0.0.0}:${PORT:-3000}:3000"
+    # Log do container com teto (3 arquivos de 10 MB): sem isso o json-file cresce sem limite no disco.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - uploads:/app/uploads
     extra_hosts:
