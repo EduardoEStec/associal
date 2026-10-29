@@ -13,7 +13,7 @@ const { PERFIS } = require('../lib/dominios');
 async function carregarUsuario(id) {
   const [usuario] = await consultar(
     `SELECT u.id, u.login, u.nome, u.email, u.cress, u.deve_trocar_senha, p.codigo AS perfil
-       FROM usuario u JOIN perfil p ON p.id = u.perfil_id
+       FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil p ON p.id = u.perfil_id
       WHERE u.id = @id AND u.ativo = 1`,
     { id },
   );
@@ -23,12 +23,12 @@ async function carregarUsuario(id) {
   const unidades = usuario.perfil === PERFIS.ASSISTENTE
     ? await consultar(
       `SELECT un.id, un.sigla, un.nome
-         FROM usuario_unidade uu JOIN unidade un ON un.id = uu.unidade_id
+         FROM ASSOCIAL_usuario_unidade uu JOIN ASSOCIAL_unidade un ON un.id = uu.unidade_id
         WHERE uu.usuario_id = @id AND un.ativo = 1
         ORDER BY un.ordem, un.nome`,
       { id },
     )
-    : await consultar('SELECT id, sigla, nome FROM unidade WHERE ativo = 1 ORDER BY ordem, nome');
+    : await consultar('SELECT id, sigla, nome FROM ASSOCIAL_unidade WHERE ativo = 1 ORDER BY ordem, nome');
 
   return { ...usuario, unidades };
 }
@@ -79,7 +79,7 @@ function unidadesPermitidas(req) {
 //
 //   const params = {};
 //   const where = clausulaUnidades(req, 'a.unidade_id', params);
-//   await consultar(`SELECT ... FROM atendimento a WHERE ${where}`, params);
+//   await consultar(`SELECT ... FROM ASSOCIAL_atendimento a WHERE ${where}`, params);
 function clausulaUnidades(req, coluna, params, prefixo = 'un') {
   const ids = unidadesPermitidas(req);
   if (ids.length === 0) return '1 = 0';

@@ -28,41 +28,41 @@ const estado = {
 async function consultar(sql, p = {}) {
   estado.chamadas.push(sql.replace(/\s+/g, ' ').trim());
   const s = sql.replace(/\s+/g, ' ');
-  if (s.startsWith('DELETE FROM sessao')) { estado.sqlSessao = s; estado.paramsSessao = p; return estado.sessoes.splice(0).map((sid) => ({ sid })); }
-  if (s.includes('INSERT INTO auditoria') || s.startsWith('DELETE FROM usuario_unidade') || s.startsWith('INSERT INTO usuario_unidade')) return [];
+  if (s.startsWith('DELETE FROM ASSOCIAL_sessao')) { estado.sqlSessao = s; estado.paramsSessao = p; return estado.sessoes.splice(0).map((sid) => ({ sid })); }
+  if (s.includes('INSERT INTO ASSOCIAL_auditoria') || s.startsWith('DELETE FROM ASSOCIAL_usuario_unidade') || s.startsWith('INSERT INTO ASSOCIAL_usuario_unidade')) return [];
   if (s.includes('FROM sys.foreign_key_columns')) return [{ tabela: 'atendimento_demanda', coluna: 'demanda_id' }];
   if (s.includes("p.codigo = 'ADMIN' AND u.ativo = 1 AND u.id <> @id")) {
     return [{ total: estado.usuarios.filter((u) => u.perfil === 'ADMIN' && u.ativo && u.id !== p.id).length }];
   }
-  if (s.includes('SELECT p.codigo AS perfil, u.ativo FROM usuario')) {
+  if (s.includes('SELECT p.codigo AS perfil, u.ativo FROM ASSOCIAL_usuario')) {
     const u = estado.usuarios.find((x) => x.id === p.id);
     return u ? [{ perfil: u.perfil, ativo: u.ativo }] : [];
   }
-  if (s.includes('SELECT 1 AS x FROM usuario WHERE login')) return estado.usuarios.filter((u) => u.login === p.login).map(() => ({ x: 1 }));
-  if (s.includes('COUNT(*) AS total FROM unidade')) return [{ total: Object.keys(p).filter((k) => k.startsWith('u')).filter((k) => estado.unidades.some((u) => u.id === p[k])).length }];
-  if (s.startsWith('INSERT INTO usuario ')) {
+  if (s.includes('SELECT 1 AS x FROM ASSOCIAL_usuario WHERE login')) return estado.usuarios.filter((u) => u.login === p.login).map(() => ({ x: 1 }));
+  if (s.includes('COUNT(*) AS total FROM ASSOCIAL_unidade')) return [{ total: Object.keys(p).filter((k) => k.startsWith('u')).filter((k) => estado.unidades.some((u) => u.id === p[k])).length }];
+  if (s.startsWith('INSERT INTO ASSOCIAL_usuario ')) {
     const id = estado.usuarios.length + 1;
     estado.usuarios.push({ id, login: p.login, nome: p.nome, perfil: p.perfil, ativo: 1, hash: p.hash });
     return [{ id }];
   }
-  if (s.startsWith('UPDATE usuario SET ativo')) { estado.usuarios.find((u) => u.id === p.id).ativo = p.ativo; return []; }
-  if (s.startsWith('UPDATE usuario SET senha_hash')) { estado.usuarios.find((u) => u.id === p.id).hash = p.hash; return []; }
-  if (s.startsWith('SELECT id FROM usuario WHERE id')) return estado.usuarios.filter((u) => u.id === p.id).map((u) => ({ id: u.id }));
-  if (s.includes('FROM demanda t WHERE t.id = @id')) return p.id === 99 ? [] : [{ id: p.id, nome: 'X', ordem: 0, ativo: 1, exigeTexto: 0, emUso: estado.demandaEmUso.has(p.id) ? 1 : 0 }];
-  if (s.startsWith('DELETE FROM demanda')) { estado.deletou = true; return []; }
-  if (s.startsWith('SELECT chave, valor FROM configuracao')) return p.chave in estado.config ? [{ chave: p.chave, valor: estado.config[p.chave] }] : [];
+  if (s.startsWith('UPDATE ASSOCIAL_usuario SET ativo')) { estado.usuarios.find((u) => u.id === p.id).ativo = p.ativo; return []; }
+  if (s.startsWith('UPDATE ASSOCIAL_usuario SET senha_hash')) { estado.usuarios.find((u) => u.id === p.id).hash = p.hash; return []; }
+  if (s.startsWith('SELECT id FROM ASSOCIAL_usuario WHERE id')) return estado.usuarios.filter((u) => u.id === p.id).map((u) => ({ id: u.id }));
+  if (s.includes('FROM ASSOCIAL_demanda t WHERE t.id = @id')) return p.id === 99 ? [] : [{ id: p.id, nome: 'X', ordem: 0, ativo: 1, exigeTexto: 0, emUso: estado.demandaEmUso.has(p.id) ? 1 : 0 }];
+  if (s.startsWith('DELETE FROM ASSOCIAL_demanda')) { estado.deletou = true; return []; }
+  if (s.startsWith('SELECT chave, valor FROM ASSOCIAL_configuracao')) return p.chave in estado.config ? [{ chave: p.chave, valor: estado.config[p.chave] }] : [];
   if (s.startsWith('SELECT chave, valor, descricao')) return Object.entries(estado.config).map(([chave, valor]) => ({ chave, valor, descricao: null, alteradoEm: null }));
-  if (s.startsWith('UPDATE configuracao')) { estado.config[p.chave] = p.valor; return []; }
+  if (s.startsWith('UPDATE ASSOCIAL_configuracao')) { estado.config[p.chave] = p.valor; return []; }
   // P1/P2: unidades, listas de apoio e catálogo de perguntas (a coordenação também acessa)
-  if (s.includes('FROM unidade ORDER BY ativo DESC')) return estado.unidades.map((u) => ({ ...u, nome: u.sigla, endereco: null, ativo: 1, ordem: 0 }));
-  if (s.startsWith('SELECT 1 AS x FROM unidade WHERE sigla')) return estado.unidades.filter((u) => u.sigla === p.sigla && u.id !== p.id).map(() => ({ x: 1 }));
-  if (s.startsWith('INSERT INTO unidade')) { const id = estado.unidades.length + 1; estado.unidades.push({ id, sigla: p.sigla }); return [{ id }]; }
-  if (/^SELECT .* FROM demanda t ORDER BY/.test(s)) return [{ id: 1, nome: 'Demanda', ordem: 0, ativo: 1, exigeTexto: 0, emUso: 1 }];
-  if (s.startsWith('SELECT 1 AS x FROM demanda WHERE nome')) return [];
-  if (s.startsWith('INSERT INTO demanda')) return [{ id: 50 }];
-  if (s.includes('FROM catalogo_pergunta p WHERE p.formulario') || s.includes('FROM catalogo_opcao o')) return [];
-  if (s.includes('COUNT(*) AS total FROM auditoria')) return [{ total: 0 }];
-  if (s.includes('FROM auditoria a LEFT JOIN')) { estado.sqlAuditoria = s; estado.paramsAuditoria = p; return []; }
+  if (s.includes('FROM ASSOCIAL_unidade ORDER BY ativo DESC')) return estado.unidades.map((u) => ({ ...u, nome: u.sigla, endereco: null, ativo: 1, ordem: 0 }));
+  if (s.startsWith('SELECT 1 AS x FROM ASSOCIAL_unidade WHERE sigla')) return estado.unidades.filter((u) => u.sigla === p.sigla && u.id !== p.id).map(() => ({ x: 1 }));
+  if (s.startsWith('INSERT INTO ASSOCIAL_unidade')) { const id = estado.unidades.length + 1; estado.unidades.push({ id, sigla: p.sigla }); return [{ id }]; }
+  if (/^SELECT .* FROM ASSOCIAL_demanda t ORDER BY/.test(s)) return [{ id: 1, nome: 'Demanda', ordem: 0, ativo: 1, exigeTexto: 0, emUso: 1 }];
+  if (s.startsWith('SELECT 1 AS x FROM ASSOCIAL_demanda WHERE nome')) return [];
+  if (s.startsWith('INSERT INTO ASSOCIAL_demanda')) return [{ id: 50 }];
+  if (s.includes('FROM ASSOCIAL_catalogo_pergunta p WHERE p.formulario') || s.includes('FROM ASSOCIAL_catalogo_opcao o')) return [];
+  if (s.includes('COUNT(*) AS total FROM ASSOCIAL_auditoria')) return [{ total: 0 }];
+  if (s.includes('FROM ASSOCIAL_auditoria a LEFT JOIN')) { estado.sqlAuditoria = s; estado.paramsAuditoria = p; return []; }
   throw new Error(`SQL não previsto no mock: ${s.slice(0, 120)}`);
 }
 const consultarUm = async (s, p) => (await consultar(s, p))[0] || null;
@@ -165,7 +165,7 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
     const salvo = estado.usuarios.find((u) => u.login === 'joao.silva');
     assert.ok(salvo.hash.startsWith('$2'), 'hash bcrypt');
     assert.notStrictEqual(salvo.hash, r.corpo.senhaProvisoria);
-    assert.ok(estado.chamadas.some((c) => c.startsWith('INSERT INTO usuario ') && c.includes(', 1, 1, @por')), 'deve_trocar_senha=1');
+    assert.ok(estado.chamadas.some((c) => c.startsWith('INSERT INTO ASSOCIAL_usuario ') && c.includes(', 1, 1, @por')), 'deve_trocar_senha=1');
   });
   await teste('assistente sem unidade, login repetido, perfil/e-mail inválidos => 400', async () => {
     let r = await chamar('POST', '/usuarios', { login: 'ana', nome: 'Ana', perfil: 'ASSISTENTE', unidadeIds: [] });
@@ -197,7 +197,7 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
     assert.strictEqual((await chamar('PATCH', '/usuarios/2/ativo', { ativo: false })).status, 200);
     assert.ok(estado.sqlSessao.includes("JSON_VALUE(dados, '$.usuarioId')"));
     assert.strictEqual(estado.paramsSessao.id, 2);
-    assert.ok(estado.chamadas.some((c) => c.includes('INSERT INTO auditoria')));
+    assert.ok(estado.chamadas.some((c) => c.includes('INSERT INTO ASSOCIAL_auditoria')));
     estado.sessoes = ['c'];
     await chamar('POST', '/usuarios/2/redefinir-senha');
     assert.strictEqual(estado.sessoes.length, 0, 'sessões apagadas');
@@ -212,7 +212,7 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
     assert.strictEqual(r.status, 200);
     assert.ok(r.corpo.senhaProvisoria.length >= 8);
     assert.ok(estado.usuarios.find((u) => u.id === 2).hash.startsWith('$2'));
-    assert.ok(estado.chamadas.some((c) => c.startsWith('UPDATE usuario SET senha_hash') && c.includes('deve_trocar_senha = 1')));
+    assert.ok(estado.chamadas.some((c) => c.startsWith('UPDATE ASSOCIAL_usuario SET senha_hash') && c.includes('deve_trocar_senha = 1')));
   });
   await teste('auditoria nunca registra a senha', async () => {
     assert.ok(!JSON.stringify(estado.chamadas).includes('senhaProvisoria'));

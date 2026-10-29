@@ -167,14 +167,14 @@ const acRow = (p, sobre = {}) => {
   return p.id === 100 && permitidas.includes(2) ? [linha] : [];
 };
 const baseHandlers = (sobreAc = {}, extra = []) => [
-  { teste: /FROM acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
-  { teste: /INSERT INTO auditoria/, resp: () => [] },
-  { teste: /FROM configuracao/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
+  { teste: /INSERT INTO ASSOCIAL_auditoria/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_configuracao/, resp: () => [] },
   ...extra,
 ];
 const listaVazia = [
-  { teste: /FROM acompanhamento_meta m\s+JOIN usuario/, resp: () => [] },
-  { teste: /FROM registro_meta rm/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_acompanhamento_meta m\s+JOIN ASSOCIAL_usuario/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_registro_meta rm/, resp: () => [] },
 ];
 
 test('assistente de outra unidade recebe 404 em todas as rotas de metas', async () => {
@@ -189,9 +189,9 @@ test('assistente de outra unidade recebe 404 em todas as rotas de metas', async 
 
 test('GET metas: sem metas há mais de 30 dias => alerta; traz dimensões e histórico de avanços', async () => {
   handlers = baseHandlers({}, [
-    { teste: /FROM acompanhamento_meta m\s+JOIN usuario/, resp: () => [
+    { teste: /FROM ASSOCIAL_acompanhamento_meta m\s+JOIN ASSOCIAL_usuario/, resp: () => [
       { id: 5, dimensao: 'RENDA', descricao: 'Retomar o bico', prazo: new Date(`${dias(-1)}T00:00:00Z`), status: 'EM_ANDAMENTO', concluidaEm: null, usuarioId: 10, autorNome: 'Ana', criadoEm: new Date(), alteradoEm: null }] },
-    { teste: /FROM registro_meta rm/, resp: () => [{ metaId: 5, avanco: 'AVANCOU', registroId: 9, dataRegistro: new Date(`${dias(-3)}T00:00:00Z`) }] },
+    { teste: /FROM ASSOCIAL_registro_meta rm/, resp: () => [{ metaId: 5, avanco: 'AVANCOU', registroId: 9, dataRegistro: new Date(`${dias(-3)}T00:00:00Z`) }] },
   ]);
   const srv = await iniciar(assistente);
   try {
@@ -217,7 +217,7 @@ test('GET metas: sem metas há mais de 30 dias => alerta; traz dimensões e hist
 });
 
 test('criar meta: validação 400 por campo; grava com usuário e auditoria; encerrado => 409; ADMIN também cria', async () => {
-  handlers = baseHandlers({}, [{ teste: /INSERT INTO acompanhamento_meta/, resp: () => [{ id: 55 }] }]);
+  handlers = baseHandlers({}, [{ teste: /INSERT INTO ASSOCIAL_acompanhamento_meta/, resp: () => [{ id: 55 }] }]);
   chamadas.length = 0;
   let srv = await iniciar(assistente);
   try {
@@ -227,24 +227,24 @@ test('criar meta: validação 400 por campo; grava com usuário e auditoria; enc
     r = await srv.chamar('POST', '/acompanhamentos/100/metas', boa());
     assert.equal(r.status, 201);
     assert.deepEqual(r.corpo, { id: 55 });
-    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_meta/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_acompanhamento_meta/.test(c.sql));
     assert.equal(ins.params.usuario, 10);
     assert.equal(ins.params.dimensao, 'ALIMENTACAO');
-    const aud = chamadas.find((c) => /INSERT INTO auditoria/.test(c.sql) && c.params.tabela === 'acompanhamento_meta');
+    const aud = chamadas.find((c) => /INSERT INTO ASSOCIAL_auditoria/.test(c.sql) && c.params.tabela === 'acompanhamento_meta');
     assert.ok(aud);
     assert.equal(aud.params.acao, 'CRIAR');
   } finally { await srv.fechar(); }
   srv = await iniciar(admin);
   try { assert.equal((await srv.chamar('POST', '/acompanhamentos/100/metas', boa())).status, 201); } finally { await srv.fechar(); }
-  handlers = baseHandlers({ status: 'CONCLUIDO' }, [{ teste: /INSERT INTO acompanhamento_meta/, resp: () => [{ id: 56 }] }]);
+  handlers = baseHandlers({ status: 'CONCLUIDO' }, [{ teste: /INSERT INTO ASSOCIAL_acompanhamento_meta/, resp: () => [{ id: 56 }] }]);
   srv = await iniciar(coordenador);
   try { assert.equal((await srv.chamar('POST', '/acompanhamentos/100/metas', boa())).status, 409); } finally { await srv.fechar(); }
 });
 
 test('atualizar meta: encerra com data, reabre, meta de outro acompanhamento => 404, encerrado => 409', async () => {
   const montar = (sobreAc = {}, meta = { id: 5, status: 'EM_ANDAMENTO', concluidaEm: null }) => baseHandlers(sobreAc, [
-    { teste: /FROM acompanhamento_meta WHERE id = @id AND acompanhamento_id = @ac/, resp: (p) => (p.id === 5 ? [meta] : []) },
-    { teste: /UPDATE acompanhamento_meta/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_meta WHERE id = @id AND acompanhamento_id = @ac/, resp: (p) => (p.id === 5 ? [meta] : []) },
+    { teste: /UPDATE ASSOCIAL_acompanhamento_meta/, resp: () => [] },
     ...listaVazia,
   ]);
   handlers = montar();
@@ -253,7 +253,7 @@ test('atualizar meta: encerra com data, reabre, meta de outro acompanhamento => 
   try {
     const r = await srv.chamar('PUT', '/acompanhamentos/100/metas/5', boa({ status: 'ATINGIDA' }));
     assert.equal(r.status, 200);
-    const up = chamadas.find((c) => /UPDATE acompanhamento_meta/.test(c.sql));
+    const up = chamadas.find((c) => /UPDATE ASSOCIAL_acompanhamento_meta/.test(c.sql));
     assert.equal(up.params.status, 'ATINGIDA');
     assert.ok(up.params.concluida, 'data de encerramento gravada');
     assert.equal((await srv.chamar('PUT', '/acompanhamentos/100/metas/999', boa())).status, 404);
@@ -266,11 +266,11 @@ test('atualizar meta: encerra com data, reabre, meta de outro acompanhamento => 
 
 test('registro de contato: marca avanço em meta em andamento e recusa meta que não é do acompanhamento', async () => {
   handlers = baseHandlers({}, [
-    { teste: /FROM tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }] },
-    { teste: /SELECT id FROM acompanhamento_meta WHERE acompanhamento_id = @ac AND status = 'EM_ANDAMENTO'/, resp: () => [{ id: 5 }] },
-    { teste: /INSERT INTO acompanhamento_registro/, resp: () => [{ id: 70 }] },
-    { teste: /DELETE FROM registro_meta/, resp: () => [] },
-    { teste: /INSERT INTO registro_meta/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }] },
+    { teste: /SELECT id FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @ac AND status = 'EM_ANDAMENTO'/, resp: () => [{ id: 5 }] },
+    { teste: /INSERT INTO ASSOCIAL_acompanhamento_registro/, resp: () => [{ id: 70 }] },
+    { teste: /DELETE FROM ASSOCIAL_registro_meta/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_registro_meta/, resp: () => [] },
   ]);
   chamadas.length = 0;
   const srv = await iniciar(assistente);
@@ -278,7 +278,7 @@ test('registro de contato: marca avanço em meta em andamento e recusa meta que 
     const corpo = { dataRegistro: hoje, tipoContatoId: 1, houveContato: true, situacao: 'MELHORANDO', resumo: 'Visita' };
     let r = await srv.chamar('POST', '/acompanhamentos/100/registros', { ...corpo, metas: [{ metaId: 5, avanco: 'AVANCOU' }] });
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
-    const lig = chamadas.find((c) => /INSERT INTO registro_meta/.test(c.sql));
+    const lig = chamadas.find((c) => /INSERT INTO ASSOCIAL_registro_meta/.test(c.sql));
     assert.deepEqual([lig.params.r, lig.params.m, lig.params.a], [70, 5, 'AVANCOU']);
     r = await srv.chamar('POST', '/acompanhamentos/100/registros', { ...corpo, metas: [{ metaId: 77, avanco: 'AVANCOU' }] });
     assert.equal(r.status, 400);

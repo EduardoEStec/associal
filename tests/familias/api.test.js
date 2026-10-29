@@ -67,14 +67,14 @@ const admin = { id: 30, perfil: 'ADMIN', unidades: [{ id: 1 }, { id: 2 }] };
 
 // Cabeçalho dos formulários (unidade, assistente, responsável, meta) lido pelos questionários M1
 const cabecalhoHandler = {
-  teste: /FROM acompanhamento a\s+JOIN unidade un/,
+  teste: /FROM ASSOCIAL_acompanhamento a\s+JOIN ASSOCIAL_unidade un/,
   resp: () => [{ unidadeNome: 'Tiradentes', assistenteNome: 'Ana Assistente', respNome: 'Maria da Silva', respCpf: '12345678909', respNis: '123', respTelefone: '11999998888', respEndereco: 'Rua A, 1', respBairro: 'Centro', meta: 'Meta do projeto' }],
 };
 
 // Acompanhamento 100 pertence à unidade 2. O mock imita o filtro de unidade do SQL (IN (@un0, ...)).
 const baseHandlers = () => [
   {
-    teste: /FROM acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/,
+    teste: /FROM ASSOCIAL_acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/,
     resp: (p) => {
       const permitidas = Object.entries(p).filter(([k]) => /^un\d+$/.test(k)).map(([, v]) => v);
       const linha = { id: 100, familia_id: 7, unidade_id: 2, usuario_id: 99, data_inicio: new Date('2026-03-01'),
@@ -84,13 +84,13 @@ const baseHandlers = () => [
       return p.id === 100 && permitidas.includes(2) ? [camel] : [];
     },
   },
-  { teste: /INSERT INTO auditoria/, resp: () => [] },
+  { teste: /INSERT INTO ASSOCIAL_auditoria/, resp: () => [] },
   // resumo de contato da ficha (F2): último contato e registros
   { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
-  { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
-  { teste: /^\s*SELECT momento, situacao, data_aplicacao FROM pesquisa_resposta/, resp: () => [] },
-  { teste: /FROM (acompanhamento_meta|registro_meta)/, resp: () => [] },
-  { teste: /FROM configuracao/, resp: () => [{ chave: 'prazo_questionario_final_dias', valor: '90' }, { chave: 'alerta_questionario_final_dias_antes', valor: '15' }] },
+  { teste: /^\s*SELECT TOP 1 .*FROM ASSOCIAL_acompanhamento_registro/s, resp: () => [] },
+  { teste: /^\s*SELECT momento, situacao, data_aplicacao FROM ASSOCIAL_pesquisa_resposta/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_(acompanhamento_meta|registro_meta)/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_configuracao/, resp: () => [{ chave: 'prazo_questionario_final_dias', valor: '90' }, { chave: 'alerta_questionario_final_dias_antes', valor: '15' }] },
 ];
 
 test('assistente da unidade 1 NÃO enxerga acompanhamento da unidade 2 (404) em nenhuma rota', async () => {
@@ -189,11 +189,11 @@ test('criar: ADMIN passa pelo perfil como a coordenação (V12); validações em
 test('criar: família já acompanhada em OUTRA unidade => 409 sem revelar o acompanhamento', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM (genero|escolaridade|raca) WHERE/, resp: () => [] },
-    { teste: /FROM pessoa WITH/, resp: () => [{ id: 5 }] },
-    { teste: /UPDATE pessoa/, resp: () => [] },
-    { teste: /FROM familia WITH/, resp: () => [{ id: 7 }] },
-    { teste: /FROM acompanhamento WHERE familia_id/, resp: () => [{ id: 100, unidadeId: 2 }] },
+    { teste: /FROM ASSOCIAL_(genero|escolaridade|raca) WHERE/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pessoa WITH/, resp: () => [{ id: 5 }] },
+    { teste: /UPDATE ASSOCIAL_pessoa/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_familia WITH/, resp: () => [{ id: 7 }] },
+    { teste: /FROM ASSOCIAL_acompanhamento WHERE familia_id/, resp: () => [{ id: 100, unidadeId: 2 }] },
   ];
   const srv = await iniciar(assistenteA);
   try {
@@ -208,10 +208,10 @@ test('criar: família já acompanhada em OUTRA unidade => 409 sem revelar o acom
 test('criar: família já acompanhada na MINHA unidade => 409 com o id', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM pessoa WITH/, resp: () => [{ id: 5 }] },
-    { teste: /UPDATE pessoa/, resp: () => [] },
-    { teste: /FROM familia WITH/, resp: () => [{ id: 7 }] },
-    { teste: /FROM acompanhamento WHERE familia_id/, resp: () => [{ id: 55, unidadeId: 1 }] },
+    { teste: /FROM ASSOCIAL_pessoa WITH/, resp: () => [{ id: 5 }] },
+    { teste: /UPDATE ASSOCIAL_pessoa/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_familia WITH/, resp: () => [{ id: 7 }] },
+    { teste: /FROM ASSOCIAL_acompanhamento WHERE familia_id/, resp: () => [{ id: 55, unidadeId: 1 }] },
   ];
   const srv = await iniciar(assistenteA);
   try {
@@ -224,13 +224,13 @@ test('criar: família já acompanhada na MINHA unidade => 409 com o id', async (
 test('criar: sucesso — pessoa nova, família nova, prazo = início + 90 dias, unidade única do usuário', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM pessoa WITH/, resp: () => [] },
-    { teste: /INSERT INTO pessoa/, resp: () => [{ id: 5 }] },
-    { teste: /FROM familia WITH/, resp: () => [] },
-    { teste: /INSERT INTO familia /, resp: () => [{ id: 8 }] },
-    { teste: /DELETE FROM familia_membro/, resp: () => [] },
-    { teste: /INSERT INTO familia_membro/, resp: () => [] },
-    { teste: /INSERT INTO acompanhamento/, resp: () => [{ id: 300 }] },
+    { teste: /FROM ASSOCIAL_pessoa WITH/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pessoa/, resp: () => [{ id: 5 }] },
+    { teste: /FROM ASSOCIAL_familia WITH/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_familia /, resp: () => [{ id: 8 }] },
+    { teste: /DELETE FROM ASSOCIAL_familia_membro/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_familia_membro/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_acompanhamento/, resp: () => [{ id: 300 }] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(assistenteA);
@@ -242,10 +242,10 @@ test('criar: sucesso — pessoa nova, família nova, prazo = início + 90 dias, 
     });
     assert.equal(r.status, 201);
     assert.deepEqual(r.corpo, { acompanhamentoId: 300, familiaId: 8, dataPrevistaFinal: '2026-04-10' });
-    const ins = chamadas.find((c) => /INSERT INTO acompanhamento/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_acompanhamento/.test(c.sql));
     assert.equal(ins.params.unidade, 1);
     assert.equal(ins.params.usuario, 10);
-    const pessoa = chamadas.find((c) => /INSERT INTO pessoa/.test(c.sql));
+    const pessoa = chamadas.find((c) => /INSERT INTO ASSOCIAL_pessoa/.test(c.sql));
     assert.equal(pessoa.params.cpf[1], '52998224725');
     assert.equal(pessoa.params.nome, 'Maria da Silva');
   } finally { await srv.fechar(); }
@@ -255,14 +255,14 @@ test('encerrar: CONCLUIDO exige questionário final concluído; DESLIGADO exige 
   let finalConcluido = false;
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'/, resp: () => [{ concluido: finalConcluido }] },
-    { teste: /UPDATE acompanhamento\s+SET status/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'/, resp: () => [{ concluido: finalConcluido }] },
+    { teste: /UPDATE ASSOCIAL_acompanhamento\s+SET status/, resp: () => [] },
     // detalhar()
-    { teste: /FROM familia f JOIN pessoa p/, resp: () => [{ id: 7, nome: 'Maria' }] },
-    { teste: /FROM familia_membro/, resp: () => [] },
-    { teste: /FROM questionario WHERE acompanhamento_id = @id$/, resp: () => [] },
-    { teste: /FROM unidade WHERE id/, resp: () => [{ id: 2 }] },
-    { teste: /FROM usuario WHERE id/, resp: () => [{ id: 99 }] },
+    { teste: /FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p/, resp: () => [{ id: 7, nome: 'Maria' }] },
+    { teste: /FROM ASSOCIAL_familia_membro/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id$/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_unidade WHERE id/, resp: () => [{ id: 2 }] },
+    { teste: /FROM ASSOCIAL_usuario WHERE id/, resp: () => [{ id: 99 }] },
   ];
   const srv = await iniciar(coordenador);
   try {
@@ -290,8 +290,8 @@ test('questionário FINAL só depois do INICIAL concluído; tipo inválido => 40
   handlers = [
     cabecalhoHandler,
     ...baseHandlers(),
-    { teste: /FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
-    { teste: /COUNT\(\*\) AS total FROM familia_membro/, resp: () => [{ total: 2 }] },
+    { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
+    { teste: /COUNT\(\*\) AS total FROM ASSOCIAL_familia_membro/, resp: () => [{ total: 2 }] },
   ];
   const srv = await iniciar(coordenador);
   try {
@@ -320,11 +320,11 @@ test('questionário INICIAL: rascunho grava; conclusão incompleta => 400 com ca
   handlers = [
     cabecalhoHandler,
     ...baseHandlers(),
-    { teste: /FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
-    { teste: /COUNT\(\*\) AS total FROM familia_membro/, resp: () => [{ total: 0 }] },
-    { teste: /INSERT INTO questionario \(/, resp: () => [{ id: 900 }] },
-    { teste: /(DELETE FROM|INSERT INTO) resposta_extra/, resp: () => [] },
-    { teste: /FROM resposta_extra/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: () => [] },
+    { teste: /COUNT\(\*\) AS total FROM ASSOCIAL_familia_membro/, resp: () => [{ total: 0 }] },
+    { teste: /INSERT INTO ASSOCIAL_questionario \(/, resp: () => [{ id: 900 }] },
+    { teste: /(DELETE FROM|INSERT INTO) ASSOCIAL_resposta_extra/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_resposta_extra/, resp: () => [] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(coordenador);
@@ -334,15 +334,15 @@ test('questionário INICIAL: rascunho grava; conclusão incompleta => 400 com ca
     assert.ok(r.corpo.erro.detalhes['extras.2.1']);
     assert.ok(r.corpo.erro.detalhes['extras.3.6']);
     assert.ok(!r.corpo.erro.detalhes['extras.2.2']);
-    assert.equal(chamadas.some((c) => /INSERT INTO questionario \(/.test(c.sql)), false);
+    assert.equal(chamadas.some((c) => /INSERT INTO ASSOCIAL_questionario \(/.test(c.sql)), false);
 
     r = await srv.chamar('PUT', '/acompanhamentos/100/questionarios/INICIAL', { concluir: false, respostas: { '1.1': 3, '2.1': 'TRABALHO_FORMAL' } });
     assert.equal(r.status, 200);
-    const ins = chamadas.find((c) => /INSERT INTO questionario \(/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_questionario \(/.test(c.sql));
     assert.equal(ins.params.concluido, false);
     assert.equal(ins.params.tipo, 'INICIAL');
     assert.match(ins.sql, /'M1'/);
-    const respostas = chamadas.filter((c) => /INSERT INTO resposta_extra/.test(c.sql));
+    const respostas = chamadas.filter((c) => /INSERT INTO ASSOCIAL_resposta_extra/.test(c.sql));
     assert.equal(respostas.length, 2);
     assert.ok(respostas.some((c) => c.params.num[1] === 3));
     assert.ok(respostas.some((c) => c.params.opcao !== null && c.params.opcao !== undefined));
@@ -352,8 +352,8 @@ test('questionário INICIAL: rascunho grava; conclusão incompleta => 400 com ca
 test('comparação: incompleta quando falta questionário concluído', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM familia f JOIN pessoa p/, resp: () => [{ nome: 'Maria' }] },
-    { teste: /FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: (p) => (p.tipo === 'INICIAL' ? [{ id: 1, concluido: true }] : []) },
+    { teste: /FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p/, resp: () => [{ nome: 'Maria' }] },
+    { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac AND tipo = @tipo/, resp: (p) => (p.tipo === 'INICIAL' ? [{ id: 1, concluido: true }] : []) },
   ];
   const srv = await iniciar(coordenador);
   try {
@@ -367,12 +367,12 @@ test('comparação: incompleta quando falta questionário concluído', async () 
 test('comparação consolidada: valida datas e exige unidade permitida', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM questionario q JOIN acompanhamento ac/, resp: () => [] },
-    { teste: /FROM questionario_beneficio qb/, resp: () => [] },
-    { teste: /FROM questionario_destino_economia qd/, resp: () => [] },
-    { teste: /FROM beneficio$|FROM beneficio\s*$/, resp: () => [] },
-    { teste: /FROM destino_economia\s*$/, resp: () => [] },
-    { teste: /FROM unidade\s*$/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario_beneficio qb/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario_destino_economia qd/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_beneficio$|FROM ASSOCIAL_beneficio\s*$/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_destino_economia\s*$/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_unidade\s*$/, resp: () => [] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(assistenteA);
@@ -386,7 +386,7 @@ test('comparação consolidada: valida datas e exige unidade permitida', async (
     r = await srv.chamar('GET', '/comparacao?inicio=2026-01-01&fim=2026-06-30&unidadeId=1');
     assert.equal(r.status, 200);
     assert.equal(r.corpo.totalFamilias, 0);
-    const q = chamadas.find((c) => /FROM questionario q JOIN acompanhamento ac/.test(c.sql));
+    const q = chamadas.find((c) => /FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac/.test(c.sql));
     assert.match(q.sql, /ac\.unidade_id IN \(@un0\)/);
     assert.match(q.sql, /qf\.data_aplicacao >= @inicio/);
   } finally { await srv.fechar(); }

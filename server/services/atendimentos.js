@@ -65,7 +65,7 @@ async function validarApoio(dados, problemas, { somenteAtivas = true, executor =
     const params = {};
     const nomes = ids.map((id, i) => { params[`i${i}`] = id; return `@i${i}`; });
     const achadas = await executor.consultar(
-      `SELECT id, exige_texto FROM ${cfg.apoio} WHERE id IN (${nomes.join(', ')}) ${filtroAtivo}`, params);
+      `SELECT id, exige_texto FROM ASSOCIAL_${cfg.apoio} WHERE id IN (${nomes.join(', ')}) ${filtroAtivo}`, params);
     if (achadas.length !== ids.length) problemas[campo] = 'Há opções inexistentes ou inativas.';
     else if (achadas.some((a) => a.exigeTexto) && !dados[cfg.outra]) {
       problemas[cfg.outra] = `Descreva a opção "Outra"/"Outros" de ${cfg.rotulo}.`;
@@ -80,13 +80,13 @@ async function validarApoio(dados, problemas, { somenteAtivas = true, executor =
         const params = {};
         const nomes = ids.map((id, i) => { params[`i${i}`] = id; return `@i${i}`; });
         const [{ total }] = await executor.consultar(
-          `SELECT COUNT(*) AS total FROM ${cfg.apoio} WHERE id IN (${nomes.join(', ')}) AND exige_texto = 1`, params);
+          `SELECT COUNT(*) AS total FROM ASSOCIAL_${cfg.apoio} WHERE id IN (${nomes.join(', ')}) AND exige_texto = 1`, params);
         if (!total) dados[cfg.outra] = null;
       }
     }
   }
   if (dados.nivelVulnerabilidadeId && !problemas.nivelVulnerabilidadeId) {
-    const r = await executor.consultar('SELECT 1 AS ok FROM nivel_vulnerabilidade WHERE id = @id', { id: dados.nivelVulnerabilidadeId });
+    const r = await executor.consultar('SELECT 1 AS ok FROM ASSOCIAL_nivel_vulnerabilidade WHERE id = @id', { id: dados.nivelVulnerabilidadeId });
     if (!r.length) problemas.nivelVulnerabilidadeId = 'Opção inexistente.';
   }
 }
@@ -108,7 +108,7 @@ async function validarExtras(corpo, atendimentoId, problemas, executor = { consu
 // Faixa etária calculada na data do atendimento; sem nascimento usa a escolhida (ou "Outra").
 async function definirFaixaEtaria(dados, executor = { consultar }) {
   const faixas = await executor.consultar(
-    'SELECT id, idade_min, idade_max FROM faixa_etaria WHERE ativo = 1 ORDER BY ordem, id');
+    'SELECT id, idade_min, idade_max FROM ASSOCIAL_faixa_etaria WHERE ativo = 1 ORDER BY ordem, id');
   return escolherFaixa(faixas, dados);
 }
 
@@ -127,10 +127,10 @@ function escolherFaixa(faixas, dados) {
 // Grava (substituindo) as três listas N:N de um atendimento. Usar dentro de uma transação.
 async function gravarListas(tx, atendimentoId, dados) {
   for (const [campo, cfg] of Object.entries(LISTAS)) {
-    await tx.consultar(`DELETE FROM ${cfg.relacao} WHERE atendimento_id = @id`, { id: atendimentoId });
+    await tx.consultar(`DELETE FROM ASSOCIAL_${cfg.relacao} WHERE atendimento_id = @id`, { id: atendimentoId });
     for (const itemId of dados[campo]) {
       await tx.consultar(
-        `INSERT INTO ${cfg.relacao} (atendimento_id, ${cfg.coluna}) VALUES (@id, @item)`,
+        `INSERT INTO ASSOCIAL_${cfg.relacao} (atendimento_id, ${cfg.coluna}) VALUES (@id, @item)`,
         { id: atendimentoId, item: itemId });
     }
   }

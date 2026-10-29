@@ -121,7 +121,7 @@ async function indicadoresPorUnidade(req, { inicio, fim }, unidadeId = null) {
   const pUn = {};
   const whereUn = filtroUnidade(req, 'u.id', pUn, unidadeId);
   const unidades = await consultar(
-    `SELECT u.id AS unidade_id, u.sigla, u.nome FROM unidade u WHERE u.ativo = 1 AND ${whereUn} ORDER BY u.ordem, u.nome`,
+    `SELECT u.id AS unidade_id, u.sigla, u.nome FROM ASSOCIAL_unidade u WHERE u.ativo = 1 AND ${whereUn} ORDER BY u.ordem, u.nome`,
     pUn,
   );
 
@@ -131,9 +131,9 @@ async function indicadoresPorUnidade(req, { inicio, fim }, unidadeId = null) {
     `SELECT a.unidade_id,
             COUNT(*) AS atendimentos,
             SUM(enc.tem) AS atendimentos_com_encaminhamento
-       FROM atendimento a
+       FROM ASSOCIAL_atendimento a
       -- SQL Server não aceita subconsulta dentro de SUM(): calcula o indicador por linha antes
-      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
+      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM ASSOCIAL_atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
                                THEN 1 ELSE 0 END AS tem) enc
       WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${whereAt}
       GROUP BY a.unidade_id`,
@@ -144,7 +144,7 @@ async function indicadoresPorUnidade(req, { inicio, fim }, unidadeId = null) {
   const whereAc = filtroUnidade(req, 'v.unidade_id', pAc, unidadeId);
   const acoes = await consultar(
     `SELECT v.unidade_id, COUNT(*) AS acoes, SUM(ISNULL(v.qtd_participantes, 0)) AS participantes
-       FROM acao_visita v
+       FROM ASSOCIAL_acao_visita v
       WHERE v.status = 'REALIZADA' AND v.data_acao BETWEEN @inicio AND @fim AND ${whereAc}
       GROUP BY v.unidade_id`,
     pAc,
@@ -155,7 +155,7 @@ async function indicadoresPorUnidade(req, { inicio, fim }, unidadeId = null) {
   const whereFa = filtroUnidade(req, 'ac.unidade_id', pFa, unidadeId);
   const familias = await consultar(
     `SELECT ac.unidade_id, COUNT(DISTINCT ac.familia_id) AS familias_acompanhadas
-       FROM acompanhamento ac
+       FROM ASSOCIAL_acompanhamento ac
       WHERE ac.data_inicio <= @fim
         AND (ac.status = 'EM_ANDAMENTO' OR ac.data_encerramento >= @inicio)
         AND ${whereFa}
@@ -202,8 +202,8 @@ async function evolucaoMensal(req, { inicio, fim }, unidadeId = null) {
   const atendimentos = await consultar(
     `SELECT YEAR(a.data_atendimento) AS ano, MONTH(a.data_atendimento) AS mes, COUNT(*) AS atendimentos,
             SUM(enc.tem) AS atendimentos_com_encaminhamento
-       FROM atendimento a
-      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
+       FROM ASSOCIAL_atendimento a
+      OUTER APPLY (SELECT CASE WHEN EXISTS (SELECT 1 FROM ASSOCIAL_atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id)
                                THEN 1 ELSE 0 END AS tem) enc
       WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${whereAt}
       GROUP BY YEAR(a.data_atendimento), MONTH(a.data_atendimento)`,
@@ -214,7 +214,7 @@ async function evolucaoMensal(req, { inicio, fim }, unidadeId = null) {
   const acoes = await consultar(
     `SELECT YEAR(v.data_acao) AS ano, MONTH(v.data_acao) AS mes, COUNT(*) AS acoes,
             SUM(ISNULL(v.qtd_participantes, 0)) AS participantes
-       FROM acao_visita v
+       FROM ASSOCIAL_acao_visita v
       WHERE v.status = 'REALIZADA' AND v.data_acao BETWEEN @inicio AND @fim AND ${whereAc}
       GROUP BY YEAR(v.data_acao), MONTH(v.data_acao)`,
     pAc,
@@ -230,7 +230,7 @@ async function evolucaoMensal(req, { inicio, fim }, unidadeId = null) {
   const familias = await consultar(
     `SELECT YEAR(mes.ini) AS ano, MONTH(mes.ini) AS mes, COUNT(DISTINCT ac.familia_id) AS familias_acompanhadas
        FROM (VALUES ${valores}) AS mes(ini, fim)
-       JOIN acompanhamento ac ON ac.data_inicio <= mes.fim
+       JOIN ASSOCIAL_acompanhamento ac ON ac.data_inicio <= mes.fim
         AND (ac.status = 'EM_ANDAMENTO' OR ac.data_encerramento >= mes.ini)
       WHERE ${whereFa}
       GROUP BY YEAR(mes.ini), MONTH(mes.ini)`,
@@ -274,7 +274,7 @@ async function perfilPublico(req, { inicio, fim }, unidadeId = null) {
   const p0 = { ...base };
   const where0 = filtroUnidade(req, 'a.unidade_id', p0, unidadeId);
   const [tot] = await consultar(
-    `SELECT COUNT(*) AS total FROM atendimento a WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${where0}`, p0,
+    `SELECT COUNT(*) AS total FROM ASSOCIAL_atendimento a WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${where0}`, p0,
   );
   resultado.totalAtendimentos = Number(tot?.total) || 0;
 
@@ -283,9 +283,9 @@ async function perfilPublico(req, { inicio, fim }, unidadeId = null) {
     const where = filtroUnidade(req, 'a.unidade_id', params, unidadeId);
     const linhas = await consultar(
       `SELECT t.id AS id, ISNULL(t.nome, N'Não informado') AS nome, COUNT(*) AS quantidade, MIN(t.ordem) AS ordem
-         FROM atendimento a
-         JOIN pessoa p ON p.id = a.pessoa_id
-         LEFT JOIN ${d.tabela} t ON t.id = ${d.fk}
+         FROM ASSOCIAL_atendimento a
+         JOIN ASSOCIAL_pessoa p ON p.id = a.pessoa_id
+         LEFT JOIN ASSOCIAL_${d.tabela} t ON t.id = ${d.fk}
         WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${where}
         GROUP BY t.id, t.nome
         ORDER BY CASE WHEN t.id IS NULL THEN 1 ELSE 0 END, MIN(t.ordem), t.nome`,
@@ -299,9 +299,9 @@ async function perfilPublico(req, { inicio, fim }, unidadeId = null) {
     const where = filtroUnidade(req, 'a.unidade_id', params, unidadeId);
     const linhas = await consultar(
       `SELECT t.id AS id, t.nome AS nome, COUNT(*) AS quantidade
-         FROM atendimento a
-         JOIN ${d.juncao} j ON j.atendimento_id = a.id
-         JOIN ${d.tabela} t ON t.id = j.${d.colJuncao}
+         FROM ASSOCIAL_atendimento a
+         JOIN ASSOCIAL_${d.juncao} j ON j.atendimento_id = a.id
+         JOIN ASSOCIAL_${d.tabela} t ON t.id = j.${d.colJuncao}
         WHERE a.data_atendimento BETWEEN @inicio AND @fim AND ${where}
         GROUP BY t.id, t.nome, t.ordem
         ORDER BY COUNT(*) DESC, t.ordem, t.nome`,
@@ -315,7 +315,7 @@ async function perfilPublico(req, { inicio, fim }, unidadeId = null) {
 // ---------- alertas ----------
 
 async function lerConfigNumero(chave, padrao) {
-  const [l] = await consultar('SELECT valor FROM configuracao WHERE chave = @chave', { chave });
+  const [l] = await consultar('SELECT valor FROM ASSOCIAL_configuracao WHERE chave = @chave', { chave });
   const n = Number(l?.valor);
   return Number.isFinite(n) && n >= 0 ? n : padrao;
 }
@@ -332,12 +332,12 @@ async function questionariosFinaisPendentes(req, hoje = hojeBrasil(), unidadeId 
             pe.nome AS responsavel_nome,
             COALESCE(ac.data_prevista_final, DATEADD(DAY, @prazo, ac.data_inicio)) AS data_limite,
             DATEDIFF(DAY, @hoje, COALESCE(ac.data_prevista_final, DATEADD(DAY, @prazo, ac.data_inicio))) AS dias_restantes
-       FROM acompanhamento ac
-       JOIN unidade un ON un.id = ac.unidade_id
-       JOIN familia f ON f.id = ac.familia_id
-       JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+       FROM ASSOCIAL_acompanhamento ac
+       JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+       JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+       JOIN ASSOCIAL_pessoa pe ON pe.id = f.responsavel_pessoa_id
       WHERE ac.status = 'EM_ANDAMENTO'
-        AND NOT EXISTS (SELECT 1 FROM questionario q
+        AND NOT EXISTS (SELECT 1 FROM ASSOCIAL_questionario q
                          WHERE q.acompanhamento_id = ac.id AND q.tipo = 'FINAL' AND q.concluido = 1)
         AND DATEDIFF(DAY, @hoje, COALESCE(ac.data_prevista_final, DATEADD(DAY, @prazo, ac.data_inicio))) <= @antes
         AND ${where}
@@ -360,10 +360,10 @@ async function familiasSemContato(req, hoje = hojeBrasil(), unidadeId = null) {
     `WITH base AS (
        SELECT ac.id AS acompanhamento_id, ac.unidade_id, un.sigla AS unidade_sigla, pe.nome AS responsavel_nome, ac.status,
               ${contato.sqlUltimoContato('ac', 'f')} AS ultimo_contato
-         FROM acompanhamento ac
-         JOIN unidade un ON un.id = ac.unidade_id
-         JOIN familia f ON f.id = ac.familia_id
-         JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+         FROM ASSOCIAL_acompanhamento ac
+         JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+         JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+         JOIN ASSOCIAL_pessoa pe ON pe.id = f.responsavel_pessoa_id
         WHERE ac.status = 'EM_ANDAMENTO' AND ${where})
      SELECT acompanhamento_id, unidade_id, unidade_sigla, responsavel_nome, ultimo_contato,
             DATEDIFF(DAY, ultimo_contato, @hoje) AS dias_sem_contato
@@ -382,7 +382,7 @@ async function acoesDesatualizadas(req, hoje = hojeBrasil(), unidadeId = null) {
   return consultar(
     `SELECT TOP (100) v.id AS acao_id, v.unidade_id, un.sigla AS unidade_sigla, v.data_acao,
             v.instituicao_local, DATEDIFF(DAY, v.data_acao, @hoje) AS dias_atraso
-       FROM acao_visita v JOIN unidade un ON un.id = v.unidade_id
+       FROM ASSOCIAL_acao_visita v JOIN ASSOCIAL_unidade un ON un.id = v.unidade_id
       WHERE v.status = 'PLANEJADA' AND v.data_acao < @hoje AND ${where}
       ORDER BY v.data_acao, un.sigla`,
     params,

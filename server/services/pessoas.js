@@ -1,6 +1,6 @@
 'use strict';
 
-// Regras de Pessoa (dbo.pessoa, única por CPF). Compartilhado por /api/pessoas e /api/atendimentos.
+// Regras de Pessoa (dbo.ASSOCIAL_pessoa, única por CPF). Compartilhado por /api/pessoas e /api/atendimentos.
 // LGPD: aqui só circulam DADOS PESSOAIS; nada de atendimento/acompanhamento fora das unidades permitidas.
 
 const { consultar, consultarUm, tipos } = require('../db');
@@ -89,7 +89,7 @@ function validarDadosPessoa(corpo) {
 async function validarApoioPessoa(dados, problemas, executor = { consultar }) {
   for (const l of LISTAS_OUTRAS) {
     if (!dados[l.id] || problemas[l.id]) { if (!dados[l.id]) dados[l.outro] = null; continue; }
-    const achou = await executor.consultar(`SELECT id, exige_texto FROM ${l.tabela} WHERE id = @id`, { id: dados[l.id] });
+    const achou = await executor.consultar(`SELECT id, exige_texto FROM ASSOCIAL_${l.tabela} WHERE id = @id`, { id: dados[l.id] });
     if (!achou.length) problemas[l.id] = 'Opção inexistente.';
     else conferirOutro(dados, l.id, l.outro, achou, problemas, l.rotulo);
   }
@@ -118,7 +118,7 @@ function paramsPessoa(d) {
 
 async function criarPessoa(tx, dados, usuarioId) {
   const [nova] = await tx.consultar(
-    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
+    `INSERT INTO ASSOCIAL_pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
                          genero_id, escolaridade_id, raca_id, genero_outro, escolaridade_outro, raca_outro, criado_por)
      OUTPUT INSERTED.id
      VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
@@ -130,7 +130,7 @@ async function criarPessoa(tx, dados, usuarioId) {
 
 async function atualizarPessoa(tx, id, dados, usuarioId) {
   await tx.consultar(
-    `UPDATE pessoa SET cpf = @cpf, nome = @nome, data_nascimento = @dataNascimento, nis = @nis, telefone = @telefone, telefone2 = @telefone2,
+    `UPDATE ASSOCIAL_pessoa SET cpf = @cpf, nome = @nome, data_nascimento = @dataNascimento, nis = @nis, telefone = @telefone, telefone2 = @telefone2,
             endereco = @endereco, cep = @cep, bairro = @bairro, trabalho_atual = @trabalhoAtual,
             genero_id = @generoId, escolaridade_id = @escolaridadeId, raca_id = @racaId,
             genero_outro = @generoOutro, escolaridade_outro = @escolaridadeOutro, raca_outro = @racaOutro,
@@ -141,7 +141,7 @@ async function atualizarPessoa(tx, id, dados, usuarioId) {
 }
 
 const buscarPorCpf = (cpf, executor = { consultarUm }) =>
-  executor.consultarUm(`SELECT ${COLUNAS_PESSOA} FROM pessoa p WHERE p.cpf = @cpf`, { cpf });
+  executor.consultarUm(`SELECT ${COLUNAS_PESSOA} FROM ASSOCIAL_pessoa p WHERE p.cpf = @cpf`, { cpf });
 
 // A pessoa tem atendimento ou acompanhamento (como responsável) em unidade permitida?
 async function pessoaNoEscopo(req, pessoaId, executor = { consultarUm }) {
@@ -149,9 +149,9 @@ async function pessoaNoEscopo(req, pessoaId, executor = { consultarUm }) {
   const whereA = clausulaUnidades(req, 'a.unidade_id', params, 'ua');
   const whereC = clausulaUnidades(req, 'ac.unidade_id', params, 'uc');
   const achou = await executor.consultarUm(
-    `SELECT CASE WHEN EXISTS (SELECT 1 FROM atendimento a WHERE a.pessoa_id = @pessoaId AND ${whereA})
-                   OR EXISTS (SELECT 1 FROM acompanhamento ac
-                                JOIN familia f ON f.id = ac.familia_id
+    `SELECT CASE WHEN EXISTS (SELECT 1 FROM ASSOCIAL_atendimento a WHERE a.pessoa_id = @pessoaId AND ${whereA})
+                   OR EXISTS (SELECT 1 FROM ASSOCIAL_acompanhamento ac
+                                JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
                                WHERE f.responsavel_pessoa_id = @pessoaId AND ${whereC})
                  THEN 1 ELSE 0 END AS ok`,
     params,

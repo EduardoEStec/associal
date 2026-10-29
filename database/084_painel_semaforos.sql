@@ -9,7 +9,7 @@ SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
-INSERT INTO dbo.configuracao (chave, valor, descricao)
+INSERT INTO dbo.ASSOCIAL_configuracao (chave, valor, descricao)
 SELECT v.chave, v.valor, v.descricao
 FROM (VALUES
     ('semaforo_progresso_verde_pct', N'50',
@@ -25,5 +25,5 @@ FROM (VALUES
     ('semaforo_concordancia_amarelo', N'60',
         N'Semáforo da satisfação: % de concordância a partir do qual o resultado é "atenção" (amarelo); abaixo disso é "crítico" (vermelho). Valor provisório.')
 ) AS v(chave, valor, descricao)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.configuracao c WHERE c.chave = v.chave);
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_configuracao c WHERE c.chave = v.chave);
 GO

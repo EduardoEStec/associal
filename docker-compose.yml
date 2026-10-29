@@ -3,6 +3,9 @@
 #
 #   docker compose up -d --build
 #   docker compose exec app npm run db:migrate     # cria banco/tabelas/seed (1ª vez e a cada atualização)
+#
+# Banco: em produção DB_NAME=INTERNO (SQL Server compartilhado, já existente). O ASSOCIAL cria só tabelas dbo.ASSOCIAL_*
+# (e constraints ASSOCIAL_*), sem tocar nas dos outros sistemas. Em dev/teste, DB_NAME=ASSOCIAL.
 services:
   app:
     build: .

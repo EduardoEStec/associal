@@ -155,7 +155,7 @@ function calcularPendencia({
 
 async function lerConfig(executor = { consultar }) {
   const linhas = await executor.consultar(
-    "SELECT chave, valor FROM configuracao WHERE chave IN ('pesquisa_intervalo_dias', 'pesquisa_prazo_final_dias')");
+    "SELECT chave, valor FROM ASSOCIAL_configuracao WHERE chave IN ('pesquisa_intervalo_dias', 'pesquisa_prazo_final_dias')");
   const mapa = Object.fromEntries(linhas.map((l) => [l.chave, Number(l.valor)]));
   const inteiro = (v, padrao) => (Number.isInteger(v) && v > 0 ? v : padrao);
   return {
@@ -169,10 +169,10 @@ async function lerPendencia(ac, hoje) {
   const [cfg, pesquisas, final] = await Promise.all([
     lerConfig(),
     consultar(
-      `SELECT momento, situacao, data_aplicacao FROM pesquisa_resposta
+      `SELECT momento, situacao, data_aplicacao FROM ASSOCIAL_pesquisa_resposta
         WHERE acompanhamento_id = @id AND situacao IN ('CONCLUIDA', 'RECUSADA')`, { id: ac.id }),
     consultarUm(
-      "SELECT data_aplicacao FROM questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL' AND concluido = 1", { id: ac.id }),
+      "SELECT data_aplicacao FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL' AND concluido = 1", { id: ac.id }),
   ]);
   return calcularPendencia({
     status: ac.status, dataInicio: ac.dataInicio, dataEncerramento: ac.dataEncerramento,
@@ -191,11 +191,11 @@ async function listarPendencias(req, hoje, unidadeId = null) {
   const acs = await consultar(
     `SELECT ac.id AS acompanhamento_id, ac.unidade_id, un.sigla AS unidade_sigla, pe.nome AS responsavel_nome,
             ac.status, ac.data_inicio, ac.data_encerramento,
-            (SELECT q.data_aplicacao FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'FINAL' AND q.concluido = 1) AS data_questionario_final
-       FROM acompanhamento ac
-       JOIN unidade un ON un.id = ac.unidade_id
-       JOIN familia f ON f.id = ac.familia_id
-       JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+            (SELECT q.data_aplicacao FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'FINAL' AND q.concluido = 1) AS data_questionario_final
+       FROM ASSOCIAL_acompanhamento ac
+       JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+       JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+       JOIN ASSOCIAL_pessoa pe ON pe.id = f.responsavel_pessoa_id
       WHERE ${filtros.join(' AND ')}
         AND (ac.status = 'EM_ANDAMENTO' OR (ac.status = 'CONCLUIDO' AND ac.data_encerramento >= @limite))`,
     params);
@@ -204,7 +204,7 @@ async function listarPendencias(req, hoje, unidadeId = null) {
   // o filtro de unidade vale também aqui (defesa em profundidade: a lista de ids já veio filtrada)
   const pesq = await consultar(
     `SELECT pr.acompanhamento_id, pr.momento, pr.situacao, pr.data_aplicacao
-       FROM pesquisa_resposta pr JOIN acompanhamento ac ON ac.id = pr.acompanhamento_id
+       FROM ASSOCIAL_pesquisa_resposta pr JOIN ASSOCIAL_acompanhamento ac ON ac.id = pr.acompanhamento_id
       WHERE pr.situacao IN ('CONCLUIDA', 'RECUSADA') AND ${filtros.join(' AND ')}
         AND pr.acompanhamento_id IN (${ids.map((_, i) => `@a${i}`).join(', ')})`,
     { ...params, ...Object.fromEntries(ids.map((id, i) => [`a${i}`, id])) });

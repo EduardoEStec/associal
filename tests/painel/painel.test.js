@@ -13,20 +13,20 @@ const dbFalso = {
     chamadas.push({ texto, params });
     const t = texto.replace(/\s+/g, ' ');
     if (t.includes("tipo IN ('REAVALIACAO', 'FINAL')")) return []; // F6: reavaliações pendentes
-    if (t.includes('FROM unidade u')) return [{ unidadeId: 1, sigla: 'BRA', nome: 'Brasilândia' }, { unidadeId: 2, sigla: 'TIR', nome: 'Tiradentes' }];
-    if (t.includes('FROM atendimento a WHERE') && t.includes('COUNT(*) AS total')) return [{ total: 10 }];
+    if (t.includes('FROM ASSOCIAL_unidade u')) return [{ unidadeId: 1, sigla: 'BRA', nome: 'Brasilândia' }, { unidadeId: 2, sigla: 'TIR', nome: 'Tiradentes' }];
+    if (t.includes('FROM ASSOCIAL_atendimento a WHERE') && t.includes('COUNT(*) AS total')) return [{ total: 10 }];
     if (t.includes('atendimentos_com_encaminhamento') && t.includes('GROUP BY a.unidade_id')) return [{ unidadeId: 1, atendimentos: 8, atendimentosComEncaminhamento: 4 }, { unidadeId: 2, atendimentos: 2, atendimentosComEncaminhamento: 0 }];
-    if (t.includes('FROM acao_visita v') && t.includes('GROUP BY v.unidade_id')) return [{ unidadeId: 1, acoes: 2, participantes: 12 }];
+    if (t.includes('FROM ASSOCIAL_acao_visita v') && t.includes('GROUP BY v.unidade_id')) return [{ unidadeId: 1, acoes: 2, participantes: 12 }];
     if (t.includes('familias_acompanhadas') && t.includes('GROUP BY ac.unidade_id')) return [{ unidadeId: 1, familiasAcompanhadas: 3 }];
-    if (t.includes('FROM configuracao')) return [{ valor: '15' }];
-    if (t.includes('FROM acompanhamento ac JOIN unidade')) return [
+    if (t.includes('FROM ASSOCIAL_configuracao')) return [{ valor: '15' }];
+    if (t.includes('FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_unidade')) return [
       { acompanhamentoId: 1, unidadeSigla: 'BRA', responsavelNome: 'Maria', dataLimite: '2026-01-01', diasRestantes: -5 },
       { acompanhamentoId: 2, unidadeSigla: 'BRA', responsavelNome: 'Ana', dataLimite: '2026-02-01', diasRestantes: 3 }];
-    if (t.includes('FROM acao_visita v JOIN unidade')) return [{ acaoId: 9, unidadeSigla: 'TIR', dataAcao: '2026-01-01', instituicaoLocal: 'X', diasAtraso: 4 }];
+    if (t.includes('FROM ASSOCIAL_acao_visita v JOIN ASSOCIAL_unidade')) return [{ acaoId: 9, unidadeSigla: 'TIR', dataAcao: '2026-01-01', instituicaoLocal: 'X', diasAtraso: 4 }];
     if (t.includes('YEAR(a.data_atendimento)')) return [{ ano: 2026, mes: 3, atendimentos: 5, atendimentosComEncaminhamento: 1 }];
     if (t.includes('YEAR(v.data_acao)')) return [{ ano: 2026, mes: 3, acoes: 1, participantes: 7 }];
     if (t.includes('FROM (VALUES')) return [{ ano: 2026, mes: 3, familiasAcompanhadas: 2 }];
-    if (t.includes('FROM atendimento a')) return [{ id: 1, nome: 'Item', quantidade: 3 }];
+    if (t.includes('FROM ASSOCIAL_atendimento a')) return [{ id: 1, nome: 'Item', quantidade: 3 }];
     return [];
   },
 };
@@ -98,7 +98,7 @@ const get = async (s, url) => { const r = await fetch(`http://127.0.0.1:${s.addr
   assert.equal(r.corpo.acoesDesatualizadas.length, 1);
 
   // LGPD: TODA consulta de dados filtra por unidade (ou é a leitura de configuração)
-  const semFiltro = chamadas.filter((c) => !/FROM configuracao/.test(c.texto) && !/IN \(@un0/.test(c.texto) && !/1 = 0/.test(c.texto));
+  const semFiltro = chamadas.filter((c) => !/FROM ASSOCIAL_configuracao/.test(c.texto) && !/IN \(@un0/.test(c.texto) && !/1 = 0/.test(c.texto));
   assert.deepEqual(semFiltro.map((c) => c.texto.slice(0, 80)), []);
   assert.ok(chamadas.some((c) => c.params.un0 === 1 && c.params.un1 === undefined));
   assert.ok(chamadas.some((c) => c.texto.includes('1 = 0')));

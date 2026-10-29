@@ -2,7 +2,7 @@
 
 // Respostas às perguntas do CATÁLOGO: as EXTRAS (P2: criadas pela coordenação para a pesquisa de satisfação, o atendimento e os
 // questionários) e, nos questionários inicial e final (M1), também as perguntas OFICIAIS dos modelos em papel.
-// Validação (pura) e gravação/leitura das respostas em dbo.resposta_extra. Contrato: docs/API-CATALOGO.md.
+// Validação (pura) e gravação/leitura das respostas em dbo.ASSOCIAL_resposta_extra. Contrato: docs/API-CATALOGO.md.
 //
 // Valor na API, por tipo:  TEXTO -> string · NUMERO -> número · SIM_NAO -> true/false · ESCOLHA -> código da opção ·
 // MULTIPLA -> lista de códigos. Chegam em `extras: { "<código da pergunta>": valor }`; `extras` ausente = não mexe nas respostas.
@@ -15,7 +15,7 @@ const MAX_DETALHE = 200;
 const MAX_NUMERO = 999999999999;
 const FALTA = 'Responda esta pergunta para concluir.';
 
-// formulário -> coluna de dbo.resposta_extra que aponta o dono da resposta
+// formulário -> coluna de dbo.ASSOCIAL_resposta_extra que aponta o dono da resposta
 const COLUNA_DONO = Object.freeze({
   QUESTIONARIO: 'questionario_id', QUESTIONARIO_INICIAL: 'questionario_id', QUESTIONARIO_FINAL: 'questionario_id',
   ATENDIMENTO: 'atendimento_id', PESQUISA: 'pesquisa_resposta_id',
@@ -114,7 +114,7 @@ async function opcoesAtuais(executor, formulario, donoId) {
   const mapa = new Map();
   if (!donoId) return mapa;
   const linhas = await executor.consultar(
-    `SELECT pergunta_id, opcao_id FROM resposta_extra WHERE ${COLUNA_DONO[formulario]} = @dono AND opcao_id IS NOT NULL`, { dono: donoId });
+    `SELECT pergunta_id, opcao_id FROM ASSOCIAL_resposta_extra WHERE ${COLUNA_DONO[formulario]} = @dono AND opcao_id IS NOT NULL`, { dono: donoId });
   for (const l of linhas) {
     if (!mapa.has(l.perguntaId)) mapa.set(l.perguntaId, new Set());
     mapa.get(l.perguntaId).add(l.opcaoId);
@@ -128,10 +128,10 @@ async function gravarExtras(tx, formulario, donoId, validado) {
   if (!ids.length) return;
   const params = { dono: donoId };
   const lista = marcadores(ids, 'p', params).join(', ');
-  await tx.consultar(`DELETE FROM resposta_extra WHERE ${COLUNA_DONO[formulario]} = @dono AND pergunta_id IN (${lista})`, params);
+  await tx.consultar(`DELETE FROM ASSOCIAL_resposta_extra WHERE ${COLUNA_DONO[formulario]} = @dono AND pergunta_id IN (${lista})`, params);
   for (const it of validado.itens) {
     await tx.consultar(
-      `INSERT INTO resposta_extra (pergunta_id, ${COLUNA_DONO[formulario]}, opcao_id, valor_texto, valor_num)
+      `INSERT INTO ASSOCIAL_resposta_extra (pergunta_id, ${COLUNA_DONO[formulario]}, opcao_id, valor_texto, valor_num)
        VALUES (@pergunta, @dono, @opcao, @texto, @num)`,
       { pergunta: it.perguntaId, dono: donoId, opcao: it.opcaoId, texto: it.valorTexto, num: [tipos.Decimal(18, 4), it.valorNum] });
   }
@@ -147,7 +147,7 @@ async function linhasDeDonos(executor, formulario, donoIds) {
     const lote = donoIds.slice(i, i + 500);
     const lista = marcadores(lote, 'd', params).join(', ');
     const linhas = await executor.consultar(
-      `SELECT ${coluna} AS dono_id, pergunta_id, opcao_id, valor_texto, valor_num FROM resposta_extra WHERE ${coluna} IN (${lista})`, params);
+      `SELECT ${coluna} AS dono_id, pergunta_id, opcao_id, valor_texto, valor_num FROM ASSOCIAL_resposta_extra WHERE ${coluna} IN (${lista})`, params);
     for (const l of linhas) mapa.get(l.donoId).push(l);
   }
   return mapa;

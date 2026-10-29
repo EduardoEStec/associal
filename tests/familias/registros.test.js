@@ -252,15 +252,15 @@ const acRow = (p, sobre = {}) => {
   return p.id === 100 && permitidas.includes(2) ? [linha] : [];
 };
 const baseHandlers = (sobreAc = {}) => [
-  { teste: /FROM acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
-  { teste: /INSERT INTO auditoria/, resp: () => [] },
-  { teste: /FROM configuracao/, resp: () => [{ chave: 'alerta_sem_contato_dias', valor: '30' }] },
-  { teste: /FROM tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }, { id: 5, nome: 'Outro', exigeTexto: true }] },
-  { teste: /FROM uso_armazem WHERE ativo = 1/, resp: () => [
+  { teste: /FROM ASSOCIAL_acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
+  { teste: /INSERT INTO ASSOCIAL_auditoria/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_configuracao/, resp: () => [{ chave: 'alerta_sem_contato_dias', valor: '30' }] },
+  { teste: /FROM ASSOCIAL_tipo_contato WHERE ativo = 1/, resp: () => [{ id: 1, nome: 'Visita domiciliar', exigeTexto: false }, { id: 5, nome: 'Outro', exigeTexto: true }] },
+  { teste: /FROM ASSOCIAL_uso_armazem WHERE ativo = 1/, resp: () => [
     { lista: 'USO', id: 1, nome: 'Utilizou regularmente', exigeTexto: false }, { lista: 'USO', id: 3, nome: 'Não utilizou no período', exigeTexto: false },
     { lista: 'ORI', id: 1, nome: 'Orientação sobre CadÚnico', exigeTexto: false }, { lista: 'ORI', id: 5, nome: 'Outros', exigeTexto: true },
     { lista: 'FRA', id: 1, nome: 'Atendimento realizado; situação familiar mantida.', exigeTexto: false }] },
-  { teste: /FROM (acompanhamento_meta|registro_meta)/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_(acompanhamento_meta|registro_meta)/, resp: () => [] },
 ];
 
 test('assistente de outra unidade recebe 404 em todas as rotas de registro e linha do tempo', async () => {
@@ -284,8 +284,8 @@ test('ADMIN opera como a coordenação: lê os textos, altera registros de outro
   handlers = [
     ...baseHandlers(),
     { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
-    { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
-    { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [{
+    { teste: /^\s*SELECT TOP 1 .*FROM ASSOCIAL_acompanhamento_registro/s, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r\s+JOIN ASSOCIAL_tipo_contato/, resp: () => [{
       id: 1, dataRegistro: new Date('2026-03-10'), tipoContatoId: 1, tipoContatoNome: 'Telefone', tipoContatoOutro: null, houveContato: true,
       situacao: 'IGUAL', resumo: 'Texto confidencial', proximoContatoEm: null, usuarioId: 10, autorNome: 'Ana', criadoEm: new Date(), alteradoEm: null }] },
   ];
@@ -323,7 +323,7 @@ test('criar registro: validação 400 com detalhes por campo; encerrado => 409',
 test('criar registro: grava com usuário, tipo e auditoria', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /INSERT INTO acompanhamento_registro/, resp: () => [{ id: 55 }] },
+    { teste: /INSERT INTO ASSOCIAL_acompanhamento_registro/, resp: () => [{ id: 55 }] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(coordenador);
@@ -331,11 +331,11 @@ test('criar registro: grava com usuário, tipo e auditoria', async () => {
     const r = await srv.chamar('POST', '/acompanhamentos/100/registros', { ...valido, dataRegistro: hoje });
     assert.equal(r.status, 201);
     assert.deepEqual(r.corpo, { id: 55 });
-    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_registro/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_acompanhamento_registro/.test(c.sql));
     assert.equal(ins.params.usuario, 20);
     assert.equal(ins.params.ac, 100);
     assert.equal(ins.params.situacao, 'MELHORANDO');
-    assert.ok(chamadas.some((c) => /INSERT INTO auditoria/.test(c.sql) && c.params.tabela === 'acompanhamento_registro'));
+    assert.ok(chamadas.some((c) => /INSERT INTO ASSOCIAL_auditoria/.test(c.sql) && c.params.tabela === 'acompanhamento_registro'));
   } finally { await srv.fechar(); }
 });
 
@@ -343,9 +343,9 @@ test('editar/anular: só o autor ou a coordenação; anular exige motivo', async
   const registro = (usuarioId) => [{ id: 9, acompanhamentoId: 100, usuarioId, anuladoEm: null }];
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => registro(10) },
-    { teste: /^\s*UPDATE acompanhamento_registro/, resp: () => [] },
-    { teste: /FROM acompanhamento_registro r JOIN tipo_contato tc ON tc\.id = r\.tipo_contato_id WHERE r\.id = @id/, resp: () => [{ id: 1, exigeTexto: false }] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => registro(10) },
+    { teste: /^\s*UPDATE ASSOCIAL_acompanhamento_registro/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r JOIN ASSOCIAL_tipo_contato tc ON tc\.id = r\.tipo_contato_id WHERE r\.id = @id/, resp: () => [{ id: 1, exigeTexto: false }] },
   ];
   // outra assistente da mesma unidade (acompanhamento 100 é da unidade 2 → precisa da unidade 2)
   const assistenteU2 = { ...outraAssistente, unidades: [{ id: 2, sigla: 'TIR' }] };
@@ -356,8 +356,8 @@ test('editar/anular: só o autor ou a coordenação; anular exige motivo', async
   } finally { await srv.fechar(); }
 
   const autor = { ...assistenteA, unidades: [{ id: 2, sigla: 'TIR' }] }; // id 10 = autor do registro 9
-  handlers.push({ teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [] }, { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
-    { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [] });
+  handlers.push({ teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [] }, { teste: /^\s*SELECT TOP 1 .*FROM ASSOCIAL_acompanhamento_registro/s, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r\s+JOIN ASSOCIAL_tipo_contato/, resp: () => [] });
   srv = await iniciar(autor);
   try {
     let r = await srv.chamar('POST', '/acompanhamentos/100/registros/9/anular', {});
@@ -381,12 +381,12 @@ test('editar/anular: só o autor ou a coordenação; anular exige motivo', async
 test('linha do tempo: filtra atendimentos pelas unidades permitidas e valida o filtro de tipos', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM familia f JOIN pessoa p/, resp: () => [{ responsavelPessoaId: 5, nome: 'Maria' }] },
-    { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [] },
-    { teste: /FROM atendimento a\s+JOIN unidade/, resp: () => [] },
-    { teste: /FROM questionario q LEFT JOIN usuario/, resp: () => [] },
-    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
-    { teste: /^SELECT nome FROM usuario/, resp: () => [{ nome: 'Ana' }] },
+    { teste: /FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p/, resp: () => [{ responsavelPessoaId: 5, nome: 'Maria' }] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r\s+JOIN ASSOCIAL_tipo_contato/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_atendimento a\s+JOIN ASSOCIAL_unidade/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_questionario q LEFT JOIN ASSOCIAL_usuario/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta r\s+JOIN ASSOCIAL_pesquisa_modelo/, resp: () => [] },
+    { teste: /^SELECT nome FROM ASSOCIAL_usuario/, resp: () => [{ nome: 'Ana' }] },
   ];
   chamadas.length = 0;
   const srv = await iniciar(coordenador);
@@ -396,7 +396,7 @@ test('linha do tempo: filtra atendimentos pelas unidades permitidas e valida o f
     r = await srv.chamar('GET', '/acompanhamentos/100/linha-do-tempo?tipos=INICIO');
     assert.equal(r.status, 200);
     assert.deepEqual(r.corpo.itens.map((e) => e.tipo), ['INICIO']);
-    const at = chamadas.find((c) => /FROM atendimento a/.test(c.sql));
+    const at = chamadas.find((c) => /FROM ASSOCIAL_atendimento a/.test(c.sql));
     assert.match(at.sql, /a\.unidade_id IN \(@un0, @un1\)/);
     assert.equal(at.params.pessoa, 5);
   } finally { await srv.fechar(); }
@@ -409,7 +409,7 @@ test('linha do tempo: filtra atendimentos pelas unidades permitidas e valida o f
 test('M1 criar registro com mês, uso do Armazém, orientações e aceite de foto grava os campos novos e a N:N', async () => {
   handlers = [
     ...baseHandlers(),
-    { teste: /INSERT INTO acompanhamento_registro\s*\(/, resp: () => [{ id: 61 }] },
+    { teste: /INSERT INTO ASSOCIAL_acompanhamento_registro\s*\(/, resp: () => [{ id: 61 }] },
     { teste: /acompanhamento_registro_orientacao/, resp: () => [] },
   ];
   chamadas.length = 0;
@@ -420,12 +420,12 @@ test('M1 criar registro com mês, uso do Armazém, orientações e aceite de fot
       ...valido, dataRegistro: hoje, mesReferencia: mes, usoArmazemId: 1, orientacaoIds: [1, 5], orientacaoOutro: 'Curso', familiaAceitaFoto: true,
     });
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
-    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_registro\s*\(/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_acompanhamento_registro\s*\(/.test(c.sql));
     assert.equal(ins.params.uso, 1);
     assert.equal(ins.params.orientacaoOutro, 'Curso');
     assert.equal(ins.params.aceitaFoto, true);
     assert.equal(ins.params.mes[1], `${mes}-01`);
-    const nn = chamadas.filter((c) => /INSERT INTO acompanhamento_registro_orientacao/.test(c.sql));
+    const nn = chamadas.filter((c) => /INSERT INTO ASSOCIAL_acompanhamento_registro_orientacao/.test(c.sql));
     assert.deepEqual(nn.map((c) => c.params.o), [1, 5]);
     // uso fora da lista => 400 por campo
     const ruim = await srv.chamar('POST', '/acompanhamentos/100/registros', { ...valido, dataRegistro: hoje, usoArmazemId: 42 });
@@ -435,16 +435,16 @@ test('M1 criar registro com mês, uso do Armazém, orientações e aceite de fot
 });
 
 test('M1 criar registro sem os campos novos continua válido (mês = mês da data) e não consulta as listas', async () => {
-  handlers = [...baseHandlers(), { teste: /INSERT INTO acompanhamento_registro\s*\(/, resp: () => [{ id: 62 }] }];
+  handlers = [...baseHandlers(), { teste: /INSERT INTO ASSOCIAL_acompanhamento_registro\s*\(/, resp: () => [{ id: 62 }] }];
   chamadas.length = 0;
   const srv = await iniciar(coordenador);
   try {
     assert.equal((await srv.chamar('POST', '/acompanhamentos/100/registros', { ...valido, dataRegistro: hoje })).status, 201);
-    const ins = chamadas.find((c) => /INSERT INTO acompanhamento_registro\s*\(/.test(c.sql));
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_acompanhamento_registro\s*\(/.test(c.sql));
     assert.equal(ins.params.mes[1], `${hoje.slice(0, 7)}-01`);
     assert.equal(ins.params.uso, null);
     assert.equal(ins.params.aceitaFoto, false);
-    assert.ok(!chamadas.some((c) => /FROM uso_armazem/.test(c.sql)));
+    assert.ok(!chamadas.some((c) => /FROM ASSOCIAL_uso_armazem/.test(c.sql)));
   } finally { await srv.fechar(); }
 });
 
@@ -452,8 +452,8 @@ test('M1 listar registros devolve os campos novos, as listas de apoio e as fotos
   handlers = [
     ...baseHandlers(),
     { teste: /^\s*SELECT \(SELECT MAX\(v\.d\)/, resp: () => [{ ultimoContato: new Date('2026-03-05') }] },
-    { teste: /^\s*SELECT TOP 1 .*FROM acompanhamento_registro/s, resp: () => [] },
-    { teste: /FROM acompanhamento_registro r\s+JOIN tipo_contato/, resp: () => [{
+    { teste: /^\s*SELECT TOP 1 .*FROM ASSOCIAL_acompanhamento_registro/s, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r\s+JOIN ASSOCIAL_tipo_contato/, resp: () => [{
       id: 1, dataRegistro: new Date('2026-03-10'), mesReferencia: new Date('2026-03-01'), tipoContatoId: 1, tipoContatoNome: 'Visita domiciliar',
       houveContato: true, situacao: 'IGUAL', resumo: 'Obs', usuarioId: 20, autorNome: 'Ana', criadoEm: new Date(), alteradoEm: null,
       usoArmazemId: 1, usoArmazemNome: 'Utilizou regularmente', orientacaoOutro: null, familiaAceitaFoto: true,
@@ -488,8 +488,8 @@ test('M1 fotos do registro: outra unidade 404; sem o aceite da família 409; fot
 
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => [{ id: 1, acompanhamentoId: 100, usuarioId: 20, anuladoEm: null, dataRegistro: new Date('2026-03-10'), familiaAceitaFoto: false }] },
-    { teste: /FROM acompanhamento_registro_foto f/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => [{ id: 1, acompanhamentoId: 100, usuarioId: 20, anuladoEm: null, dataRegistro: new Date('2026-03-10'), familiaAceitaFoto: false }] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro_foto f/, resp: () => [] },
   ];
   srv = await iniciar(coordenador);
   try {
@@ -504,10 +504,10 @@ test('M1 editar: desmarcar o aceite com fotos anexadas é recusado', async () =>
   const registro = [{ id: 9, acompanhamentoId: 100, usuarioId: 20, anuladoEm: null, familiaAceitaFoto: true }];
   handlers = [
     ...baseHandlers(),
-    { teste: /FROM acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => registro },
-    { teste: /FROM acompanhamento_registro r JOIN tipo_contato tc ON tc\.id = r\.tipo_contato_id WHERE r\.id = @id/, resp: () => [{ id: 1, exigeTexto: false }] },
-    { teste: /COUNT\(\*\) AS n FROM acompanhamento_registro_foto/, resp: () => [{ n: 2 }] },
-    { teste: /^\s*UPDATE acompanhamento_registro/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro\s+WHERE id = @id AND acompanhamento_id = @ac/, resp: () => registro },
+    { teste: /FROM ASSOCIAL_acompanhamento_registro r JOIN ASSOCIAL_tipo_contato tc ON tc\.id = r\.tipo_contato_id WHERE r\.id = @id/, resp: () => [{ id: 1, exigeTexto: false }] },
+    { teste: /COUNT\(\*\) AS n FROM ASSOCIAL_acompanhamento_registro_foto/, resp: () => [{ n: 2 }] },
+    { teste: /^\s*UPDATE ASSOCIAL_acompanhamento_registro/, resp: () => [] },
   ];
   const srv = await iniciar(coordenador);
   try {

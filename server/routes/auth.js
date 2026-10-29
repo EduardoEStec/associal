@@ -53,7 +53,7 @@ router.post('/login', limitarLogin, async (req, res) => {
   lancarSeErros(falhas);
 
   const usuario = await consultarUm(
-    'SELECT id, senha_hash FROM usuario WHERE login = @login AND ativo = 1',
+    'SELECT id, senha_hash FROM ASSOCIAL_usuario WHERE login = @login AND ativo = 1',
     { login },
   );
   const hash = usuario && usuario.senhaHash !== '!' ? usuario.senhaHash : HASH_FALSO;
@@ -67,7 +67,7 @@ router.post('/login', limitarLogin, async (req, res) => {
   await regenerarSessao(req); // evita fixação de sessão
   req.session.usuarioId = usuario.id;
   await salvarSessao(req);
-  await consultar('UPDATE usuario SET ultimo_login_em = SYSUTCDATETIME() WHERE id = @id', { id: usuario.id });
+  await consultar('UPDATE ASSOCIAL_usuario SET ultimo_login_em = SYSUTCDATETIME() WHERE id = @id', { id: usuario.id });
 
   req.usuario = { id: usuario.id };
   await registrarAuditoria(req, 'LOGIN', 'usuario', usuario.id);
@@ -100,14 +100,14 @@ router.post('/senha', requireAuthSenhaPendente, async (req, res) => {
   else if (novaSenha === senhaAtual) falhas.novaSenha = 'A nova senha deve ser diferente da atual.';
   lancarSeErros(falhas);
 
-  const registro = await consultarUm('SELECT senha_hash FROM usuario WHERE id = @id', { id: req.usuario.id });
+  const registro = await consultarUm('SELECT senha_hash FROM ASSOCIAL_usuario WHERE id = @id', { id: req.usuario.id });
   const confere = registro && registro.senhaHash !== '!' && (await bcrypt.compare(senhaAtual, registro.senhaHash));
   if (!confere) throw erros.validacao({ senhaAtual: 'Senha atual incorreta.' });
 
   const novoHash = await bcrypt.hash(novaSenha, CUSTO_BCRYPT);
   const sessoesEncerradas = await transacao(async (tx) => {
     await tx.consultar(
-      `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 0,
+      `UPDATE ASSOCIAL_usuario SET senha_hash = @hash, deve_trocar_senha = 0,
               alterado_por = @id, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
       { hash: novoHash, id: req.usuario.id },

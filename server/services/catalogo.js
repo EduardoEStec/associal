@@ -53,7 +53,7 @@ function montarCatalogo(perguntas, opcoes) {
   for (const p of perguntas) {
     const lista = porPergunta.get(p.id) || [];
     if (m1.FORMULARIOS_M1.includes(p.formulario)) {
-      // modelos M1: perguntas oficiais e adicionais juntas (todas respondidas em dbo.resposta_extra)
+      // modelos M1: perguntas oficiais e adicionais juntas (todas respondidas em dbo.ASSOCIAL_resposta_extra)
       const padrao = m1.PERGUNTAS_PADRAO[p.formulario].find((x) => x.codigo === p.codigo);
       cat.m1[p.formulario].push({
         id: p.id, formulario: p.formulario, codigo: p.codigo, campo: p.campo || null, oficial: booleano(p.oficial),
@@ -91,11 +91,11 @@ function montarCatalogo(perguntas, opcoes) {
 async function carregar() {
   const perguntas = await consultar(
     `SELECT id, formulario, secao, codigo, oficial, campo, tipo, texto, texto_final, ajuda, obrigatoria, ordem, ativa
-       FROM catalogo_pergunta ORDER BY formulario, secao, ordem, id`);
+       FROM ASSOCIAL_catalogo_pergunta ORDER BY formulario, secao, ordem, id`);
   const opcoes = await consultar(
     `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao, o.pontos, o.pede_detalhe,
             o.equivale_a_id, eq.codigo AS equivale_codigo, eq.posicao AS equivale_posicao, eq.pontos AS equivale_pontos
-       FROM catalogo_opcao o LEFT JOIN catalogo_opcao eq ON eq.id = o.equivale_a_id
+       FROM ASSOCIAL_catalogo_opcao o LEFT JOIN ASSOCIAL_catalogo_opcao eq ON eq.id = o.equivale_a_id
       ORDER BY o.pergunta_id, o.ordem, o.id`);
   estado.definir(montarCatalogo(perguntas, opcoes));
 }

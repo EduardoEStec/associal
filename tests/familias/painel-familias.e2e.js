@@ -60,41 +60,41 @@ async function travaDeSeguranca() {
 // Só apaga o que este teste criou: pessoas com CPF de teste E nome com o prefixo; usuários f6_*.
 async function limpar() {
   const params = Object.fromEntries(CPF_LISTA.map((c, i) => [`c${i}`, c]));
-  const pessoas = (await db.consultar(`SELECT id FROM pessoa WHERE cpf IN (${CPF_LISTA.map((_, i) => `@c${i}`).join(', ')}) AND nome LIKE '${PREFIXO}%'`, params)).map((p) => p.id);
+  const pessoas = (await db.consultar(`SELECT id FROM ASSOCIAL_pessoa WHERE cpf IN (${CPF_LISTA.map((_, i) => `@c${i}`).join(', ')}) AND nome LIKE '${PREFIXO}%'`, params)).map((p) => p.id);
   for (const pid of pessoas) {
-    for (const f of await db.consultar('SELECT id FROM familia WHERE responsavel_pessoa_id = @pid', { pid })) {
-      for (const ac of await db.consultar('SELECT id FROM acompanhamento WHERE familia_id = @f', { f: f.id })) {
-        await db.consultar('DELETE FROM pesquisa_resposta WHERE acompanhamento_id = @ac', { ac: ac.id });
-        await db.consultar('DELETE FROM acompanhamento_registro WHERE acompanhamento_id = @ac', { ac: ac.id });
-        await db.consultar('DELETE FROM acompanhamento_meta WHERE acompanhamento_id = @ac', { ac: ac.id });
-        await db.consultar('DELETE FROM questionario WHERE acompanhamento_id = @ac', { ac: ac.id }); // o instantâneo sai em cascata
-        await db.consultar('DELETE FROM acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: ac.id });
-        await db.consultar("DELETE FROM auditoria WHERE tabela IN ('acompanhamento', 'acompanhamento_registro', 'pesquisa_resposta', 'acompanhamento_meta') AND registro_id = @ac", { ac: String(ac.id) });
-        await db.consultar('DELETE FROM acompanhamento WHERE id = @ac', { ac: ac.id });
+    for (const f of await db.consultar('SELECT id FROM ASSOCIAL_familia WHERE responsavel_pessoa_id = @pid', { pid })) {
+      for (const ac of await db.consultar('SELECT id FROM ASSOCIAL_acompanhamento WHERE familia_id = @f', { f: f.id })) {
+        await db.consultar('DELETE FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac', { ac: ac.id });
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_registro WHERE acompanhamento_id = @ac', { ac: ac.id });
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @ac', { ac: ac.id });
+        await db.consultar('DELETE FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac', { ac: ac.id }); // o instantâneo sai em cascata
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: ac.id });
+        await db.consultar("DELETE FROM ASSOCIAL_auditoria WHERE tabela IN ('acompanhamento', 'acompanhamento_registro', 'pesquisa_resposta', 'acompanhamento_meta') AND registro_id = @ac", { ac: String(ac.id) });
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento WHERE id = @ac', { ac: ac.id });
       }
-      await db.consultar('DELETE FROM familia_membro WHERE familia_id = @f', { f: f.id });
-      await db.consultar('DELETE FROM familia WHERE id = @f', { f: f.id });
+      await db.consultar('DELETE FROM ASSOCIAL_familia_membro WHERE familia_id = @f', { f: f.id });
+      await db.consultar('DELETE FROM ASSOCIAL_familia WHERE id = @f', { f: f.id });
     }
-    await db.consultar('DELETE FROM atendimento WHERE pessoa_id = @pid', { pid });
-    await db.consultar('DELETE FROM pessoa WHERE id = @pid', { pid });
+    await db.consultar('DELETE FROM ASSOCIAL_atendimento WHERE pessoa_id = @pid', { pid });
+    await db.consultar('DELETE FROM ASSOCIAL_pessoa WHERE id = @pid', { pid });
   }
-  for (const u of await db.consultar("SELECT id FROM usuario WHERE login LIKE 'f6[_]%'")) {
+  for (const u of await db.consultar("SELECT id FROM ASSOCIAL_usuario WHERE login LIKE 'f6[_]%'")) {
     const id = u.id;
-    await db.consultar("DELETE FROM sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
-    await db.consultar('DELETE FROM usuario_unidade WHERE usuario_id = @id', { id });
-    await db.consultar('DELETE FROM auditoria WHERE usuario_id = @id', { id });
-    await db.consultar('UPDATE usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
-    await db.consultar('UPDATE configuracao SET alterado_por = NULL WHERE alterado_por = @id', { id });
-    await db.consultar('DELETE FROM usuario WHERE id = @id', { id });
+    await db.consultar("DELETE FROM ASSOCIAL_sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario_unidade WHERE usuario_id = @id', { id });
+    await db.consultar('DELETE FROM ASSOCIAL_auditoria WHERE usuario_id = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_configuracao SET alterado_por = NULL WHERE alterado_por = @id', { id });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario WHERE id = @id', { id });
   }
 }
 
 async function criarUsuario(login, perfil, unidadeId) {
   const hash = await bcrypt.hash(SENHA, 10);
   const [u] = await db.consultar(
-    `INSERT INTO usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
-     OUTPUT INSERTED.id VALUES (@login, @login, @hash, (SELECT id FROM perfil WHERE codigo = @perfil), 0, 1)`, { login, hash, perfil });
-  if (unidadeId) await db.consultar('INSERT INTO usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
+    `INSERT INTO ASSOCIAL_usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
+     OUTPUT INSERTED.id VALUES (@login, @login, @hash, (SELECT id FROM ASSOCIAL_perfil WHERE codigo = @perfil), 0, 1)`, { login, hash, perfil });
+  if (unidadeId) await db.consultar('INSERT INTO ASSOCIAL_usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
   return u.id;
 }
 
@@ -121,18 +121,18 @@ const itensPesquisa = (nps, likert, textos = []) => [
 (async () => {
   await travaDeSeguranca();
   const params = Object.fromEntries(CPF_LISTA.map((c, i) => [`c${i}`, c]));
-  const colisao = await db.consultar(`SELECT cpf, nome FROM pessoa WHERE cpf IN (${CPF_LISTA.map((_, i) => `@c${i}`).join(', ')}) AND nome NOT LIKE '${PREFIXO}%'`, params);
+  const colisao = await db.consultar(`SELECT cpf, nome FROM ASSOCIAL_pessoa WHERE cpf IN (${CPF_LISTA.map((_, i) => `@c${i}`).join(', ')}) AND nome NOT LIKE '${PREFIXO}%'`, params);
   if (colisao.length) { console.error('RECUSADO: CPF de teste já pertence a dados que este teste não criou:', colisao.map((c) => c.nome).join(', ')); process.exit(3); }
   await limpar();
 
-  const [uA, uB] = await db.consultar('SELECT TOP 2 id, sigla FROM unidade WHERE ativo = 1 ORDER BY id');
+  const [uA, uB] = await db.consultar('SELECT TOP 2 id, sigla FROM ASSOCIAL_unidade WHERE ativo = 1 ORDER BY id');
   assert.ok(uA && uB, 'precisa de 2 unidades');
   await criarUsuario('f6_assist_a', 'ASSISTENTE', uA.id);
   await criarUsuario('f6_assist_b', 'ASSISTENTE', uB.id);
   await criarUsuario('f6_coord', 'COORDENADOR');
   await criarUsuario('f6_admin', 'ADMIN');
   const original = {};
-  for (const l of await db.consultar(`SELECT chave, valor FROM configuracao WHERE chave IN (${CONFIGS.map((c) => `'${c}'`).join(', ')})`)) original[l.chave] = l.valor;
+  for (const l of await db.consultar(`SELECT chave, valor FROM ASSOCIAL_configuracao WHERE chave IN (${CONFIGS.map((c) => `'${c}'`).join(', ')})`)) original[l.chave] = l.valor;
   assert.strictEqual(Object.keys(original).length, CONFIGS.length, 'as configurações da F4, F5 e F6 existem (migrações 082 a 084)');
 
   if (await fetch(`${BASE}/api/saude`).then((r) => r.ok, () => false)) throw new Error(`a porta ${PORTA} já está em uso; defina TESTE_PORT`);
@@ -176,7 +176,7 @@ const itensPesquisa = (nps, likert, textos = []) => [
       await q(a, 'A3', 'INICIAL', inicialBoa(dias(-60))); await q(a, 'A3', 'FINAL', finalPobre(dias(-10)));
       await q(b, 'B1', 'INICIAL', inicialPobre(dias(-60))); await q(b, 'B1', 'FINAL', finalBoa(dias(-10)));
       await q(a, 'A5', 'INICIAL', inicialPobre(dias(-60)));
-      const [n] = await db.consultar(`SELECT COUNT(*) AS n FROM acompanhamento_indice WHERE acompanhamento_id IN (${Object.values(ac).join(', ')})`);
+      const [n] = await db.consultar(`SELECT COUNT(*) AS n FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id IN (${Object.values(ac).join(', ')})`);
       assert.strictEqual(n.n, 5 * 9, '9 questionários concluídos × 5 linhas (geral e 4 dimensões)');
     });
 
@@ -407,9 +407,9 @@ const itensPesquisa = (nps, likert, textos = []) => [
     console.log(`\n${ok} testes OK`);
   } finally {
     servidor.kill();
-    for (const [chave, valor] of Object.entries(original)) await db.consultar('UPDATE configuracao SET valor = @v WHERE chave = @c', { v: valor, c: chave }).catch(() => {});
+    for (const [chave, valor] of Object.entries(original)) await db.consultar('UPDATE ASSOCIAL_configuracao SET valor = @v WHERE chave = @c', { v: valor, c: chave }).catch(() => {});
     await limpar();
-    const [restos] = await db.consultar("SELECT COUNT(*) AS n FROM usuario WHERE login LIKE 'f6[_]%'");
+    const [restos] = await db.consultar("SELECT COUNT(*) AS n FROM ASSOCIAL_usuario WHERE login LIKE 'f6[_]%'");
     console.log(`Limpeza: usuários de teste restantes = ${restos.n}`);
     await db.fechar();
   }

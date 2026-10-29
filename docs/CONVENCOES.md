@@ -181,13 +181,16 @@ try {
 
 ## 5. Banco de dados
 
+- **Prefixo `ASSOCIAL_`**: o banco de produção (INTERNO) é compartilhado com outros sistemas, então toda tabela é `dbo.ASSOCIAL_<nome>` (`ASSOCIAL_familia`, `ASSOCIAL_sessao`...) e **todo nome de constraint** (`PK_/UQ_/FK_/DF_/CK_`, únicos por schema no SQL Server) também: `ASSOCIAL_pk_familia`, `ASSOCIAL_fk_...`. Índices (`ix_/ux_`) só precisam ser únicos por tabela e ficam sem prefixo. Nas consultas escreva sempre `FROM ASSOCIAL_pessoa p` (as tabelas de apoio dinâmicas, `ASSOCIAL_${tabela}`, vêm de whitelist). Os nomes **lógicos** (rotas `/api/admin/apoio/tipo_acao`, `auditoria.tabela`, chaves JSON) não levam o prefixo.
+- **Collation**: o banco compartilhado é `SQL_Latin1_General_CP1_CI_AS` (sensível a acento). Por isso **toda coluna `CHAR/VARCHAR/NCHAR/NVARCHAR`** — em `CREATE TABLE`, `ADD` e também em `ALTER COLUMN` (que, sem `COLLATE`, volta à collation do banco) — declara `COLLATE Latin1_General_100_CI_AI`, para a busca por nome ignorar acento e caixa ("joao" acha "João"). Tabela temporária (`#t`) e variável de tabela não herdam a collation das colunas: declare `COLLATE Latin1_General_100_CI_AI` nelas também, senão dá "collation conflict" ao juntar com as tabelas ASSOCIAL_.
+- `000_prefixo_associal.sql` converte o layout antigo (sem prefixo) e só age se reconhecer a assinatura do ASSOCIAL antigo; não toca tabelas de outros sistemas com nomes parecidos.
 - Scripts em `database/NNN_*.sql`, **idempotentes** (`IF OBJECT_ID(N'dbo.x', N'U') IS NULL CREATE TABLE ...`, `IF NOT EXISTS (SELECT 1 FROM sys.indexes ...)`), lotes separados por `GO`. Para alterar tabela existente: `IF COL_LENGTH('dbo.tabela', 'coluna') IS NULL ALTER TABLE ... ADD ...`.
 - Toda tabela principal tem `criado_por/criado_em/alterado_por/alterado_em` (UTC). Tabelas de apoio têm `ordem`, `ativo`, `exige_texto` — **desative em vez de apagar** opções já usadas.
 - Respostas fechadas do questionário familiar são códigos (`CHECK`) — tabela de códigos e rótulos em `server/lib/dominios.js` (`QUESTIONARIO`). Perguntas múltiplas: `questionario_beneficio` (1d) e `questionario_destino_economia` (3c); os textos "outro/outras" ficam em `auxilio_outro` e `destino_economia_outro`.
 - Atendimento: múltiplas em `atendimento_demanda`, `atendimento_vulnerabilidade`, `atendimento_encaminhamento`; textos "Outra/Outros" em `demanda_outra`, `vulnerabilidade_outra`, `encaminhamento_outro`.
 - Ação/visita: até 4 temas (`acao_visita_tema.ordem` 1..4 impõe o limite), fotos em `acao_visita_foto` (arquivo em `UPLOAD_DIR`).
 - Configurações em `dbo.configuracao` (`chave/valor`): `prazo_questionario_final_dias` (padrão 90), `alerta_questionario_final_dias_antes` (15), `upload_max_mb` (10), `nome_entidade`, `termo_colaboracao`.
-- Sessões ficam em `dbo.sessao`; usuários inativos perdem o acesso imediatamente (o `requireAuth` consulta o usuário a cada requisição).
+- Sessões ficam em `dbo.ASSOCIAL_sessao`; usuários inativos perdem o acesso imediatamente (o `requireAuth` consulta o usuário a cada requisição).
 
 ## 6. Checklist antes de entregar um módulo
 

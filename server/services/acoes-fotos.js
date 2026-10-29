@@ -19,7 +19,7 @@ const MAX_FOTOS_POR_ACAO = 40;
 const diretorio = () => path.join(config.uploadDir, 'acoes');
 
 async function limiteMb() {
-  const linha = await consultarUm("SELECT valor FROM configuracao WHERE chave = 'upload_max_mb'");
+  const linha = await consultarUm("SELECT valor FROM ASSOCIAL_configuracao WHERE chave = 'upload_max_mb'");
   const n = Number(linha?.valor);
   return Number.isFinite(n) && n > 0 ? n : 10;
 }

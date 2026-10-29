@@ -30,7 +30,7 @@ Pré-requisitos: Node.js 22+ e um SQL Server acessível.
 ```bash
 npm install
 cp .env.example .env          # edite DB_*, SESSION_SECRET, ADMIN_SENHA_INICIAL
-npm run db:migrate            # cria o banco ASSOCIAL, as tabelas, os dados iniciais e o usuário admin
+npm run db:migrate            # cria o banco (se não existir), as tabelas dbo.ASSOCIAL_*, os dados iniciais e o usuário admin
 npm run dev                   # http://localhost:3000  (reinicia ao salvar)
 # produção: npm start
 ```
@@ -65,7 +65,8 @@ docker compose exec app npm run db:migrate
 
 `npm run db:migrate` executa, em ordem, todos os `database/NNN_*.sql` (todos **idempotentes** — pode rodar quantas vezes quiser):
 
-1. cria o banco `DB_NAME` se não existir (o usuário do `.env` precisa de permissão `CREATE DATABASE`; senão crie o banco vazio antes);
+1. cria o banco `DB_NAME` se não existir (o usuário do `.env` precisa de permissão `CREATE DATABASE`; senão crie o banco vazio antes). Em produção `DB_NAME=INTERNO`, banco **compartilhado** que já existe: o ASSOCIAL só cria as suas tabelas, todas com prefixo `ASSOCIAL_` (`dbo.ASSOCIAL_pessoa`, `dbo.ASSOCIAL_sessao`...);
+1a. `000_prefixo_associal.sql`: se o banco ainda tem o layout antigo (tabelas sem prefixo, caso do Docker de teste antigo), renomeia as 50 tabelas e suas constraints preservando os dados; em banco novo ou já convertido não faz nada;
 2. roda `001_schema.sql` (tabelas, índices, constraints) e `002_seed.sql` (7 unidades, opções das listas, configurações padrão, usuário `admin`);
 3. define a senha inicial do `admin` (ver abaixo).
 

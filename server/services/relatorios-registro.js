@@ -84,29 +84,29 @@ function montarDocumento({ responsavel, linhas, profissional }, edicoes = {}) {
 
 async function coletar(req, acompanhamentoId) {
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
-  const unidade = await consultarUm('SELECT sigla, nome FROM unidade WHERE id = @id', { id: ac.unidadeId });
+  const unidade = await consultarUm('SELECT sigla, nome FROM ASSOCIAL_unidade WHERE id = @id', { id: ac.unidadeId });
   const responsavel = await consultarUm(
     `SELECT p.nome, p.cpf, p.nis, p.telefone, p.telefone2, p.endereco, p.bairro
-       FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @familiaId`,
+       FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @familiaId`,
     { familiaId: ac.familiaId });
   const registros = await consultar(
     `SELECT r.id, r.data_registro, r.mes_referencia, tc.nome AS tipo_contato_nome, r.tipo_contato_outro, r.houve_contato,
             r.resumo, r.orientacao_outro, ua.nome AS uso_armazem_nome,
             (SELECT STRING_AGG(o.nome, N'; ') WITHIN GROUP (ORDER BY o.ordem, o.nome)
-               FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+               FROM ASSOCIAL_acompanhamento_registro_orientacao ro JOIN ASSOCIAL_orientacao_registro o ON o.id = ro.orientacao_id
               WHERE ro.registro_id = r.id AND o.exige_texto = 0) AS orientacoes_texto,
-            (SELECT MIN(o.nome) FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+            (SELECT MIN(o.nome) FROM ASSOCIAL_acompanhamento_registro_orientacao ro JOIN ASSOCIAL_orientacao_registro o ON o.id = ro.orientacao_id
               WHERE ro.registro_id = r.id AND o.exige_texto = 1) AS orientacao_outro_nome
-       FROM acompanhamento_registro r
-       JOIN tipo_contato tc ON tc.id = r.tipo_contato_id
-       LEFT JOIN uso_armazem ua ON ua.id = r.uso_armazem_id
+       FROM ASSOCIAL_acompanhamento_registro r
+       JOIN ASSOCIAL_tipo_contato tc ON tc.id = r.tipo_contato_id
+       LEFT JOIN ASSOCIAL_uso_armazem ua ON ua.id = r.uso_armazem_id
       WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL
       ORDER BY COALESCE(r.mes_referencia, DATEFROMPARTS(YEAR(r.data_registro), MONTH(r.data_registro), 1)), r.data_registro, r.id`,
     { id: ac.id });
   const fotos = registros.length
     ? await consultar(
       `SELECT f.id, f.registro_id, f.arquivo, f.legenda, f.data_foto
-         FROM acompanhamento_registro_foto f JOIN acompanhamento_registro r ON r.id = f.registro_id
+         FROM ASSOCIAL_acompanhamento_registro_foto f JOIN ASSOCIAL_acompanhamento_registro r ON r.id = f.registro_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL
         ORDER BY f.data_foto, f.registro_id, f.ordem, f.id`,
       { id: ac.id })

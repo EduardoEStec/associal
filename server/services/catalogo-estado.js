@@ -142,7 +142,7 @@ function pontosM1(formulario, codigoPergunta, codigoOpcao) {
 // ---------- extras ----------
 
 // Definições ATIVAS, em ordem (seção, ordem). Nos formulários M1 inclui também as perguntas oficiais (todas são respondidas
-// da mesma forma: dbo.resposta_extra); nos demais, só as adicionais criadas pela coordenação.
+// da mesma forma: dbo.ASSOCIAL_resposta_extra); nos demais, só as adicionais criadas pela coordenação.
 function extras(formulario) {
   if (m1.FORMULARIOS_M1.includes(formulario)) return m1Ativas(formulario);
   return (atual.extras[formulario] || []).filter((d) => d.ativa).sort((a, b) => a.secao - b.secao || a.ordem - b.ordem || a.id - b.id);

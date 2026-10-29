@@ -17,7 +17,7 @@ const DIMENSOES_GRAVADAS = ['GERAL', ...regras.DIMENSOES];
 // { tolerancia, salarioMinimo, reavaliacaoDias } (configuração editável, com padrão se ausente/inválida)
 async function lerParametros(executor = { consultar }) {
   const linhas = await executor.consultar(
-    "SELECT chave, valor FROM configuracao WHERE chave IN ('indice_tolerancia_pontos', 'salario_minimo_referencia', 'reavaliacao_dias')");
+    "SELECT chave, valor FROM ASSOCIAL_configuracao WHERE chave IN ('indice_tolerancia_pontos', 'salario_minimo_referencia', 'reavaliacao_dias')");
   const mapa = Object.fromEntries(linhas.map((l) => [l.chave, Number(l.valor)]));
   const positivo = (v, padrao) => (Number.isFinite(v) && v > 0 ? v : padrao);
   return {
@@ -27,8 +27,8 @@ async function lerParametros(executor = { consultar }) {
   };
 }
 
-// Respostas de um questionário (linha de dbo.questionario) no formato que o cálculo espera:
-// LEGADO -> campos das colunas fixas; M1 -> { modelo: 'M1', mapa: { "<código>": resposta } } lido de dbo.resposta_extra.
+// Respostas de um questionário (linha de dbo.ASSOCIAL_questionario) no formato que o cálculo espera:
+// LEGADO -> campos das colunas fixas; M1 -> { modelo: 'M1', mapa: { "<código>": resposta } } lido de dbo.ASSOCIAL_resposta_extra.
 async function respostasDoQuestionario(executor, q) {
   if (q.modelo !== 'M1') return montarRespostas(q);
   const { mapa } = await extras.carregarRespostas(executor, formularioDoTipo(q.tipo), q.id);
@@ -40,14 +40,14 @@ async function respostasDoQuestionario(executor, q) {
 async function gravarInstantaneo(executor, { acompanhamentoId, questionarioId, tipo, dataRef, respostas }) {
   const { salarioMinimo } = await lerParametros(executor);
   const calc = regras.calcularIndice(respostas, { tipo, salarioMinimo });
-  await executor.consultar('DELETE FROM acompanhamento_indice WHERE questionario_id = @q', { q: questionarioId });
+  await executor.consultar('DELETE FROM ASSOCIAL_acompanhamento_indice WHERE questionario_id = @q', { q: questionarioId });
   const parametros = JSON.stringify(calc.parametros);
   for (const dim of DIMENSOES_GRAVADAS) {
     const d = dim === 'GERAL'
       ? { nivel: calc.geral.nivel, itensValidos: calc.geral.dimensoes, itensTotal: calc.geral.dimensoesTotal ?? regras.DIMENSOES.length }
       : calc.dimensoes[dim];
     await executor.consultar(
-      `INSERT INTO acompanhamento_indice (acompanhamento_id, questionario_id, tipo, data_ref, dimensao, nivel, itens_validos, itens_total, versao_regra, parametros)
+      `INSERT INTO ASSOCIAL_acompanhamento_indice (acompanhamento_id, questionario_id, tipo, data_ref, dimensao, nivel, itens_validos, itens_total, versao_regra, parametros)
        VALUES (@ac, @q, @tipo, @data, @dim, @nivel, @validos, @total, @versao, @parametros)`,
       {
         ac: acompanhamentoId, q: questionarioId, tipo, data: [tipos.Date, dataRef], dim,
@@ -61,7 +61,7 @@ async function gravarInstantaneo(executor, { acompanhamentoId, questionarioId, t
 // Refaz o instantâneo de todos os questionários concluídos (script de recálculo e testes). Devolve a quantidade.
 async function recalcularTodos(executor = { consultar }) {
   await catalogo.carregar(); // fora do servidor (script, teste) o catálogo em memória ainda não foi carregado: as respostas M1 dependem dele
-  const linhas = await executor.consultar('SELECT * FROM questionario WHERE concluido = 1 ORDER BY id');
+  const linhas = await executor.consultar('SELECT * FROM ASSOCIAL_questionario WHERE concluido = 1 ORDER BY id');
   for (const q of linhas) {
     await gravarInstantaneo(executor, {
       acompanhamentoId: q.acompanhamentoId, questionarioId: q.id, tipo: q.tipo, dataRef: isoData(q.dataAplicacao),
@@ -93,10 +93,10 @@ async function obterIndicadores(req, acompanhamentoId) {
   const hoje = hojeIso();
   const params = await lerParametros();
 
-  const questionarios = await consultar('SELECT * FROM questionario WHERE acompanhamento_id = @ac', { ac: ac.id });
+  const questionarios = await consultar('SELECT * FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac', { ac: ac.id });
   const concluidos = questionarios.filter((q) => q.concluido);
   const instantaneo = concluidos.length
-    ? await consultar('SELECT * FROM acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: ac.id })
+    ? await consultar('SELECT * FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: ac.id })
     : [];
 
   const pontos = [];
@@ -120,7 +120,7 @@ async function obterIndicadores(req, acompanhamentoId) {
   const evolucao = regras.montarEvolucao(pontos, params.tolerancia);
 
   const situacoes = await consultar(
-    `SELECT data_registro, situacao FROM acompanhamento_registro
+    `SELECT data_registro, situacao FROM ASSOCIAL_acompanhamento_registro
       WHERE acompanhamento_id = @ac AND houve_contato = 1 AND anulado_em IS NULL AND situacao IN ('MELHORANDO', 'IGUAL', 'PIORANDO')
       ORDER BY data_registro, id`, { ac: ac.id });
 

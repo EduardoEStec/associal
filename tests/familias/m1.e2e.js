@@ -76,49 +76,49 @@ async function travaDeSeguranca() {
 // ---------- limpeza: só o que este teste criou (prefixo exclusivo) ----------
 async function limpar() {
   const pessoas = (await db.consultar(
-    "SELECT id FROM pessoa WHERE cpf IN (@a, @b, @c, @d) AND nome LIKE 'Teste M1E2E%'", { a: CPF_A, b: CPF_B, c: CPF_C, d: CPF_D })).map((p) => p.id);
+    "SELECT id FROM ASSOCIAL_pessoa WHERE cpf IN (@a, @b, @c, @d) AND nome LIKE 'Teste M1E2E%'", { a: CPF_A, b: CPF_B, c: CPF_C, d: CPF_D })).map((p) => p.id);
   for (const pid of pessoas) {
-    const fams = (await db.consultar('SELECT id FROM familia WHERE responsavel_pessoa_id = @pid', { pid })).map((f) => f.id);
+    const fams = (await db.consultar('SELECT id FROM ASSOCIAL_familia WHERE responsavel_pessoa_id = @pid', { pid })).map((f) => f.id);
     for (const fid of fams) {
-      const acs = (await db.consultar('SELECT id FROM acompanhamento WHERE familia_id = @fid', { fid })).map((a) => a.id);
+      const acs = (await db.consultar('SELECT id FROM ASSOCIAL_acompanhamento WHERE familia_id = @fid', { fid })).map((a) => a.id);
       for (const ac of acs) {
-        await db.consultar('DELETE FROM pesquisa_resposta_item WHERE resposta_id IN (SELECT id FROM pesquisa_resposta WHERE acompanhamento_id = @ac)', { ac });
-        await db.consultar('DELETE FROM pesquisa_resposta WHERE acompanhamento_id = @ac', { ac });
-        await db.consultar('DELETE FROM acompanhamento_registro WHERE acompanhamento_id = @ac', { ac });
-        await db.consultar('DELETE FROM questionario WHERE acompanhamento_id = @ac', { ac }); // instantâneo e respostas saem em cascata
-        await db.consultar('DELETE FROM acompanhamento_indice WHERE acompanhamento_id = @ac', { ac });
-        await db.consultar("DELETE FROM auditoria WHERE tabela IN ('acompanhamento', 'acompanhamento_registro', 'pesquisa_resposta', 'questionario') AND registro_id = @ac", { ac: String(ac) });
-        await db.consultar('DELETE FROM acompanhamento WHERE id = @ac', { ac });
+        await db.consultar('DELETE FROM ASSOCIAL_pesquisa_resposta_item WHERE resposta_id IN (SELECT id FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac)', { ac });
+        await db.consultar('DELETE FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac', { ac });
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_registro WHERE acompanhamento_id = @ac', { ac });
+        await db.consultar('DELETE FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac', { ac }); // instantâneo e respostas saem em cascata
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id = @ac', { ac });
+        await db.consultar("DELETE FROM ASSOCIAL_auditoria WHERE tabela IN ('acompanhamento', 'acompanhamento_registro', 'pesquisa_resposta', 'questionario') AND registro_id = @ac", { ac: String(ac) });
+        await db.consultar('DELETE FROM ASSOCIAL_acompanhamento WHERE id = @ac', { ac });
       }
-      await db.consultar('DELETE FROM familia_membro WHERE familia_id = @fid', { fid });
-      await db.consultar('DELETE FROM familia WHERE id = @fid', { fid });
+      await db.consultar('DELETE FROM ASSOCIAL_familia_membro WHERE familia_id = @fid', { fid });
+      await db.consultar('DELETE FROM ASSOCIAL_familia WHERE id = @fid', { fid });
     }
-    await db.consultar('DELETE FROM atendimento WHERE pessoa_id = @pid', { pid });
-    await db.consultar('DELETE FROM pessoa WHERE id = @pid', { pid });
+    await db.consultar('DELETE FROM ASSOCIAL_atendimento WHERE pessoa_id = @pid', { pid });
+    await db.consultar('DELETE FROM ASSOCIAL_pessoa WHERE id = @pid', { pid });
   }
   await db.consultar(
-    `DELETE FROM resposta_extra WHERE pergunta_id IN (SELECT id FROM catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p)
-        OR opcao_id IN (SELECT id FROM catalogo_opcao WHERE texto LIKE @p)`, { p: `${PREFIXO}%` });
-  await db.consultar('DELETE FROM catalogo_opcao WHERE base = 0 AND (texto LIKE @p OR pergunta_id IN (SELECT id FROM catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p))', { p: `${PREFIXO}%` });
-  await db.consultar('DELETE FROM catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p', { p: `${PREFIXO}%` });
-  const ids = (await db.consultar("SELECT id FROM usuario WHERE login LIKE 'm1[_]%'")).map((u) => u.id);
+    `DELETE FROM ASSOCIAL_resposta_extra WHERE pergunta_id IN (SELECT id FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p)
+        OR opcao_id IN (SELECT id FROM ASSOCIAL_catalogo_opcao WHERE texto LIKE @p)`, { p: `${PREFIXO}%` });
+  await db.consultar('DELETE FROM ASSOCIAL_catalogo_opcao WHERE base = 0 AND (texto LIKE @p OR pergunta_id IN (SELECT id FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p))', { p: `${PREFIXO}%` });
+  await db.consultar('DELETE FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 0 AND texto LIKE @p', { p: `${PREFIXO}%` });
+  const ids = (await db.consultar("SELECT id FROM ASSOCIAL_usuario WHERE login LIKE 'm1[_]%'")).map((u) => u.id);
   for (const id of ids) {
-    await db.consultar("DELETE FROM sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
-    await db.consultar('DELETE FROM usuario_unidade WHERE usuario_id = @id', { id });
-    await db.consultar('DELETE FROM auditoria WHERE usuario_id = @id', { id });
-    await db.consultar('UPDATE usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
-    await db.consultar('UPDATE catalogo_pergunta SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
-    await db.consultar('UPDATE catalogo_opcao SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
-    await db.consultar('DELETE FROM usuario WHERE id = @id', { id });
+    await db.consultar("DELETE FROM ASSOCIAL_sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario_unidade WHERE usuario_id = @id', { id });
+    await db.consultar('DELETE FROM ASSOCIAL_auditoria WHERE usuario_id = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_catalogo_pergunta SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_catalogo_opcao SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario WHERE id = @id', { id });
   }
 }
 
 async function criarUsuario(login, perfil, unidadeId) {
   const hash = await bcrypt.hash(SENHA, 10);
   const [u] = await db.consultar(
-    `INSERT INTO usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
-     OUTPUT INSERTED.id VALUES (@login, @nome, @hash, (SELECT id FROM perfil WHERE codigo = @perfil), 0, 1)`, { login, nome: `Teste ${login}`, hash, perfil });
-  if (unidadeId) await db.consultar('INSERT INTO usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
+    `INSERT INTO ASSOCIAL_usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
+     OUTPUT INSERTED.id VALUES (@login, @nome, @hash, (SELECT id FROM ASSOCIAL_perfil WHERE codigo = @perfil), 0, 1)`, { login, nome: `Teste ${login}`, hash, perfil });
+  if (unidadeId) await db.consultar('INSERT INTO ASSOCIAL_usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
   return u.id;
 }
 
@@ -137,15 +137,15 @@ const textoXml = (xml) => xml.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').
 
 (async () => {
   await travaDeSeguranca();
-  const colisao = await db.consultar("SELECT cpf, nome FROM pessoa WHERE cpf IN (@a, @b, @c, @d) AND nome NOT LIKE 'Teste M1E2E%'", { a: CPF_A, b: CPF_B, c: CPF_C, d: CPF_D });
+  const colisao = await db.consultar("SELECT cpf, nome FROM ASSOCIAL_pessoa WHERE cpf IN (@a, @b, @c, @d) AND nome NOT LIKE 'Teste M1E2E%'", { a: CPF_A, b: CPF_B, c: CPF_C, d: CPF_D });
   if (colisao.length) { console.error('RECUSADO: CPF de teste já pertence a dados que este teste não criou:', colisao.map((c) => c.nome).join(', ')); process.exit(3); }
   await limpar();
 
-  const [uA] = await db.consultar('SELECT TOP 1 id, sigla FROM unidade WHERE ativo = 1 ORDER BY id');
+  const [uA] = await db.consultar('SELECT TOP 1 id, sigla FROM ASSOCIAL_unidade WHERE ativo = 1 ORDER BY id');
   await criarUsuario('m1_assist', 'ASSISTENTE', uA.id);
   await criarUsuario('m1_coord', 'COORDENADOR');
-  const textosOriginais = await db.consultar("SELECT id, texto FROM catalogo_pergunta WHERE oficial = 1 AND formulario LIKE 'QUESTIONARIO[_]%'");
-  const legado = await db.consultar("SELECT TOP 1 ac.id FROM acompanhamento ac WHERE EXISTS (SELECT 1 FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.modelo = 'LEGADO' AND q.concluido = 1) ORDER BY ac.id");
+  const textosOriginais = await db.consultar("SELECT id, texto FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 1 AND formulario LIKE 'QUESTIONARIO[_]%'");
+  const legado = await db.consultar("SELECT TOP 1 ac.id FROM ASSOCIAL_acompanhamento ac WHERE EXISTS (SELECT 1 FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.modelo = 'LEGADO' AND q.concluido = 1) ORDER BY ac.id");
 
   if (await fetch(`${BASE}/api/saude`).then((r) => r.ok, () => false)) throw new Error(`a porta ${PORTA} já está em uso; defina TESTE_PORT`);
   const servidor = spawn(process.execPath, ['server/index.js'], {
@@ -161,16 +161,16 @@ const textoXml = (xml) => xml.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').
 
     // =====================================================================
     await teste('migração 086: catálogo dos modelos semeado (14 perguntas no inicial, 21 no final, 3.2 com a faixa 301–400) e modelo LEGADO nas linhas antigas', async () => {
-      const [t] = await db.consultar(`SELECT (SELECT COUNT(*) FROM catalogo_pergunta WHERE oficial = 1 AND formulario = 'QUESTIONARIO_INICIAL') AS i,
-        (SELECT COUNT(*) FROM catalogo_pergunta WHERE oficial = 1 AND formulario = 'QUESTIONARIO_FINAL') AS f,
-        (SELECT COUNT(*) FROM questionario WHERE modelo = 'LEGADO') AS l`);
+      const [t] = await db.consultar(`SELECT (SELECT COUNT(*) FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 1 AND formulario = 'QUESTIONARIO_INICIAL') AS i,
+        (SELECT COUNT(*) FROM ASSOCIAL_catalogo_pergunta WHERE oficial = 1 AND formulario = 'QUESTIONARIO_FINAL') AS f,
+        (SELECT COUNT(*) FROM ASSOCIAL_questionario WHERE modelo = 'LEGADO') AS l`);
       assert.strictEqual(t.i, 14);
       assert.strictEqual(t.f, 21);
       assert.ok(t.l >= 0);
-      const faixas = await db.consultar(`SELECT o.codigo FROM catalogo_opcao o JOIN catalogo_pergunta p ON p.id = o.pergunta_id
+      const faixas = await db.consultar(`SELECT o.codigo FROM ASSOCIAL_catalogo_opcao o JOIN ASSOCIAL_catalogo_pergunta p ON p.id = o.pergunta_id
         WHERE p.formulario = 'QUESTIONARIO_FINAL' AND p.codigo = '3.2' ORDER BY o.ordem`);
       assert.deepStrictEqual(faixas.map((x) => x.codigo), ['ATE_100', 'DE_101_300', 'DE_301_400', 'ACIMA_400', 'OUTRO_VALOR']);
-      const frutas = await db.consultar(`SELECT o.codigo FROM catalogo_opcao o JOIN catalogo_pergunta p ON p.id = o.pergunta_id
+      const frutas = await db.consultar(`SELECT o.codigo FROM ASSOCIAL_catalogo_opcao o JOIN ASSOCIAL_catalogo_pergunta p ON p.id = o.pergunta_id
         WHERE p.formulario = 'QUESTIONARIO_INICIAL' AND p.codigo = '3.6' ORDER BY o.ordem`);
       assert.deepStrictEqual(frutas.map((x) => x.codigo), ['SIM', 'PARCIALMENTE', 'NAO']);
     });
@@ -243,7 +243,7 @@ const textoXml = (xml) => xml.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').
       assert.strictEqual(r.status, 200, r.texto);
       assert.strictEqual(r.corpo.concluido, true);
       assert.strictEqual(r.corpo.respostas['3.4'], 'SIM');
-      const linhas = await db.consultar('SELECT dimensao, nivel, itens_total, versao_regra FROM acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: acA });
+      const linhas = await db.consultar('SELECT dimensao, nivel, itens_total, versao_regra FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id = @ac', { ac: acA });
       assert.strictEqual(linhas.length, 5);
       const por = Object.fromEntries(linhas.map((l) => [l.dimensao, l]));
       assert.strictEqual(por.ALIMENTACAO.versaoRegra, 2);
@@ -369,7 +369,7 @@ const textoXml = (xml) => xml.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').
       const r = await a.req('PUT', `/api/familias/acompanhamentos/${rB.acompanhamentoId}/questionarios/INICIAL`,
         corpoInicial(dias(-30), { '3.2': nova.corpo.codigo, '2.1': outra.corpo.codigo }));
       assert.strictEqual(r.status, 200, r.texto);
-      const linhas = await db.consultar("SELECT dimensao, nivel FROM acompanhamento_indice WHERE acompanhamento_id = @ac AND dimensao = 'ALIMENTACAO'", { ac: rB.acompanhamentoId });
+      const linhas = await db.consultar("SELECT dimensao, nivel FROM ASSOCIAL_acompanhamento_indice WHERE acompanhamento_id = @ac AND dimensao = 'ALIMENTACAO'", { ac: rB.acompanhamentoId });
       // 3.2 = 50 (vale como "Algumas vezes"), 3.3 = 0, 3.4 = 0, 3.6 = 0 -> média 12,5
       assert.strictEqual(Number(linhas[0].nivel), 12.5);
 
@@ -460,9 +460,9 @@ const textoXml = (xml) => xml.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').
   } finally {
     servidor.kill();
     // restaura textos oficiais renomeados pelo teste e remove o que foi criado
-    for (const t of textosOriginais) await db.consultar('UPDATE catalogo_pergunta SET texto = @t WHERE id = @id', { t: t.texto, id: t.id });
+    for (const t of textosOriginais) await db.consultar('UPDATE ASSOCIAL_catalogo_pergunta SET texto = @t WHERE id = @id', { t: t.texto, id: t.id });
     await limpar();
-    const [sobras] = await db.consultar("SELECT (SELECT COUNT(*) FROM pessoa WHERE nome LIKE 'Teste M1E2E%') AS p, (SELECT COUNT(*) FROM usuario WHERE login LIKE 'm1[_]%') AS u, (SELECT COUNT(*) FROM catalogo_pergunta WHERE texto LIKE 'M1E2E%') AS c, (SELECT COUNT(*) FROM catalogo_opcao WHERE texto LIKE 'M1E2E%') AS o");
+    const [sobras] = await db.consultar("SELECT (SELECT COUNT(*) FROM ASSOCIAL_pessoa WHERE nome LIKE 'Teste M1E2E%') AS p, (SELECT COUNT(*) FROM ASSOCIAL_usuario WHERE login LIKE 'm1[_]%') AS u, (SELECT COUNT(*) FROM ASSOCIAL_catalogo_pergunta WHERE texto LIKE 'M1E2E%') AS c, (SELECT COUNT(*) FROM ASSOCIAL_catalogo_opcao WHERE texto LIKE 'M1E2E%') AS o");
     console.log('sobras do teste após a limpeza:', JSON.stringify(sobras));
     process.exit(falha ? 1 : 0);
   }

@@ -1,6 +1,6 @@
 'use strict';
 
-// Store de sessão do express-session em SQL Server (tabela dbo.sessao).
+// Store de sessão do express-session em SQL Server (tabela dbo.ASSOCIAL_sessao).
 // Mantém o login após reinício do container e permite várias instâncias.
 
 const session = require('express-session');
@@ -21,14 +21,14 @@ class SqlSessionStore extends session.Store {
   }
 
   get(sid, cb) {
-    db.consultarUm('SELECT dados FROM sessao WHERE sid = @sid AND expira_em > SYSUTCDATETIME()', { sid })
+    db.consultarUm('SELECT dados FROM ASSOCIAL_sessao WHERE sid = @sid AND expira_em > SYSUTCDATETIME()', { sid })
       .then((linha) => cb(null, linha ? JSON.parse(linha.dados) : null))
       .catch((err) => cb(err));
   }
 
   set(sid, sess, cb) {
     db.executar(
-      `MERGE sessao WITH (HOLDLOCK) AS alvo
+      `MERGE ASSOCIAL_sessao WITH (HOLDLOCK) AS alvo
        USING (SELECT @sid AS sid) AS origem ON alvo.sid = origem.sid
        WHEN MATCHED THEN UPDATE SET dados = @dados, expira_em = @expira
        WHEN NOT MATCHED THEN INSERT (sid, dados, expira_em) VALUES (@sid, @dados, @expira);`,
@@ -39,7 +39,7 @@ class SqlSessionStore extends session.Store {
   }
 
   touch(sid, sess, cb) {
-    db.executar('UPDATE sessao SET expira_em = @expira WHERE sid = @sid', {
+    db.executar('UPDATE ASSOCIAL_sessao SET expira_em = @expira WHERE sid = @sid', {
       sid,
       expira: [db.tipos.DateTime2, this.expiraEm(sess)],
     })
@@ -48,13 +48,13 @@ class SqlSessionStore extends session.Store {
   }
 
   destroy(sid, cb) {
-    db.executar('DELETE FROM sessao WHERE sid = @sid', { sid })
+    db.executar('DELETE FROM ASSOCIAL_sessao WHERE sid = @sid', { sid })
       .then(() => cb && cb(null))
       .catch((err) => cb && cb(err));
   }
 
   limpar() {
-    db.executar('DELETE FROM sessao WHERE expira_em < SYSUTCDATETIME()').catch(() => {});
+    db.executar('DELETE FROM ASSOCIAL_sessao WHERE expira_em < SYSUTCDATETIME()').catch(() => {});
   }
 }
 

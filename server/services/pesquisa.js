@@ -30,12 +30,12 @@ function exigirAutorOuCoordenacao(req, resposta) {
 
 async function carregarModelo(executor, { id = null } = {}) {
   const modelo = id
-    ? await executor.consultarUm('SELECT id, codigo, versao, titulo, aviso FROM pesquisa_modelo WHERE id = @id', { id })
+    ? await executor.consultarUm('SELECT id, codigo, versao, titulo, aviso FROM ASSOCIAL_pesquisa_modelo WHERE id = @id', { id })
     : await executor.consultarUm(
-      "SELECT TOP 1 id, codigo, versao, titulo, aviso FROM pesquisa_modelo WHERE codigo = 'SATISFACAO' AND ativo = 1 ORDER BY versao DESC");
+      "SELECT TOP 1 id, codigo, versao, titulo, aviso FROM ASSOCIAL_pesquisa_modelo WHERE codigo = 'SATISFACAO' AND ativo = 1 ORDER BY versao DESC");
   if (!modelo) throw erros.indisponivel('O modelo da pesquisa de satisfação não está configurado.');
   const perguntas = await executor.consultar(
-    'SELECT id, codigo, ordem, tipo, texto FROM pesquisa_pergunta WHERE modelo_id = @id ORDER BY ordem', { id: modelo.id });
+    'SELECT id, codigo, ordem, tipo, texto FROM ASSOCIAL_pesquisa_pergunta WHERE modelo_id = @id ORDER BY ordem', { id: modelo.id });
   // a coordenação pode renomear as perguntas oficiais (o código não muda, então as respostas seguem válidas)
   return { ...modelo, perguntas: perguntas.map((p) => ({ ...p, texto: estado.textoPesquisa(p.codigo) ?? p.texto })) };
 }
@@ -58,7 +58,7 @@ async function itensDe(executor, respostaIds) {
   if (!respostaIds.length) return new Map();
   const linhas = await executor.consultar(
     `SELECT i.resposta_id, p.codigo, p.tipo, p.ordem, i.valor_num, i.valor_texto, i.prefere_nao_responder
-       FROM pesquisa_resposta_item i JOIN pesquisa_pergunta p ON p.id = i.pergunta_id
+       FROM ASSOCIAL_pesquisa_resposta_item i JOIN ASSOCIAL_pesquisa_pergunta p ON p.id = i.pergunta_id
       WHERE i.resposta_id IN (${respostaIds.map((_, k) => `@r${k}`).join(', ')}) ORDER BY p.ordem`,
     Object.fromEntries(respostaIds.map((id, k) => [`r${k}`, id])));
   const mapa = new Map();
@@ -89,9 +89,9 @@ const formatarResposta = (r, itens, { comItens = false } = {}) => ({
 
 const SELECT_RESPOSTA = `SELECT r.id, r.modelo_id, m.versao AS modelo_versao, r.momento, r.data_aplicacao, r.modo, r.situacao,
        r.consentimento_lido, r.comentario_oculto, r.usuario_id, u.nome AS autor_nome, r.criado_em
-  FROM pesquisa_resposta r
-  JOIN pesquisa_modelo m ON m.id = r.modelo_id
-  JOIN usuario u ON u.id = r.usuario_id`;
+  FROM ASSOCIAL_pesquisa_resposta r
+  JOIN ASSOCIAL_pesquisa_modelo m ON m.id = r.modelo_id
+  JOIN ASSOCIAL_usuario u ON u.id = r.usuario_id`;
 
 async function listar(req, acompanhamentoId) {
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
@@ -143,16 +143,16 @@ async function exigirMomentoPermitido(tx, ac, momento) {
   }
   if (momento === 'FINAL' && ac.status === 'EM_ANDAMENTO') {
     const q = await tx.consultarUm(
-      "SELECT 1 AS ok FROM questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL' AND concluido = 1", { id: ac.id });
+      "SELECT 1 AS ok FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL' AND concluido = 1", { id: ac.id });
     if (!q) throw erros.conflito('A pesquisa final é aplicada ao encerrar: conclua antes o questionário final (ou use a pesquisa avulsa).');
   }
 }
 
 async function gravarItens(tx, respostaId, itens) {
-  await tx.consultar('DELETE FROM pesquisa_resposta_item WHERE resposta_id = @id', { id: respostaId });
+  await tx.consultar('DELETE FROM ASSOCIAL_pesquisa_resposta_item WHERE resposta_id = @id', { id: respostaId });
   for (const it of itens) {
     await tx.consultar(
-      `INSERT INTO pesquisa_resposta_item (resposta_id, pergunta_id, valor_num, valor_texto, prefere_nao_responder)
+      `INSERT INTO ASSOCIAL_pesquisa_resposta_item (resposta_id, pergunta_id, valor_num, valor_texto, prefere_nao_responder)
        VALUES (@r, @p, @n, @t, @x)`,
       { r: respostaId, p: it.perguntaId, n: it.valorNum, t: it.valorTexto, x: it.preferNaoResponder });
   }
@@ -168,7 +168,7 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
     if (respostaId !== null) {
       const id = inteiroPositivo(respostaId);
       existente = id && await tx.consultarUm(
-        `SELECT id, modelo_id, usuario_id, situacao, momento FROM pesquisa_resposta
+        `SELECT id, modelo_id, usuario_id, situacao, momento FROM ASSOCIAL_pesquisa_resposta
           WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'`, { id, ac: ac.id });
       if (!existente) throw erros.naoEncontrado('Pesquisa não encontrada.');
       if (existente.situacao !== 'RASCUNHO') throw erros.conflito('Esta pesquisa já foi concluída. Para corrigir, anule e aplique novamente.');
@@ -193,11 +193,11 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
     if (!existente) {
       await exigirMomentoPermitido(tx, ac, dados.momento);
       const aberta = await tx.consultarUm(
-        "SELECT id FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'", { ac: ac.id, m: dados.momento });
+        "SELECT id FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'", { ac: ac.id, m: dados.momento });
       if (aberta) throw erros.conflito('Já existe uma pesquisa em andamento (rascunho) para este momento. Continue ou descarte o rascunho.', { respostaId: aberta.id });
       if (dados.momento === 'FINAL') {
         const feita = await tx.consultarUm(
-          "SELECT id FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = 'FINAL' AND situacao IN ('CONCLUIDA', 'RECUSADA')", { ac: ac.id });
+          "SELECT id FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = 'FINAL' AND situacao IN ('CONCLUIDA', 'RECUSADA')", { ac: ac.id });
         if (feita) throw erros.conflito('A pesquisa final desta família já foi registrada. Para refazer, anule a anterior.');
       }
     }
@@ -205,7 +205,7 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
     let id = existente?.id;
     if (!existente) {
       const [novo] = await tx.consultar(
-        `INSERT INTO pesquisa_resposta (modelo_id, acompanhamento_id, usuario_id, momento, data_aplicacao, modo, situacao, consentimento_lido, criado_por)
+        `INSERT INTO ASSOCIAL_pesquisa_resposta (modelo_id, acompanhamento_id, usuario_id, momento, data_aplicacao, modo, situacao, consentimento_lido, criado_por)
          OUTPUT INSERTED.id
          VALUES (@modelo, @ac, @usuario, @momento, @data, @modo, @situacao, @consent, @usuario)`,
         {
@@ -215,7 +215,7 @@ async function salvar(req, acompanhamentoId, respostaId, corpo) {
       id = novo.id;
     } else {
       await tx.consultar(
-        `UPDATE pesquisa_resposta SET data_aplicacao = @data, modo = @modo, situacao = @situacao, consentimento_lido = @consent,
+        `UPDATE ASSOCIAL_pesquisa_resposta SET data_aplicacao = @data, modo = @modo, situacao = @situacao, consentimento_lido = @consent,
                 alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
           WHERE id = @id`,
         { id, usuario: req.usuario.id, data: paramData(dados.dataAplicacao), modo: dados.modo, situacao: dados.situacao, consent: dados.consentimentoLido });
@@ -236,11 +236,11 @@ async function anular(req, acompanhamentoId, respostaId, corpo) {
     const ac = await familias.carregarAcompanhamento(req, acompanhamentoId, tx, { travar: true });
     const id = inteiroPositivo(respostaId);
     const r = id && await tx.consultarUm(
-      "SELECT id, usuario_id FROM pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'", { id, ac: ac.id });
+      "SELECT id, usuario_id FROM ASSOCIAL_pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'", { id, ac: ac.id });
     if (!r) throw erros.naoEncontrado('Pesquisa não encontrada.');
     exigirAutorOuCoordenacao(req, r);
     await tx.consultar(
-      `UPDATE pesquisa_resposta SET situacao = 'ANULADA', anulado_em = SYSUTCDATETIME(), anulado_por = @usuario, anulado_motivo = @motivo,
+      `UPDATE ASSOCIAL_pesquisa_resposta SET situacao = 'ANULADA', anulado_em = SYSUTCDATETIME(), anulado_por = @usuario, anulado_motivo = @motivo,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
       { id: r.id, usuario: req.usuario.id, motivo });
@@ -255,10 +255,10 @@ async function definirComentarioOculto(req, acompanhamentoId, respostaId, oculto
     const ac = await familias.carregarAcompanhamento(req, acompanhamentoId, tx);
     const id = inteiroPositivo(respostaId);
     const r = id && await tx.consultarUm(
-      "SELECT id FROM pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao = 'CONCLUIDA'", { id, ac: ac.id });
+      "SELECT id FROM ASSOCIAL_pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao = 'CONCLUIDA'", { id, ac: ac.id });
     if (!r) throw erros.naoEncontrado('Pesquisa não encontrada.');
     await tx.consultar(
-      'UPDATE pesquisa_resposta SET comentario_oculto = @o, alterado_por = @usuario, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+      'UPDATE ASSOCIAL_pesquisa_resposta SET comentario_oculto = @o, alterado_por = @usuario, alterado_em = SYSUTCDATETIME() WHERE id = @id',
       { id: r.id, o: oculto, usuario: req.usuario.id });
     await registrarAuditoria(req, 'ALTERAR', 'pesquisa_resposta', r.id, { comentarioOculto: oculto }, tx);
   });

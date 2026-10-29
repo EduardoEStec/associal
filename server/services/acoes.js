@@ -28,7 +28,7 @@ async function validarCorpo(req, corpo, { atual, temasAtuais = [] } = {}) {
   dados.tipoAcaoId = inteiroPositivo(corpo.tipoAcaoId);
   if (!dados.tipoAcaoId) problemas.tipoAcaoId = 'Selecione o tipo.';
   else {
-    const tipo = await consultarUm('SELECT id, ativo, exige_texto FROM tipo_acao WHERE id = @id', { id: dados.tipoAcaoId });
+    const tipo = await consultarUm('SELECT id, ativo, exige_texto FROM ASSOCIAL_tipo_acao WHERE id = @id', { id: dados.tipoAcaoId });
     if (!tipo || (!tipo.ativo && dados.tipoAcaoId !== atual?.tipoAcaoId)) problemas.tipoAcaoId = 'Tipo inválido.';
     else if (tipo.exigeTexto) {
       // tipo "Outra": o texto é obrigatório; nos demais tipos é descartado
@@ -66,7 +66,7 @@ async function validarCorpo(req, corpo, { atual, temasAtuais = [] } = {}) {
     else if (ids.length) {
       const params = {};
       const nomes = ids.map((id, i) => { params[`t${i}`] = id; return `@t${i}`; });
-      const validos = await consultar(`SELECT id, ativo FROM tema WHERE id IN (${nomes.join(', ')})`, params);
+      const validos = await consultar(`SELECT id, ativo FROM ASSOCIAL_tema WHERE id IN (${nomes.join(', ')})`, params);
       const aceitos = validos.filter((t) => t.ativo || temasAtuais.includes(t.id));
       if (aceitos.length !== ids.length) problemas.temaIds = 'Tema inválido.';
       else dados.temaIds = ids;
@@ -91,9 +91,9 @@ const COLUNAS_ACAO = `
   a.tipo_acao_id, ta.nome AS tipo_acao_nome, a.tipo_acao_outro, a.data_acao, a.instituicao_local, a.endereco,
   a.status, a.qtd_participantes, a.descricao, a.criado_por, a.criado_em, a.alterado_em`;
 const JUNCOES_ACAO = `
-  FROM acao_visita a
-  JOIN unidade un ON un.id = a.unidade_id
-  JOIN tipo_acao ta ON ta.id = a.tipo_acao_id`;
+  FROM ASSOCIAL_acao_visita a
+  JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id
+  JOIN ASSOCIAL_tipo_acao ta ON ta.id = a.tipo_acao_id`;
 
 function filtroUnidadeOpcional(req, valor, params, filtros) {
   if (!valor) return;
@@ -132,7 +132,7 @@ function montarFiltros(req, query, params) {
   if (query.temaId) {
     const id = inteiroPositivo(query.temaId);
     if (!id) throw erros.validacao({ temaId: 'Tema inválido.' });
-    filtros.push('EXISTS (SELECT 1 FROM acao_visita_tema avt WHERE avt.acao_visita_id = a.id AND avt.tema_id = @filtroTema)');
+    filtros.push('EXISTS (SELECT 1 FROM ASSOCIAL_acao_visita_tema avt WHERE avt.acao_visita_id = a.id AND avt.tema_id = @filtroTema)');
     params.filtroTema = id;
   }
   const busca = texto(query.q, 100);
@@ -150,7 +150,7 @@ async function listar(req) {
 
   const acoes = await consultar(
     `SELECT TOP (${LIMITE_LISTAGEM}) ${COLUNAS_ACAO},
-            (SELECT COUNT(*) FROM acao_visita_foto f WHERE f.acao_visita_id = a.id) AS qtd_fotos
+            (SELECT COUNT(*) FROM ASSOCIAL_acao_visita_foto f WHERE f.acao_visita_id = a.id) AS qtd_fotos
        ${JUNCOES_ACAO}
       WHERE ${where}
       ORDER BY a.data_acao ${direcao}, a.id ${direcao}`,
@@ -160,9 +160,9 @@ async function listar(req) {
 
   const temas = await consultar(
     `SELECT avt.acao_visita_id, avt.ordem, tm.id AS tema_id, tm.nome
-       FROM acao_visita_tema avt
-       JOIN tema tm ON tm.id = avt.tema_id
-       JOIN acao_visita a ON a.id = avt.acao_visita_id
+       FROM ASSOCIAL_acao_visita_tema avt
+       JOIN ASSOCIAL_tema tm ON tm.id = avt.tema_id
+       JOIN ASSOCIAL_acao_visita a ON a.id = avt.acao_visita_id
       WHERE ${where}
       ORDER BY avt.acao_visita_id, avt.ordem`,
     params,
@@ -183,7 +183,7 @@ async function carregarAcao(req, id) {
   const where = clausulaUnidades(req, 'a.unidade_id', params);
   const acao = await consultarUm(
     `SELECT ${COLUNAS_ACAO}, u.nome AS criado_por_nome ${JUNCOES_ACAO}
-       LEFT JOIN usuario u ON u.id = a.criado_por
+       LEFT JOIN ASSOCIAL_usuario u ON u.id = a.criado_por
       WHERE a.id = @id AND ${where}`,
     params,
   );
@@ -199,10 +199,10 @@ async function detalhar(req, id) {
   const acao = await carregarAcao(req, id);
   const [temas, fotos] = await Promise.all([
     consultar(
-      `SELECT tm.id, tm.nome, avt.ordem FROM acao_visita_tema avt JOIN tema tm ON tm.id = avt.tema_id
+      `SELECT tm.id, tm.nome, avt.ordem FROM ASSOCIAL_acao_visita_tema avt JOIN ASSOCIAL_tema tm ON tm.id = avt.tema_id
         WHERE avt.acao_visita_id = @id ORDER BY avt.ordem`, { id: acao.id }),
     consultar(
-      `SELECT id, legenda, ordem, nome_original, criado_em FROM acao_visita_foto
+      `SELECT id, legenda, ordem, nome_original, criado_em FROM ASSOCIAL_acao_visita_foto
         WHERE acao_visita_id = @id ORDER BY ordem, id`, { id: acao.id }),
   ]);
   return {
@@ -214,10 +214,10 @@ async function detalhar(req, id) {
 }
 
 async function gravarTemas(tx, acaoId, temaIds) {
-  await tx.consultar('DELETE FROM acao_visita_tema WHERE acao_visita_id = @id', { id: acaoId });
+  await tx.consultar('DELETE FROM ASSOCIAL_acao_visita_tema WHERE acao_visita_id = @id', { id: acaoId });
   for (let i = 0; i < temaIds.length; i++) {
     await tx.consultar(
-      'INSERT INTO acao_visita_tema (acao_visita_id, ordem, tema_id) VALUES (@id, @ordem, @temaId)',
+      'INSERT INTO ASSOCIAL_acao_visita_tema (acao_visita_id, ordem, tema_id) VALUES (@id, @ordem, @temaId)',
       { id: acaoId, ordem: i + 1, temaId: temaIds[i] },
     );
   }
@@ -235,10 +235,10 @@ async function resumo(req) {
   const [totais, locais] = await Promise.all([
     consultar(
       `SELECT a.unidade_id, COUNT(*) AS qtd_acoes, COALESCE(SUM(a.qtd_participantes), 0) AS qtd_participantes
-         FROM acao_visita a WHERE ${where} GROUP BY a.unidade_id`, params),
+         FROM ASSOCIAL_acao_visita a WHERE ${where} GROUP BY a.unidade_id`, params),
     consultar(
       `SELECT DISTINCT a.unidade_id, a.instituicao_local
-         FROM acao_visita a WHERE ${where} AND a.instituicao_local IS NOT NULL
+         FROM ASSOCIAL_acao_visita a WHERE ${where} AND a.instituicao_local IS NOT NULL
         ORDER BY a.unidade_id, a.instituicao_local`, params),
   ]);
   const unidades = params.filtroUnidade

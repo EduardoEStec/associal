@@ -28,58 +28,58 @@ GO
    1. Perguntas
    --------------------------------------------------------------------- */
 
-IF OBJECT_ID(N'dbo.catalogo_pergunta', N'U') IS NULL
-CREATE TABLE dbo.catalogo_pergunta (
-    id          INT IDENTITY(1,1) CONSTRAINT pk_catalogo_pergunta PRIMARY KEY,
-    formulario  VARCHAR(14)   NOT NULL,                 -- QUESTIONARIO | PESQUISA | ATENDIMENTO
+IF OBJECT_ID(N'dbo.ASSOCIAL_catalogo_pergunta', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_catalogo_pergunta (
+    id          INT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_catalogo_pergunta PRIMARY KEY,
+    formulario  VARCHAR(14) COLLATE Latin1_General_100_CI_AI   NOT NULL,                 -- QUESTIONARIO | PESQUISA | ATENDIMENTO
     secao       SMALLINT      NOT NULL,                 -- questionário: 1 a 5 (blocos); pesquisa e atendimento: 1
-    codigo      VARCHAR(20)   NOT NULL,                 -- oficiais: 1a, 2b, NPS, L1...; extras: E0001...
-    oficial     BIT           NOT NULL CONSTRAINT df_catalogo_pergunta_oficial DEFAULT 0,
-    campo       VARCHAR(60)   NULL,                     -- oficiais: nome do campo na API (questionário) ou código da pergunta (pesquisa)
-    tipo        VARCHAR(10)   NOT NULL,                 -- TEXTO | NUMERO | SIM_NAO | ESCOLHA | MULTIPLA (+ MOEDA, NPS, LIKERT nas oficiais)
-    texto       NVARCHAR(500) NOT NULL,                 -- questionário: texto do INICIAL; demais: texto único
-    texto_final NVARCHAR(500) NULL,                     -- questionário: texto do FINAL ("hoje"); NULL = igual ao texto
-    ajuda       NVARCHAR(300) NULL,
-    obrigatoria BIT           NOT NULL CONSTRAINT df_catalogo_pergunta_obrigatoria DEFAULT 0,   -- extras: exigida ao concluir/salvar
-    ordem       INT           NOT NULL CONSTRAINT df_catalogo_pergunta_ordem DEFAULT 0,
-    ativa       BIT           NOT NULL CONSTRAINT df_catalogo_pergunta_ativa DEFAULT 1,
-    criado_por   INT NULL CONSTRAINT fk_catalogo_pergunta_criado_por   REFERENCES dbo.usuario(id),
-    criado_em    DATETIME2(0) NOT NULL CONSTRAINT df_catalogo_pergunta_criado_em DEFAULT SYSUTCDATETIME(),
-    alterado_por INT NULL CONSTRAINT fk_catalogo_pergunta_alterado_por REFERENCES dbo.usuario(id),
+    codigo      VARCHAR(20) COLLATE Latin1_General_100_CI_AI   NOT NULL,                 -- oficiais: 1a, 2b, NPS, L1...; extras: E0001...
+    oficial     BIT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_pergunta_oficial DEFAULT 0,
+    campo       VARCHAR(60) COLLATE Latin1_General_100_CI_AI   NULL,                     -- oficiais: nome do campo na API (questionário) ou código da pergunta (pesquisa)
+    tipo        VARCHAR(10) COLLATE Latin1_General_100_CI_AI   NOT NULL,                 -- TEXTO | NUMERO | SIM_NAO | ESCOLHA | MULTIPLA (+ MOEDA, NPS, LIKERT nas oficiais)
+    texto       NVARCHAR(500) COLLATE Latin1_General_100_CI_AI NOT NULL,                 -- questionário: texto do INICIAL; demais: texto único
+    texto_final NVARCHAR(500) COLLATE Latin1_General_100_CI_AI NULL,                     -- questionário: texto do FINAL ("hoje"); NULL = igual ao texto
+    ajuda       NVARCHAR(300) COLLATE Latin1_General_100_CI_AI NULL,
+    obrigatoria BIT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_pergunta_obrigatoria DEFAULT 0,   -- extras: exigida ao concluir/salvar
+    ordem       INT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_pergunta_ordem DEFAULT 0,
+    ativa       BIT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_pergunta_ativa DEFAULT 1,
+    criado_por   INT NULL CONSTRAINT ASSOCIAL_fk_catalogo_pergunta_criado_por   REFERENCES dbo.ASSOCIAL_usuario(id),
+    criado_em    DATETIME2(0) NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_pergunta_criado_em DEFAULT SYSUTCDATETIME(),
+    alterado_por INT NULL CONSTRAINT ASSOCIAL_fk_catalogo_pergunta_alterado_por REFERENCES dbo.ASSOCIAL_usuario(id),
     alterado_em  DATETIME2(0) NULL,
-    CONSTRAINT uq_catalogo_pergunta UNIQUE (formulario, codigo),
-    CONSTRAINT ck_catalogo_pergunta_formulario CHECK (formulario IN ('QUESTIONARIO', 'PESQUISA', 'ATENDIMENTO')),
-    CONSTRAINT ck_catalogo_pergunta_tipo CHECK (tipo IN ('TEXTO', 'NUMERO', 'SIM_NAO', 'ESCOLHA', 'MULTIPLA', 'MOEDA', 'NPS', 'LIKERT')),
-    CONSTRAINT ck_catalogo_pergunta_extra_tipo CHECK (oficial = 1 OR tipo IN ('TEXTO', 'NUMERO', 'SIM_NAO', 'ESCOLHA', 'MULTIPLA'))
+    CONSTRAINT ASSOCIAL_uq_catalogo_pergunta UNIQUE (formulario, codigo),
+    CONSTRAINT ASSOCIAL_ck_catalogo_pergunta_formulario CHECK (formulario IN ('QUESTIONARIO', 'PESQUISA', 'ATENDIMENTO')),
+    CONSTRAINT ASSOCIAL_ck_catalogo_pergunta_tipo CHECK (tipo IN ('TEXTO', 'NUMERO', 'SIM_NAO', 'ESCOLHA', 'MULTIPLA', 'MOEDA', 'NPS', 'LIKERT')),
+    CONSTRAINT ASSOCIAL_ck_catalogo_pergunta_extra_tipo CHECK (oficial = 1 OR tipo IN ('TEXTO', 'NUMERO', 'SIM_NAO', 'ESCOLHA', 'MULTIPLA'))
 );
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_catalogo_pergunta_formulario' AND object_id = OBJECT_ID(N'dbo.catalogo_pergunta'))
-CREATE INDEX ix_catalogo_pergunta_formulario ON dbo.catalogo_pergunta (formulario, secao, ordem);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_catalogo_pergunta_formulario' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_pergunta'))
+CREATE INDEX ix_catalogo_pergunta_formulario ON dbo.ASSOCIAL_catalogo_pergunta (formulario, secao, ordem);
 GO
 
 /* ---------------------------------------------------------------------
    2. Opções
    --------------------------------------------------------------------- */
 
-IF OBJECT_ID(N'dbo.catalogo_opcao', N'U') IS NULL
-CREATE TABLE dbo.catalogo_opcao (
-    id            INT IDENTITY(1,1) CONSTRAINT pk_catalogo_opcao PRIMARY KEY,
-    pergunta_id   INT NOT NULL CONSTRAINT fk_catalogo_opcao_pergunta REFERENCES dbo.catalogo_pergunta(id),
-    codigo        VARCHAR(40)   NOT NULL,               -- estável: oficiais NAO_TINHA, DIARIO...; acrescentadas OP01, OP02...
-    texto         NVARCHAR(200) NOT NULL,
-    texto_final   NVARCHAR(200) NULL,                   -- questionário FINAL ("Não tem acesso" no lugar de "Não tinha acesso")
-    ordem         INT           NOT NULL CONSTRAINT df_catalogo_opcao_ordem DEFAULT 0,
-    ativa         BIT           NOT NULL CONSTRAINT df_catalogo_opcao_ativa DEFAULT 1,
-    base          BIT           NOT NULL CONSTRAINT df_catalogo_opcao_base DEFAULT 0,      -- 1 = opção oficial: define a escala
+IF OBJECT_ID(N'dbo.ASSOCIAL_catalogo_opcao', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_catalogo_opcao (
+    id            INT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_catalogo_opcao PRIMARY KEY,
+    pergunta_id   INT NOT NULL CONSTRAINT ASSOCIAL_fk_catalogo_opcao_pergunta REFERENCES dbo.ASSOCIAL_catalogo_pergunta(id),
+    codigo        VARCHAR(40) COLLATE Latin1_General_100_CI_AI   NOT NULL,               -- estável: oficiais NAO_TINHA, DIARIO...; acrescentadas OP01, OP02...
+    texto         NVARCHAR(200) COLLATE Latin1_General_100_CI_AI NOT NULL,
+    texto_final   NVARCHAR(200) COLLATE Latin1_General_100_CI_AI NULL,                   -- questionário FINAL ("Não tem acesso" no lugar de "Não tinha acesso")
+    ordem         INT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_opcao_ordem DEFAULT 0,
+    ativa         BIT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_opcao_ativa DEFAULT 1,
+    base          BIT           NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_opcao_base DEFAULT 0,      -- 1 = opção oficial: define a escala
     posicao       SMALLINT      NULL,                   -- só base: 0 = pior ... n-1 = melhor (índice de progresso e comparação)
-    equivale_a_id INT           NULL CONSTRAINT fk_catalogo_opcao_equivale REFERENCES dbo.catalogo_opcao(id),  -- acrescentada: vale como esta opção base; NULL = não pontua
-    criado_por   INT NULL CONSTRAINT fk_catalogo_opcao_criado_por   REFERENCES dbo.usuario(id),
-    criado_em    DATETIME2(0) NOT NULL CONSTRAINT df_catalogo_opcao_criado_em DEFAULT SYSUTCDATETIME(),
-    alterado_por INT NULL CONSTRAINT fk_catalogo_opcao_alterado_por REFERENCES dbo.usuario(id),
+    equivale_a_id INT           NULL CONSTRAINT ASSOCIAL_fk_catalogo_opcao_equivale REFERENCES dbo.ASSOCIAL_catalogo_opcao(id),  -- acrescentada: vale como esta opção base; NULL = não pontua
+    criado_por   INT NULL CONSTRAINT ASSOCIAL_fk_catalogo_opcao_criado_por   REFERENCES dbo.ASSOCIAL_usuario(id),
+    criado_em    DATETIME2(0) NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_opcao_criado_em DEFAULT SYSUTCDATETIME(),
+    alterado_por INT NULL CONSTRAINT ASSOCIAL_fk_catalogo_opcao_alterado_por REFERENCES dbo.ASSOCIAL_usuario(id),
     alterado_em  DATETIME2(0) NULL,
-    CONSTRAINT uq_catalogo_opcao UNIQUE (pergunta_id, codigo),
-    CONSTRAINT ck_catalogo_opcao_base CHECK ((base = 1 AND posicao IS NOT NULL AND equivale_a_id IS NULL) OR (base = 0 AND posicao IS NULL))
+    CONSTRAINT ASSOCIAL_uq_catalogo_opcao UNIQUE (pergunta_id, codigo),
+    CONSTRAINT ASSOCIAL_ck_catalogo_opcao_base CHECK ((base = 1 AND posicao IS NOT NULL AND equivale_a_id IS NULL) OR (base = 0 AND posicao IS NULL))
 );
 GO
 
@@ -87,17 +87,17 @@ GO
    3. Respostas às perguntas extras
    --------------------------------------------------------------------- */
 
-IF OBJECT_ID(N'dbo.resposta_extra', N'U') IS NULL
-CREATE TABLE dbo.resposta_extra (
-    id                  BIGINT IDENTITY(1,1) CONSTRAINT pk_resposta_extra PRIMARY KEY,
-    pergunta_id         INT NOT NULL CONSTRAINT fk_resposta_extra_pergunta REFERENCES dbo.catalogo_pergunta(id),
-    questionario_id     INT NULL CONSTRAINT fk_resposta_extra_questionario REFERENCES dbo.questionario(id) ON DELETE CASCADE,
-    atendimento_id      INT NULL CONSTRAINT fk_resposta_extra_atendimento  REFERENCES dbo.atendimento(id)  ON DELETE CASCADE,
-    pesquisa_resposta_id INT NULL CONSTRAINT fk_resposta_extra_pesquisa    REFERENCES dbo.pesquisa_resposta(id) ON DELETE CASCADE,
-    opcao_id            INT NULL CONSTRAINT fk_resposta_extra_opcao REFERENCES dbo.catalogo_opcao(id),   -- escolha única / múltipla
-    valor_texto         NVARCHAR(2000) NULL,
+IF OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_resposta_extra (
+    id                  BIGINT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_resposta_extra PRIMARY KEY,
+    pergunta_id         INT NOT NULL CONSTRAINT ASSOCIAL_fk_resposta_extra_pergunta REFERENCES dbo.ASSOCIAL_catalogo_pergunta(id),
+    questionario_id     INT NULL CONSTRAINT ASSOCIAL_fk_resposta_extra_questionario REFERENCES dbo.ASSOCIAL_questionario(id) ON DELETE CASCADE,
+    atendimento_id      INT NULL CONSTRAINT ASSOCIAL_fk_resposta_extra_atendimento  REFERENCES dbo.ASSOCIAL_atendimento(id)  ON DELETE CASCADE,
+    pesquisa_resposta_id INT NULL CONSTRAINT ASSOCIAL_fk_resposta_extra_pesquisa    REFERENCES dbo.ASSOCIAL_pesquisa_resposta(id) ON DELETE CASCADE,
+    opcao_id            INT NULL CONSTRAINT ASSOCIAL_fk_resposta_extra_opcao REFERENCES dbo.ASSOCIAL_catalogo_opcao(id),   -- escolha única / múltipla
+    valor_texto         NVARCHAR(2000) COLLATE Latin1_General_100_CI_AI NULL,
     valor_num           DECIMAL(18,4) NULL,                 -- número; sim/não = 1/0
-    CONSTRAINT ck_resposta_extra_dono CHECK (
+    CONSTRAINT ASSOCIAL_ck_resposta_extra_dono CHECK (
         (CASE WHEN questionario_id IS NULL THEN 0 ELSE 1 END
        + CASE WHEN atendimento_id IS NULL THEN 0 ELSE 1 END
        + CASE WHEN pesquisa_resposta_id IS NULL THEN 0 ELSE 1 END) = 1)
@@ -105,20 +105,20 @@ CREATE TABLE dbo.resposta_extra (
 GO
 
 -- um valor por pergunta e dono (várias linhas só na múltipla, uma por opção)
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_questionario' AND object_id = OBJECT_ID(N'dbo.resposta_extra'))
-CREATE UNIQUE INDEX ux_resposta_extra_questionario ON dbo.resposta_extra (questionario_id, pergunta_id, opcao_id) WHERE questionario_id IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_questionario' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra'))
+CREATE UNIQUE INDEX ux_resposta_extra_questionario ON dbo.ASSOCIAL_resposta_extra (questionario_id, pergunta_id, opcao_id) WHERE questionario_id IS NOT NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_atendimento' AND object_id = OBJECT_ID(N'dbo.resposta_extra'))
-CREATE UNIQUE INDEX ux_resposta_extra_atendimento ON dbo.resposta_extra (atendimento_id, pergunta_id, opcao_id) WHERE atendimento_id IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_atendimento' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra'))
+CREATE UNIQUE INDEX ux_resposta_extra_atendimento ON dbo.ASSOCIAL_resposta_extra (atendimento_id, pergunta_id, opcao_id) WHERE atendimento_id IS NOT NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_pesquisa' AND object_id = OBJECT_ID(N'dbo.resposta_extra'))
-CREATE UNIQUE INDEX ux_resposta_extra_pesquisa ON dbo.resposta_extra (pesquisa_resposta_id, pergunta_id, opcao_id) WHERE pesquisa_resposta_id IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_resposta_extra_pesquisa' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra'))
+CREATE UNIQUE INDEX ux_resposta_extra_pesquisa ON dbo.ASSOCIAL_resposta_extra (pesquisa_resposta_id, pergunta_id, opcao_id) WHERE pesquisa_resposta_id IS NOT NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_resposta_extra_pergunta' AND object_id = OBJECT_ID(N'dbo.resposta_extra'))
-CREATE INDEX ix_resposta_extra_pergunta ON dbo.resposta_extra (pergunta_id) INCLUDE (opcao_id);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_resposta_extra_pergunta' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra'))
+CREATE INDEX ix_resposta_extra_pergunta ON dbo.ASSOCIAL_resposta_extra (pergunta_id) INCLUDE (opcao_id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_resposta_extra_opcao' AND object_id = OBJECT_ID(N'dbo.resposta_extra'))
-CREATE INDEX ix_resposta_extra_opcao ON dbo.resposta_extra (opcao_id) WHERE opcao_id IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_resposta_extra_opcao' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_resposta_extra'))
+CREATE INDEX ix_resposta_extra_opcao ON dbo.ASSOCIAL_resposta_extra (opcao_id) WHERE opcao_id IS NOT NULL;
 GO
 
 /* ---------------------------------------------------------------------
@@ -126,98 +126,98 @@ GO
    --------------------------------------------------------------------- */
 
 -- 2a: acesso_alimentos_in_natura
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2a' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_2a;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2a' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_2a;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'acesso_alimentos_in_natura' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN acesso_alimentos_in_natura VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'acesso_alimentos_in_natura' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN acesso_alimentos_in_natura VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2a_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_2a_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2a_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_2a_formato
         CHECK (acesso_alimentos_in_natura IS NULL OR acesso_alimentos_in_natura COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 2b: frequencia_frutas_verduras
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2b' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_2b;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2b' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_2b;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'frequencia_frutas_verduras' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN frequencia_frutas_verduras VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'frequencia_frutas_verduras' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN frequencia_frutas_verduras VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2b_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_2b_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2b_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_2b_formato
         CHECK (frequencia_frutas_verduras IS NULL OR frequencia_frutas_verduras COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 2c: qualidade_alimentacao
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2c' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_2c;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2c' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_2c;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'qualidade_alimentacao' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN qualidade_alimentacao VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'qualidade_alimentacao' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN qualidade_alimentacao VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2c_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_2c_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2c_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_2c_formato
         CHECK (qualidade_alimentacao IS NULL OR qualidade_alimentacao COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 2d: saude_nutricional
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2d' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_2d;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2d' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_2d;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'saude_nutricional' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN saude_nutricional VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'saude_nutricional' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN saude_nutricional VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_2d_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_2d_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_2d_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_2d_formato
         CHECK (saude_nutricional IS NULL OR saude_nutricional COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 3b: economia_mensal_faixa
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3b' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_3b;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3b' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_3b;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'economia_mensal_faixa' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN economia_mensal_faixa VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'economia_mensal_faixa' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN economia_mensal_faixa VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3b_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_3b_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3b_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_3b_formato
         CHECK (economia_mensal_faixa IS NULL OR economia_mensal_faixa COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 3d: capacidade_poupanca
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3d' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_3d;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3d' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_3d;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'capacidade_poupanca' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN capacidade_poupanca VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'capacidade_poupanca' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN capacidade_poupanca VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3d_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_3d_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3d_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_3d_formato
         CHECK (capacidade_poupanca IS NULL OR capacidade_poupanca COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 3e: gestao_financeira
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3e' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_3e;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3e' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_3e;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'gestao_financeira' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN gestao_financeira VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'gestao_financeira' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN gestao_financeira VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_3e_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_3e_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_3e_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_3e_formato
         CHECK (gestao_financeira IS NULL OR gestao_financeira COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
 -- 5a: avaliacao_armazem
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_5a' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario DROP CONSTRAINT ck_questionario_5a;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_5a' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario DROP CONSTRAINT ASSOCIAL_ck_questionario_5a;
 GO
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'avaliacao_armazem' AND max_length < 40)
-    ALTER TABLE dbo.questionario ALTER COLUMN avaliacao_armazem VARCHAR(40) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'avaliacao_armazem' AND max_length < 40)
+    ALTER TABLE dbo.ASSOCIAL_questionario ALTER COLUMN avaliacao_armazem VARCHAR(40) COLLATE Latin1_General_100_CI_AI NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_5a_formato' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_5a_formato
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_5a_formato' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_5a_formato
         CHECK (avaliacao_armazem IS NULL OR avaliacao_armazem COLLATE Latin1_General_BIN NOT LIKE '%[^A-Z0-9_]%');
 GO
 
@@ -226,7 +226,7 @@ GO
    5. Semente: perguntas e opções OFICIAIS (textos atuais; a coordenação pode renomear)
    --------------------------------------------------------------------- */
 
-INSERT INTO dbo.catalogo_pergunta (formulario, secao, codigo, oficial, campo, tipo, texto, texto_final, ajuda, ordem)
+INSERT INTO dbo.ASSOCIAL_catalogo_pergunta (formulario, secao, codigo, oficial, campo, tipo, texto, texto_final, ajuda, ordem)
 SELECT v.formulario, v.secao, v.codigo, 1, v.campo, v.tipo, v.texto, v.texto_final, v.ajuda, v.ordem
 FROM (VALUES
     ('QUESTIONARIO', 1, '1a', 'qtdMembrosFamilia', 'NUMERO', N'Quantas pessoas compõem a família (contando com o responsável)?', N'Hoje, quantas pessoas compõem a família (contando com o responsável)?', NULL, 10),
@@ -260,10 +260,10 @@ FROM (VALUES
     ('PESQUISA', 1, 'T1', 'T1', 'TEXTO', N'O que o projeto faz de melhor?', NULL, NULL, 80),
     ('PESQUISA', 1, 'T2', 'T2', 'TEXTO', N'O que precisa melhorar?', NULL, NULL, 90)
 ) AS v(formulario, secao, codigo, campo, tipo, texto, texto_final, ajuda, ordem)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.catalogo_pergunta c WHERE c.formulario = v.formulario AND c.codigo = v.codigo);
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_catalogo_pergunta c WHERE c.formulario = v.formulario AND c.codigo = v.codigo);
 GO
 
-INSERT INTO dbo.catalogo_opcao (pergunta_id, codigo, texto, texto_final, base, posicao, ordem)
+INSERT INTO dbo.ASSOCIAL_catalogo_opcao (pergunta_id, codigo, texto, texto_final, base, posicao, ordem)
 SELECT p.id, v.codigo, v.texto, v.texto_final, 1, v.posicao, v.ordem
 FROM (VALUES
     ('2a', 'NAO_TINHA', N'Não tinha acesso', N'Não tem acesso', 0, 10),
@@ -295,6 +295,6 @@ FROM (VALUES
     ('5a', 'BOA', N'Boa', NULL, 2, 30),
     ('5a', 'OTIMA', N'Ótima', NULL, 3, 40)
 ) AS v(pergunta, codigo, texto, texto_final, posicao, ordem)
-JOIN dbo.catalogo_pergunta p ON p.formulario = 'QUESTIONARIO' AND p.codigo = v.pergunta
-WHERE NOT EXISTS (SELECT 1 FROM dbo.catalogo_opcao o WHERE o.pergunta_id = p.id AND o.codigo = v.codigo);
+JOIN dbo.ASSOCIAL_catalogo_pergunta p ON p.formulario = 'QUESTIONARIO' AND p.codigo = v.pergunta
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_catalogo_opcao o WHERE o.pergunta_id = p.id AND o.codigo = v.codigo);
 GO

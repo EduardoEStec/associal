@@ -118,43 +118,43 @@ async function teste(nome, fn) {
 
   await teste('POST cria pessoa nova + atendimento + N:N na transação', async () => {
     respostas = [
-      { casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
-      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
-      { casa: /FROM faixa_etaria/, linhas: FAIXAS },
-      { casa: /INSERT INTO pessoa/, linhas: [{ id: 77 }] },
-      { casa: /INSERT INTO atendimento \(/, linhas: [{ id: 501 }] },
+      { casa: /FROM ASSOCIAL_demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_faixa_etaria/, linhas: FAIXAS },
+      { casa: /INSERT INTO ASSOCIAL_pessoa/, linhas: [{ id: 77 }] },
+      { casa: /INSERT INTO ASSOCIAL_atendimento \(/, linhas: [{ id: 501 }] },
     ];
     const r = await chamar('POST', '/api/atendimentos', corpoValido());
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
     assert.equal(r.corpo.id, 501);
-    const ins = log.find((l) => /INSERT INTO atendimento \(/.test(l.texto));
+    const ins = log.find((l) => /INSERT INTO ASSOCIAL_atendimento \(/.test(l.texto));
     assert.equal(ins.params.unidadeId, 1);
     assert.equal(ins.params.pessoaId, 77);
     assert.equal(ins.params.faixaEtariaId, 2);
     assert.equal(ins.params.usuarioId, 10);
-    assert.equal(log.filter((l) => /INSERT INTO atendimento_demanda/.test(l.texto)).length, 2);
-    assert.equal(log.filter((l) => /INSERT INTO atendimento_encaminhamento/.test(l.texto)).length, 1);
-    assert.ok(log.some((l) => /INSERT INTO auditoria/.test(l.texto)));
+    assert.equal(log.filter((l) => /INSERT INTO ASSOCIAL_atendimento_demanda/.test(l.texto)).length, 2);
+    assert.equal(log.filter((l) => /INSERT INTO ASSOCIAL_atendimento_encaminhamento/.test(l.texto)).length, 1);
+    assert.ok(log.some((l) => /INSERT INTO ASSOCIAL_auditoria/.test(l.texto)));
   });
 
   await teste('POST com CPF existente reaproveita e atualiza a pessoa (não cria outra)', async () => {
     respostas = [
-      { casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
-      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
-      { casa: /FROM faixa_etaria/, linhas: FAIXAS },
-      { casa: /FROM pessoa p WHERE p\.cpf/, linhas: [{ id: 42 }] },
-      { casa: /INSERT INTO atendimento \(/, linhas: [{ id: 502 }] },
+      { casa: /FROM ASSOCIAL_demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_faixa_etaria/, linhas: FAIXAS },
+      { casa: /FROM ASSOCIAL_pessoa p WHERE p\.cpf/, linhas: [{ id: 42 }] },
+      { casa: /INSERT INTO ASSOCIAL_atendimento \(/, linhas: [{ id: 502 }] },
     ];
     const r = await chamar('POST', '/api/atendimentos', corpoValido());
     assert.equal(r.status, 201);
-    assert.ok(!log.some((l) => /INSERT INTO pessoa/.test(l.texto)));
-    assert.ok(log.some((l) => /UPDATE pessoa/.test(l.texto) && l.params.id === 42));
-    assert.equal(log.find((l) => /INSERT INTO atendimento \(/.test(l.texto)).params.pessoaId, 42);
+    assert.ok(!log.some((l) => /INSERT INTO ASSOCIAL_pessoa/.test(l.texto)));
+    assert.ok(log.some((l) => /UPDATE ASSOCIAL_pessoa/.test(l.texto) && l.params.id === 42));
+    assert.equal(log.find((l) => /INSERT INTO ASSOCIAL_atendimento \(/.test(l.texto)).params.pessoaId, 42);
   });
 
   await teste('POST "Outra" sem texto => 400', async () => {
-    respostas = [{ casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: true }] },
-      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: true }] },
+      { casa: /FROM ASSOCIAL_encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] }];
     const r = await chamar('POST', '/api/atendimentos', corpoValido());
     assert.equal(r.status, 400);
     assert.ok(r.corpo.erro.detalhes.demandaOutra);
@@ -162,8 +162,8 @@ async function teste(nome, fn) {
 
   await teste('POST em unidade não permitida => 403', async () => {
     respostas = [
-      { casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
-      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
     ];
     const r = await chamar('POST', '/api/atendimentos', { ...corpoValido(), unidadeId: 2 });
     assert.equal(r.status, 403);
@@ -187,17 +187,17 @@ async function teste(nome, fn) {
 
   await teste('DELETE: assistente só o próprio em até 24h; coordenação sempre', async () => {
     const base = { id: 9, unidadeId: 1, pessoaId: 1, usuarioId: 10, criadoEm: new Date(Date.now() - 3600e3) };
-    respostas = [{ casa: /FROM atendimento a\s+JOIN unidade/, linhas: [base] }];
+    respostas = [{ casa: /FROM ASSOCIAL_atendimento a\s+JOIN ASSOCIAL_unidade/, linhas: [base] }];
     assert.equal((await chamar('DELETE', '/api/atendimentos/9')).status, 204);
 
-    respostas = [{ casa: /FROM atendimento a\s+JOIN unidade/, linhas: [{ ...base, criadoEm: new Date(Date.now() - 30 * 3600e3) }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_atendimento a\s+JOIN ASSOCIAL_unidade/, linhas: [{ ...base, criadoEm: new Date(Date.now() - 30 * 3600e3) }] }];
     assert.equal((await chamar('DELETE', '/api/atendimentos/9')).status, 403);
 
-    respostas = [{ casa: /FROM atendimento a\s+JOIN unidade/, linhas: [{ ...base, usuarioId: 99 }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_atendimento a\s+JOIN ASSOCIAL_unidade/, linhas: [{ ...base, usuarioId: 99 }] }];
     assert.equal((await chamar('DELETE', '/api/atendimentos/9')).status, 403);
 
     usuario = { id: 5, perfil: 'COORDENADOR', unidades: [UNIDADE_A] };
-    respostas = [{ casa: /FROM atendimento a\s+JOIN unidade/, linhas: [{ ...base, usuarioId: 99, criadoEm: new Date(0) }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_atendimento a\s+JOIN ASSOCIAL_unidade/, linhas: [{ ...base, usuarioId: 99, criadoEm: new Date(0) }] }];
     assert.equal((await chamar('DELETE', '/api/atendimentos/9')).status, 204);
     usuario = { id: 10, perfil: 'ASSISTENTE', unidades: [UNIDADE_A] };
   });
@@ -205,16 +205,16 @@ async function teste(nome, fn) {
   await teste('ADMIN opera como a coordenação (V12): cria atendimento; usuarioId fica no nome dele', async () => {
     usuario = { id: 7, perfil: 'ADMIN', unidades: [UNIDADE_A] };
     respostas = [
-      { casa: /FROM demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
-      { casa: /FROM encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
-      { casa: /FROM faixa_etaria/, linhas: FAIXAS },
-      { casa: /INSERT INTO pessoa/, linhas: [{ id: 78 }] },
-      { casa: /INSERT INTO atendimento \(/, linhas: [{ id: 502 }] },
+      { casa: /FROM ASSOCIAL_demanda WHERE id IN/, linhas: [{ id: 1, exigeTexto: false }, { id: 2, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_encaminhamento WHERE id IN/, linhas: [{ id: 3, exigeTexto: false }] },
+      { casa: /FROM ASSOCIAL_faixa_etaria/, linhas: FAIXAS },
+      { casa: /INSERT INTO ASSOCIAL_pessoa/, linhas: [{ id: 78 }] },
+      { casa: /INSERT INTO ASSOCIAL_atendimento \(/, linhas: [{ id: 502 }] },
     ];
     const r = await chamar('POST', '/api/atendimentos', corpoValido());
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
-    assert.equal(log.find((l) => /INSERT INTO atendimento \(/.test(l.texto)).params.usuarioId, 7);
-    const aud = log.find((l) => /INSERT INTO auditoria/.test(l.texto));
+    assert.equal(log.find((l) => /INSERT INTO ASSOCIAL_atendimento \(/.test(l.texto)).params.usuarioId, 7);
+    const aud = log.find((l) => /INSERT INTO ASSOCIAL_auditoria/.test(l.texto));
     assert.ok(aud, 'auditoria registrada');
     usuario = { id: 10, perfil: 'ASSISTENTE', unidades: [UNIDADE_A] };
   });
@@ -223,7 +223,7 @@ async function teste(nome, fn) {
     assert.equal((await chamar('GET', '/api/pessoas/buscar?cpf=123')).status, 400);
     respostas = [];
     assert.deepEqual((await chamar('GET', '/api/pessoas/buscar?cpf=52998224725')).corpo, { encontrada: false });
-    respostas = [{ casa: /FROM pessoa p WHERE p\.cpf/, linhas: [{ id: 3, cpf: '52998224725', nome: 'Ana' }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_pessoa p WHERE p\.cpf/, linhas: [{ id: 3, cpf: '52998224725', nome: 'Ana' }] }];
     const r = await chamar('GET', '/api/pessoas/buscar?cpf=529.982.247-25');
     assert.equal(r.corpo.encontrada, true);
     assert.ok(!log.some((l) => /atendimento/i.test(l.texto)), 'busca por CPF não pode tocar atendimentos');
@@ -239,9 +239,9 @@ async function teste(nome, fn) {
   });
 
   await teste('pessoas POST duplicado => 409; PUT fora do escopo => 404', async () => {
-    respostas = [{ casa: /FROM pessoa p WHERE p\.cpf/, linhas: [{ id: 3 }] }];
+    respostas = [{ casa: /FROM ASSOCIAL_pessoa p WHERE p\.cpf/, linhas: [{ id: 3 }] }];
     assert.equal((await chamar('POST', '/api/pessoas', { nome: 'Ana', cpf: '52998224725' })).status, 409);
-    respostas = [{ casa: /SELECT id FROM pessoa WHERE id/, linhas: [{ id: 3 }] }, { casa: /CASE WHEN EXISTS/, linhas: [{ ok: 0 }] }];
+    respostas = [{ casa: /SELECT id FROM ASSOCIAL_pessoa WHERE id/, linhas: [{ id: 3 }] }, { casa: /CASE WHEN EXISTS/, linhas: [{ ok: 0 }] }];
     assert.equal((await chamar('PUT', '/api/pessoas/3', { nome: 'Ana' })).status, 404);
   });
 

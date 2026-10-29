@@ -40,27 +40,27 @@ async function travaDeSeguranca() {
 }
 
 async function existente() {
-  return db.consultarUm('SELECT id, nome FROM pessoa WHERE cpf = @cpf', { cpf: CPF });
+  return db.consultarUm('SELECT id, nome FROM ASSOCIAL_pessoa WHERE cpf = @cpf', { cpf: CPF });
 }
 
 async function remover() {
   const p = await existente();
   if (!p) { console.log('Nada a remover: a família de teste não existe.'); return; }
   if (p.nome !== NOME) { console.error(`RECUSADO: o CPF ${CPF} pertence a "${p.nome}", não à família de teste.`); process.exit(3); }
-  const [{ n }] = await db.consultar('SELECT COUNT(*) AS n FROM atendimento WHERE pessoa_id = @p', { p: p.id });
+  const [{ n }] = await db.consultar('SELECT COUNT(*) AS n FROM ASSOCIAL_atendimento WHERE pessoa_id = @p', { p: p.id });
   if (n > 0) { console.error(`RECUSADO: a pessoa tem ${n} atendimento(s) que este script não criou.`); process.exit(3); }
-  const fams = await db.consultar('SELECT id FROM familia WHERE responsavel_pessoa_id = @p', { p: p.id });
+  const fams = await db.consultar('SELECT id FROM ASSOCIAL_familia WHERE responsavel_pessoa_id = @p', { p: p.id });
   for (const f of fams) {
-    for (const ac of await db.consultar('SELECT id FROM acompanhamento WHERE familia_id = @f', { f: f.id })) {
-      await db.consultar('DELETE FROM acompanhamento_registro WHERE acompanhamento_id = @ac', { ac: ac.id });
-      await db.consultar("IF OBJECT_ID(N'dbo.pesquisa_resposta', N'U') IS NOT NULL DELETE FROM pesquisa_resposta WHERE acompanhamento_id = @ac", { ac: ac.id });
-      await db.consultar('DELETE FROM questionario WHERE acompanhamento_id = @ac', { ac: ac.id });
-      await db.consultar('DELETE FROM acompanhamento WHERE id = @ac', { ac: ac.id });
+    for (const ac of await db.consultar('SELECT id FROM ASSOCIAL_acompanhamento WHERE familia_id = @f', { f: f.id })) {
+      await db.consultar('DELETE FROM ASSOCIAL_acompanhamento_registro WHERE acompanhamento_id = @ac', { ac: ac.id });
+      await db.consultar("IF OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_resposta', N'U') IS NOT NULL DELETE FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac", { ac: ac.id });
+      await db.consultar('DELETE FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac', { ac: ac.id });
+      await db.consultar('DELETE FROM ASSOCIAL_acompanhamento WHERE id = @ac', { ac: ac.id });
     }
-    await db.consultar('DELETE FROM familia_membro WHERE familia_id = @f', { f: f.id });
-    await db.consultar('DELETE FROM familia WHERE id = @f', { f: f.id });
+    await db.consultar('DELETE FROM ASSOCIAL_familia_membro WHERE familia_id = @f', { f: f.id });
+    await db.consultar('DELETE FROM ASSOCIAL_familia WHERE id = @f', { f: f.id });
   }
-  await db.consultar('DELETE FROM pessoa WHERE id = @p', { p: p.id });
+  await db.consultar('DELETE FROM ASSOCIAL_pessoa WHERE id = @p', { p: p.id });
   console.log(`Família de teste "${NOME}" removida.`);
 }
 
@@ -72,11 +72,11 @@ async function criar() {
     process.exit(3);
   }
   const assistente = await db.consultarUm(
-    `SELECT TOP 1 u.id FROM usuario u JOIN perfil pf ON pf.id = u.perfil_id
-       JOIN usuario_unidade uu ON uu.usuario_id = u.id JOIN unidade un ON un.id = uu.unidade_id
+    `SELECT TOP 1 u.id FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil pf ON pf.id = u.perfil_id
+       JOIN ASSOCIAL_usuario_unidade uu ON uu.usuario_id = u.id JOIN ASSOCIAL_unidade un ON un.id = uu.unidade_id
       WHERE pf.codigo = 'ASSISTENTE' AND un.sigla = 'BRA' AND u.ativo = 1
       ORDER BY CASE WHEN u.login = 'e2e_assist' THEN 0 ELSE 1 END, u.id`);
-  const bra = await db.consultarUm("SELECT id FROM unidade WHERE sigla = 'BRA'");
+  const bra = await db.consultarUm("SELECT id FROM ASSOCIAL_unidade WHERE sigla = 'BRA'");
   if (!assistente || !bra) { console.error('É preciso uma assistente da unidade BRA (ex.: e2e_assist) no banco de teste.'); process.exit(4); }
   const uid = assistente.id;
   const hoje = hojeIso();
@@ -84,23 +84,23 @@ async function criar() {
 
   await db.transacao(async (tx) => {
     const [p] = await tx.consultar(
-      `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, endereco, cep, bairro, trabalho_atual, telefone, criado_por)
+      `INSERT INTO ASSOCIAL_pessoa (cpf, nome, data_nascimento, nis, endereco, cep, bairro, trabalho_atual, telefone, criado_por)
        OUTPUT INSERTED.id
        VALUES (@cpf, @nome, @nasc, '12345678901', N'Rua das Flores, 100', '02000000', N'Brasilândia', N'Diarista', '11912345678', @uid)`,
       { cpf: CPF, nome: NOME, nasc: D('1988-04-12'), uid });
-    const [f] = await tx.consultar('INSERT INTO familia (responsavel_pessoa_id, criado_por) OUTPUT INSERTED.id VALUES (@p, @uid)', { p: p.id, uid });
+    const [f] = await tx.consultar('INSERT INTO ASSOCIAL_familia (responsavel_pessoa_id, criado_por) OUTPUT INSERTED.id VALUES (@p, @uid)', { p: p.id, uid });
     await tx.consultar(
-      `INSERT INTO familia_membro (familia_id, nome, idade, parentesco, trabalha, criado_por) VALUES
+      `INSERT INTO ASSOCIAL_familia_membro (familia_id, nome, idade, parentesco, trabalha, criado_por) VALUES
          (@f, N'Pedro Teste E2E', 8, N'Filho', 0, @uid), (@f, N'Ana Teste E2E', 14, N'Filha', 0, @uid), (@f, N'Dona Rosa Teste E2E', 62, N'Mãe', 0, @uid)`,
       { f: f.id, uid });
     const [ac] = await tx.consultar(
-      `INSERT INTO acompanhamento (familia_id, unidade_id, usuario_id, data_inicio, data_prevista_final, status, observacoes, criado_por)
+      `INSERT INTO ASSOCIAL_acompanhamento (familia_id, unidade_id, usuario_id, data_inicio, data_prevista_final, status, observacoes, criado_por)
        OUTPUT INSERTED.id VALUES (@f, @un, @uid, @ini, @prev, 'EM_ANDAMENTO', N'Família de teste (scripts/seed-teste.js).', @uid)`,
       { f: f.id, un: bra.id, uid, ini: D(INICIO), prev: D(somarDias(INICIO, 90)) });
 
     const quest = async (tipo, data, { destinos, ...r }) => {
       const [q] = await tx.consultar(
-        `INSERT INTO questionario (acompanhamento_id, tipo, data_aplicacao, concluido,
+        `INSERT INTO ASSOCIAL_questionario (acompanhamento_id, tipo, data_aplicacao, concluido,
             qtd_membros_familia, renda_mensal_media, qtd_membros_com_renda, recebe_auxilio,
             acesso_alimentos_in_natura, frequencia_frutas_verduras, qualidade_alimentacao, saude_nutricional,
             consegue_poupar, economia_mensal_faixa, economia_mensal_valor, capacidade_poupanca, gestao_financeira,
@@ -110,8 +110,8 @@ async function criar() {
          VALUES (@ac, @tipo, @data, 1, 4, @renda, @comRenda, 1, @a2a, @a2b, @a2c, @a2d, @a3a, @a3b, @a3bv, @a3d, @a3e,
                  @a4a, @a4b, @a4c, @a4d, @a4e, @a5a, @a5b, @a5c, @uid)`,
         { ac: ac.id, tipo, data: D(data), uid, ...r });
-      await tx.consultar('INSERT INTO questionario_beneficio VALUES (@q, 1)', { q: q.id });
-      for (const d of destinos) await tx.consultar('INSERT INTO questionario_destino_economia VALUES (@q, @d)', { q: q.id, d });
+      await tx.consultar('INSERT INTO ASSOCIAL_questionario_beneficio VALUES (@q, 1)', { q: q.id });
+      for (const d of destinos) await tx.consultar('INSERT INTO ASSOCIAL_questionario_destino_economia VALUES (@q, @d)', { q: q.id, d });
     };
     await quest('INICIAL', INICIO, {
       renda: [db.tipos.Decimal(10, 2), 1500], comRenda: 1, a2a: 'NAO_TINHA', a2b: 'UMA_DUAS', a2c: 'NAO_MELHOROU', a2d: 'NENHUMA',

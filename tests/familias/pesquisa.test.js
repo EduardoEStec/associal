@@ -217,13 +217,13 @@ const acRow = (p, sobre = {}) => {
 };
 const modeloRow = { id: 1, codigo: 'SATISFACAO', versao: 1, titulo: 'Pesquisa', aviso: 'Aviso provisório.' };
 const baseHandlers = (sobreAc = {}, extra = []) => [
-  { teste: /FROM acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
-  { teste: /INSERT INTO auditoria/, resp: () => [] },
-  { teste: /FROM configuracao/, resp: () => [] },
-  { teste: /FROM pesquisa_modelo WHERE/, resp: () => [modeloRow] },
-  { teste: /FROM pesquisa_pergunta WHERE modelo_id/, resp: () => perguntas.map((p, i) => ({ ...p, ordem: i + 1, texto: `Pergunta ${p.codigo}` })) },
-  { teste: /^\s*SELECT momento, situacao, data_aplicacao FROM pesquisa_resposta/, resp: () => [] },
-  { teste: /FROM questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_acompanhamento ac(\s+WITH \([^)]*\))?\s+WHERE ac\.id = @id/, resp: (p) => acRow(p, sobreAc) },
+  { teste: /INSERT INTO ASSOCIAL_auditoria/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_configuracao/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_pesquisa_modelo WHERE/, resp: () => [modeloRow] },
+  { teste: /FROM ASSOCIAL_pesquisa_pergunta WHERE modelo_id/, resp: () => perguntas.map((p, i) => ({ ...p, ordem: i + 1, texto: `Pergunta ${p.codigo}` })) },
+  { teste: /^\s*SELECT momento, situacao, data_aplicacao FROM ASSOCIAL_pesquisa_resposta/, resp: () => [] },
+  { teste: /FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'/, resp: () => [] },
   ...extra,
 ];
 
@@ -241,11 +241,11 @@ test('assistente de outra unidade recebe 404 em todas as rotas da pesquisa', asy
 
 test('ADMIN opera como a coordenação: lê a lista, aplica a pesquisa e a auditoria registra quem foi (V12)', async () => {
   handlers = baseHandlers({}, [
-    { teste: /FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [] },
-    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
-    { teste: /INSERT INTO pesquisa_resposta \(/, resp: () => [{ id: 56 }] },
-    { teste: /DELETE FROM pesquisa_resposta_item/, resp: () => [] },
-    { teste: /INSERT INTO pesquisa_resposta_item/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta r\s+JOIN ASSOCIAL_pesquisa_modelo/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pesquisa_resposta \(/, resp: () => [{ id: 56 }] },
+    { teste: /DELETE FROM ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
   ]);
   chamadas.length = 0;
   const srv = await iniciar(admin);
@@ -253,12 +253,12 @@ test('ADMIN opera como a coordenação: lê a lista, aplica a pesquisa e a audit
     const r = await srv.chamar('GET', '/acompanhamentos/100/pesquisas');
     assert.equal(r.status, 200);
     assert.equal(r.corpo.textoRestrito, undefined);
-    assert.ok(chamadas.some((c) => /FROM pesquisa_resposta r/.test(c.sql)), 'consulta as respostas');
+    assert.ok(chamadas.some((c) => /FROM ASSOCIAL_pesquisa_resposta r/.test(c.sql)), 'consulta as respostas');
     const c = await srv.chamar('POST', '/acompanhamentos/100/pesquisas', completa());
     assert.equal(c.status, 201);
-    const ins = chamadas.find((x) => /INSERT INTO pesquisa_resposta \(/.test(x.sql));
+    const ins = chamadas.find((x) => /INSERT INTO ASSOCIAL_pesquisa_resposta \(/.test(x.sql));
     assert.equal(ins.params.usuario, 30, 'a resposta fica no nome de quem aplicou');
-    const aud = chamadas.find((x) => /INSERT INTO auditoria/.test(x.sql) && x.params.tabela === 'pesquisa_resposta');
+    const aud = chamadas.find((x) => /INSERT INTO ASSOCIAL_auditoria/.test(x.sql) && x.params.tabela === 'pesquisa_resposta');
     assert.ok(aud, 'auditoria registrada');
     assert.equal(aud.params.usuarioId, 30);
   } finally { await srv.fechar(); }
@@ -285,10 +285,10 @@ test('criar: validação 400 por item; momento FINAL exige questionário final; 
 
 test('criar: grava resposta e itens, sem texto na auditoria; rascunho aberto bloqueia nova pesquisa do mesmo momento', async () => {
   handlers = baseHandlers({}, [
-    { teste: /FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [] },
-    { teste: /INSERT INTO pesquisa_resposta \(/, resp: () => [{ id: 55 }] },
-    { teste: /DELETE FROM pesquisa_resposta_item/, resp: () => [] },
-    { teste: /INSERT INTO pesquisa_resposta_item/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pesquisa_resposta \(/, resp: () => [{ id: 55 }] },
+    { teste: /DELETE FROM ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
   ]);
   chamadas.length = 0;
   let srv = await iniciar(assistente);
@@ -296,16 +296,16 @@ test('criar: grava resposta e itens, sem texto na auditoria; rascunho aberto blo
     const r = await srv.chamar('POST', '/acompanhamentos/100/pesquisas', completa());
     assert.equal(r.status, 201);
     assert.deepEqual(r.corpo, { id: 55, situacao: 'CONCLUIDA' });
-    assert.equal(chamadas.filter((c) => /INSERT INTO pesquisa_resposta_item/.test(c.sql)).length, 8);
-    const ins = chamadas.find((c) => /INSERT INTO pesquisa_resposta \(/.test(c.sql));
+    assert.equal(chamadas.filter((c) => /INSERT INTO ASSOCIAL_pesquisa_resposta_item/.test(c.sql)).length, 8);
+    const ins = chamadas.find((c) => /INSERT INTO ASSOCIAL_pesquisa_resposta \(/.test(c.sql));
     assert.equal(ins.params.usuario, 10);
     assert.equal(ins.params.situacao, 'CONCLUIDA');
     assert.equal(ins.params.consent, true);
-    const aud = chamadas.find((c) => /INSERT INTO auditoria/.test(c.sql) && c.params.tabela === 'pesquisa_resposta');
+    const aud = chamadas.find((c) => /INSERT INTO ASSOCIAL_auditoria/.test(c.sql) && c.params.tabela === 'pesquisa_resposta');
     assert.ok(aud);
     assert.ok(!/Preço bom/.test(aud.params.detalhes), 'sem comentário na auditoria');
   } finally { await srv.fechar(); }
-  handlers = baseHandlers({}, [{ teste: /FROM pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [{ id: 7 }] }]);
+  handlers = baseHandlers({}, [{ teste: /FROM ASSOCIAL_pesquisa_resposta WHERE acompanhamento_id = @ac AND momento = @m AND situacao = 'RASCUNHO'/, resp: () => [{ id: 7 }] }]);
   srv = await iniciar(assistente);
   try {
     const r = await srv.chamar('POST', '/acompanhamentos/100/pesquisas', completa());
@@ -317,12 +317,12 @@ test('criar: grava resposta e itens, sem texto na auditoria; rascunho aberto blo
 test('editar e anular: só o autor ou a coordenação; concluída não é editável; motivo obrigatório', async () => {
   const resp = (usuarioId, situacao) => [{ id: 9, modeloId: 1, usuarioId, situacao, momento: 'AVULSA' }];
   const montar = (usuarioId, situacao) => baseHandlers({}, [
-    { teste: /FROM pesquisa_resposta\s+WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'/, resp: () => resp(usuarioId, situacao) },
-    { teste: /FROM pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'/, resp: () => [{ id: 9, usuarioId }] },
-    { teste: /UPDATE pesquisa_resposta/, resp: () => [] },
-    { teste: /DELETE FROM pesquisa_resposta_item/, resp: () => [] },
-    { teste: /INSERT INTO pesquisa_resposta_item/, resp: () => [] },
-    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta\s+WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'/, resp: () => resp(usuarioId, situacao) },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao <> 'ANULADA'/, resp: () => [{ id: 9, usuarioId }] },
+    { teste: /UPDATE ASSOCIAL_pesquisa_resposta/, resp: () => [] },
+    { teste: /DELETE FROM ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
+    { teste: /INSERT INTO ASSOCIAL_pesquisa_resposta_item/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta r\s+JOIN ASSOCIAL_pesquisa_modelo/, resp: () => [] },
   ]);
   handlers = montar(10, 'RASCUNHO');
   let srv = await iniciar(outraAssistenteMesmaUnidade);
@@ -353,9 +353,9 @@ test('editar e anular: só o autor ou a coordenação; concluída não é editá
 
 test('ocultar comentário: só COORDENADOR e ADMIN', async () => {
   handlers = baseHandlers({}, [
-    { teste: /FROM pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao = 'CONCLUIDA'/, resp: () => [{ id: 9 }] },
-    { teste: /UPDATE pesquisa_resposta/, resp: () => [] },
-    { teste: /FROM pesquisa_resposta r\s+JOIN pesquisa_modelo/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta WHERE id = @id AND acompanhamento_id = @ac AND situacao = 'CONCLUIDA'/, resp: () => [{ id: 9 }] },
+    { teste: /UPDATE ASSOCIAL_pesquisa_resposta/, resp: () => [] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta r\s+JOIN ASSOCIAL_pesquisa_modelo/, resp: () => [] },
   ]);
   let srv = await iniciar(assistente);
   try {

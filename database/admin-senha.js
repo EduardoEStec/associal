@@ -19,13 +19,13 @@ function gerarSenhaAleatoria() {
 
 // `consultar(sql, params)` é o helper de server/db.js. Retorna a senha em texto (para exibir) ou null.
 async function definirSenha(consultar, login, senha) {
-  const [usuario] = await consultar('SELECT id FROM usuario WHERE login = @login', { login });
+  const [usuario] = await consultar('SELECT id FROM ASSOCIAL_usuario WHERE login = @login', { login });
   if (!usuario) return null;
   const nova = senha || gerarSenhaAleatoria();
   if (nova.length < 8) throw new Error('A senha deve ter ao menos 8 caracteres.');
   const hash = await bcrypt.hash(nova, CUSTO_BCRYPT);
   await consultar(
-    `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_em = SYSUTCDATETIME()
+    `UPDATE ASSOCIAL_usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_em = SYSUTCDATETIME()
       WHERE id = @id`,
     { hash, id: usuario.id },
   );

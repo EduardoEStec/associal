@@ -26,7 +26,7 @@ const config = {
 
   sessao: {
     segredo: process.env.SESSION_SECRET || '',
-    // 'sql' (tabela dbo.sessao, padrão) ou 'memoria' (apenas desenvolvimento/testes sem banco)
+    // 'sql' (tabela dbo.ASSOCIAL_sessao, padrão) ou 'memoria' (apenas desenvolvimento/testes sem banco)
     armazenamento: process.env.SESSION_STORE || 'sql',
     duracaoHoras: Number(process.env.SESSION_HORAS) || 12,
     cookieSeguro: bool(process.env.COOKIE_SECURE, false), // true quando atrás de HTTPS

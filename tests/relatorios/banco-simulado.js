@@ -79,81 +79,81 @@ const donosExtra = { ATENDIMENTO: [], QUESTIONARIO: [], PESQUISA: [] }; // { don
 function responder(sql, p = {}) {
   const s = sql.replace(/\s+/g, ' ');
   if (/AS dono_id, .* AS data, /.test(s)) {
-    const formulario = /FROM atendimento a/.test(s) ? 'ATENDIMENTO' : /FROM questionario q/.test(s) ? 'QUESTIONARIO' : 'PESQUISA';
+    const formulario = /FROM ASSOCIAL_atendimento a/.test(s) ? 'ATENDIMENTO' : /FROM ASSOCIAL_questionario q/.test(s) ? 'QUESTIONARIO' : 'PESQUISA';
     return visiveis(donosExtra[formulario], p);
   }
   const exigeUnidade = /unidade_id IN \(@un0/.test(s);
-  if (/\bFROM (atendimento|acao_visita|acompanhamento|questionario|familia)\b/.test(s) && !exigeUnidade && !/FROM familia f JOIN pessoa|FROM familia_membro|FROM questionario WHERE acompanhamento_id|FROM questionario_(beneficio|destino)|INSERT INTO auditoria/.test(s)) {
+  if (/\bFROM (atendimento|acao_visita|acompanhamento|questionario|familia)\b/.test(s) && !exigeUnidade && !/FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa|FROM ASSOCIAL_familia_membro|FROM ASSOCIAL_questionario WHERE acompanhamento_id|FROM questionario_(beneficio|destino)|INSERT INTO ASSOCIAL_auditoria/.test(s)) {
     consultasUnidade.push(`SEM FILTRO DE UNIDADE: ${s.slice(0, 80)}`);
   }
 
-  if (/INSERT INTO auditoria/.test(s)) return [];
-  if (/FROM unidade WHERE id IN/.test(s)) {
+  if (/INSERT INTO ASSOCIAL_auditoria/.test(s)) return [];
+  if (/FROM ASSOCIAL_unidade WHERE id IN/.test(s)) {
     const ids = Object.values(p);
     return UNIDADES.filter((u) => ids.includes(u.id));
   }
-  if (/FROM acompanhamento ac JOIN unidade un ON un.id = ac.unidade_id WHERE ac.id = @id/.test(s)) {
+  if (/FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id WHERE ac.id = @id/.test(s)) {
     return ACOMPANHAMENTOS.filter((a) => a.id === p.id && permitidasDe(p).includes(a.unidadeId));
   }
-  if (/FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id/.test(s)) {
+  if (/FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id/.test(s)) {
     return [{ nome: 'Maria da Silva Santos', cpf: '52998224725', nis: '12345678901', endereco: 'Rua das Flores, 100', cep: '02345000', bairro: 'Brasilândia', trabalhoAtual: 'Diarista' }];
   }
-  if (/FROM familia_membro/.test(s)) {
+  if (/FROM ASSOCIAL_familia_membro/.test(s)) {
     return [
       { id: 1, nome: 'João', dataNascimento: d('2010-04-01'), idade: null, parentesco: 'Filho', trabalha: false },
       { id: 2, nome: 'Ana', dataNascimento: null, idade: 40, parentesco: 'Cônjuge', trabalha: true },
     ];
   }
-  if (/FROM questionario WHERE acompanhamento_id = @id/.test(s)) return p.id === 10 ? [INICIAL, FINAL] : [];
+  if (/FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id/.test(s)) return p.id === 10 ? [INICIAL, FINAL] : [];
   // F5 (índice de progresso na seção "Evolução" do individual)
-  if (/FROM acompanhamento ac WHERE ac.id = @id AND/.test(s)) {
+  if (/FROM ASSOCIAL_acompanhamento ac WHERE ac.id = @id AND/.test(s)) {
     return ACOMPANHAMENTOS.filter((a) => a.id === p.id && permitidasDe(p).includes(a.unidadeId)).map((a) => ({ ...a, usuarioId: 1, dataPrevistaFinal: null, observacoes: null }));
   }
   // F6 (painel/relatório semestral): todas as consultas por unidade passam pelo filtro un*/sel*
-  if (/FROM configuracao WHERE chave IN \('pesquisa_n_minimo'/.test(s)) return [{ chave: 'pesquisa_n_minimo', valor: '1' }];
+  if (/FROM ASSOCIAL_configuracao WHERE chave IN \('pesquisa_n_minimo'/.test(s)) return [{ chave: 'pesquisa_n_minimo', valor: '1' }];
   if (/SELECT ac\.id, ac\.unidade_id, ac\.status, ac\.data_inicio/.test(s)) return visiveis(ACOMPANHAMENTOS, p);
-  if (/FROM acompanhamento_indice ai JOIN acompanhamento ac/.test(s)) return visiveis(INDICES, p);
-  if (/FROM acompanhamento_meta m JOIN acompanhamento ac/.test(s)) return visiveis(METAS, p);
-  if (/FROM acompanhamento_registro r JOIN acompanhamento ac/.test(s)) return [{ total: 5, familias: 2 }];
-  if (/FROM pesquisa_resposta_item i/.test(s)) {
+  if (/FROM ASSOCIAL_acompanhamento_indice ai JOIN ASSOCIAL_acompanhamento ac/.test(s)) return visiveis(INDICES, p);
+  if (/FROM ASSOCIAL_acompanhamento_meta m JOIN ASSOCIAL_acompanhamento ac/.test(s)) return visiveis(METAS, p);
+  if (/FROM ASSOCIAL_acompanhamento_registro r JOIN ASSOCIAL_acompanhamento ac/.test(s)) return [{ total: 5, familias: 2 }];
+  if (/FROM ASSOCIAL_pesquisa_resposta_item i/.test(s)) {
     const ids = new Set(visiveis(PESQUISAS, p).map((x) => x.id));
     return ITENS_PESQUISA.filter((i) => ids.has(i.respostaId));
   }
-  if (/FROM pesquisa_resposta r JOIN acompanhamento ac/.test(s)) return visiveis(PESQUISAS, p);
-  if (/FROM acompanhamento_meta WHERE acompanhamento_id = @id/.test(s)) return METAS.filter((m) => m.acompanhamentoId === p.id);
-  if (/FROM configuracao WHERE chave IN \('indice_tolerancia_pontos'/.test(s)) return [];
-  if (/FROM questionario WHERE acompanhamento_id = @ac/.test(s)) return p.ac === 10 ? [INICIAL, FINAL] : [];
-  if (/FROM acompanhamento_indice/.test(s)) return [];
-  if (/FROM acompanhamento_registro/.test(s) && /COUNT\(\*\) AS total/.test(s)) return [{ total: 3, primeiro: d('2026-02-20'), ultimo: d('2026-04-20') }];
-  if (/FROM acompanhamento_registro/.test(s)) return [{ dataRegistro: d('2026-02-20'), situacao: 'IGUAL' }, { dataRegistro: d('2026-04-20'), situacao: 'MELHORANDO' }];
-  if (/FROM questionario_beneficio/.test(s)) return [{ nome: 'Bolsa Família' }, { nome: 'Tarifa Social de Energia' }];
-  if (/FROM questionario_destino_economia/.test(s)) return [{ nome: 'Alimentação' }, { nome: 'Educação' }];
-  if (/FROM acompanhamento ac WHERE .*ac\.data_inicio <= @fim/.test(s) && /SELECT ac\.unidade_id, ac\.data_inicio/.test(s)) {
+  if (/FROM ASSOCIAL_pesquisa_resposta r JOIN ASSOCIAL_acompanhamento ac/.test(s)) return visiveis(PESQUISAS, p);
+  if (/FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @id/.test(s)) return METAS.filter((m) => m.acompanhamentoId === p.id);
+  if (/FROM ASSOCIAL_configuracao WHERE chave IN \('indice_tolerancia_pontos'/.test(s)) return [];
+  if (/FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac/.test(s)) return p.ac === 10 ? [INICIAL, FINAL] : [];
+  if (/FROM ASSOCIAL_acompanhamento_indice/.test(s)) return [];
+  if (/FROM ASSOCIAL_acompanhamento_registro/.test(s) && /COUNT\(\*\) AS total/.test(s)) return [{ total: 3, primeiro: d('2026-02-20'), ultimo: d('2026-04-20') }];
+  if (/FROM ASSOCIAL_acompanhamento_registro/.test(s)) return [{ dataRegistro: d('2026-02-20'), situacao: 'IGUAL' }, { dataRegistro: d('2026-04-20'), situacao: 'MELHORANDO' }];
+  if (/FROM ASSOCIAL_questionario_beneficio/.test(s)) return [{ nome: 'Bolsa Família' }, { nome: 'Tarifa Social de Energia' }];
+  if (/FROM ASSOCIAL_questionario_destino_economia/.test(s)) return [{ nome: 'Alimentação' }, { nome: 'Educação' }];
+  if (/FROM ASSOCIAL_acompanhamento ac WHERE .*ac\.data_inicio <= @fim/.test(s) && /SELECT ac\.unidade_id, ac\.data_inicio/.test(s)) {
     return visiveis(ACOMPANHAMENTOS, p);
   }
   if (/SELECT ac\.unidade_id, COUNT\(\*\) AS familias/.test(s)) {
     return UNIDADES.map((u) => ({ unidadeId: u.id, familias: visiveis(ACOMPANHAMENTOS, p).filter((a) => a.unidadeId === u.id).length })).filter((x) => x.familias);
   }
-  if (/FROM questionario q JOIN acompanhamento ac/.test(s)) return visiveis([INICIAL, FINAL, INICIAL_2, FINAL_2], p);
-  if (/SELECT a\.unidade_id, COUNT\(\*\) AS atendimentos FROM atendimento/.test(s)) {
+  if (/FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac/.test(s)) return visiveis([INICIAL, FINAL, INICIAL_2, FINAL_2], p);
+  if (/SELECT a\.unidade_id, COUNT\(\*\) AS atendimentos FROM ASSOCIAL_atendimento/.test(s)) {
     return visiveis([{ unidadeId: 1, atendimentos: 120 }, { unidadeId: 2, atendimentos: 80 }, { unidadeId: 3, atendimentos: 5 }], p);
   }
   if (/AS atendimentos_com_encaminhamento/.test(s)) {
     return visiveis([{ unidadeId: 1, encaminhamentos: 90, atendimentosComEncaminhamento: 70 }, { unidadeId: 2, encaminhamentos: 40, atendimentosComEncaminhamento: 30 }], p);
   }
-  if (/FROM atendimento a JOIN atendimento_encaminhamento ae ON ae.atendimento_id = a.id JOIN encaminhamento e|JOIN encaminhamento e ON e.id/.test(s)) {
+  if (/FROM ASSOCIAL_atendimento a JOIN ASSOCIAL_atendimento_encaminhamento ae ON ae.atendimento_id = a.id JOIN ASSOCIAL_encaminhamento e|JOIN ASSOCIAL_encaminhamento e ON e.id/.test(s)) {
     return permitidasDe(p).includes(1) ? [{ nome: 'CRAS', quantidade: 70 }, { nome: 'Unidade Descomplica', quantidade: 25 }, { nome: 'UBS', quantidade: 10 }] : [];
   }
-  if (/FROM acao_visita_tema/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita_tema/.test(s)) {
     return [{ acaoVisitaId: 1, nome: 'Assistência Social' }, { acaoVisitaId: 1, nome: 'Saúde' }, { acaoVisitaId: 2, nome: 'Idoso' }];
   }
-  if (/FROM acao_visita av JOIN tipo_acao ta/.test(s) && /av\.status = 'REALIZADA'/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita av JOIN ASSOCIAL_tipo_acao ta/.test(s) && /av\.status = 'REALIZADA'/.test(s)) {
     return visiveis([
       { id: 1, unidadeId: 1, dataAcao: d('2026-03-12'), instituicaoLocal: 'CCA Nossa Senhora & Cia', endereco: 'Rua A', qtdParticipantes: 40, tipo: 'Visita institucional' },
       { id: 2, unidadeId: 2, dataAcao: d('2026-04-02'), instituicaoLocal: 'UBS Central', endereco: 'Rua B', qtdParticipantes: 15, tipo: 'Palestra' },
     ], p);
   }
-  if (/FROM acao_visita_foto f/.test(s) && /SELECT TOP 500/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita_foto f/.test(s) && /SELECT TOP 500/.test(s)) {
     return visiveis([
       { id: 11, arquivo: 'foto1.jpg', mimeType: 'image/jpeg', legenda: 'Roda de conversa', unidadeId: 1, dataAcao: d('2026-03-12'), instituicaoLocal: 'CCA N. Sra.' },
       { id: 12, arquivo: 'foto2.png', mimeType: 'image/png', legenda: 'Palestra <saúde>', unidadeId: 2, dataAcao: d('2026-04-02'), instituicaoLocal: 'UBS Central' },
@@ -161,29 +161,29 @@ function responder(sql, p = {}) {
       { id: 14, arquivo: '../../etc/passwd', mimeType: 'image/jpeg', legenda: 'Traversal', unidadeId: 1, dataAcao: d('2026-03-12'), instituicaoLocal: 'X' },
     ], p);
   }
-  if (/FROM acao_visita_foto f JOIN acao_visita av ON av.id = f.acao_visita_id WHERE f.id = @id/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita_foto f JOIN ASSOCIAL_acao_visita av ON av.id = f.acao_visita_id WHERE f.id = @id/.test(s)) {
     const todas = { 11: { id: 11, arquivo: 'foto1.jpg', mimeType: 'image/jpeg', unidadeId: 1 }, 12: { id: 12, arquivo: 'foto2.png', mimeType: 'image/png', unidadeId: 2 } };
     const f = todas[p.id];
     return f && permitidasDe(p).includes(f.unidadeId) ? [f] : [];
   }
-  if (/FROM atendimento a WHERE .* GROUP BY a\.unidade_id, YEAR/.test(s)) {
+  if (/FROM ASSOCIAL_atendimento a WHERE .* GROUP BY a\.unidade_id, YEAR/.test(s)) {
     return visiveis([
       { unidadeId: 1, ano: 2026, mes: 1, atendimentos: 50 }, { unidadeId: 1, ano: 2026, mes: 2, atendimentos: 70 }, { unidadeId: 2, ano: 2026, mes: 2, atendimentos: 80 },
     ], p);
   }
-  if (/FROM acao_visita av WHERE .* GROUP BY av\.unidade_id, YEAR/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita av WHERE .* GROUP BY av\.unidade_id, YEAR/.test(s)) {
     return visiveis([{ unidadeId: 1, ano: 2026, mes: 2, acoes: 3, participantes: 100 }], p);
   }
-  if (/FROM acao_visita av JOIN unidade un ON un.id = av.unidade_id JOIN tipo_acao ta/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita av JOIN ASSOCIAL_unidade un ON un.id = av.unidade_id JOIN ASSOCIAL_tipo_acao ta/.test(s)) {
     return visiveis([
       { id: 1, unidadeId: 1, dataAcao: d('2026-03-12'), sigla: 'BRA', instituicaoLocal: '=HYPERLINK("x")', endereco: 'Rua; A', status: 'REALIZADA', qtdParticipantes: 40, tipo: 'Visita institucional' },
       { id: 2, unidadeId: 2, dataAcao: d('2026-04-02'), sigla: 'TIR', instituicaoLocal: 'UBS', endereco: null, status: 'CANCELADA', qtdParticipantes: null, tipo: 'Palestra' },
     ], p);
   }
-  if (/FROM acompanhamento ac JOIN familia f JOIN pessoa/.test(s) || /SELECT TOP 200 ac\.id/.test(s)) {
+  if (/FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_familia f JOIN ASSOCIAL_pessoa/.test(s) || /SELECT TOP 200 ac\.id/.test(s)) {
     return visiveis(ACOMPANHAMENTOS, p).map((a) => ({ id: a.id, dataInicio: a.dataInicio, status: a.status, unidadeSigla: a.unidadeSigla, responsavelNome: 'Fulana', temInicial: 1, temFinal: 1 }));
   }
-  if (/FROM resposta_extra WHERE (questionario_id|atendimento_id|pesquisa_resposta_id) IN/.test(s)) {
+  if (/FROM ASSOCIAL_resposta_extra WHERE (questionario_id|atendimento_id|pesquisa_resposta_id) IN/.test(s)) {
     const ids = Object.entries(p).filter(([k]) => /^d\d+$/.test(k)).map(([, v]) => v);
     return respostasExtra.filter((r) => ids.includes(r.donoId));
   }

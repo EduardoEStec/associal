@@ -44,7 +44,7 @@ const isoData = (valor) => (valor ? new Date(valor).toISOString().slice(0, 10) :
 
 async function lerConfiguracao(executor = { consultar }) {
   const linhas = await executor.consultar(
-    `SELECT chave, valor FROM configuracao
+    `SELECT chave, valor FROM ASSOCIAL_configuracao
       WHERE chave IN ('prazo_questionario_final_dias', 'alerta_questionario_final_dias_antes', 'alerta_sem_contato_dias')`,
   );
   const mapa = Object.fromEntries(linhas.map((l) => [l.chave, Number(l.valor)]));
@@ -80,7 +80,7 @@ async function carregarAcompanhamento(req, id, executor = { consultarUm }, { tra
   const ac = await executor.consultarUm(
     `SELECT ac.id, ac.familia_id, ac.unidade_id, ac.usuario_id, ac.data_inicio, ac.data_prevista_final,
             ac.data_encerramento, ac.status, ac.observacoes
-       FROM acompanhamento ac${dica}
+       FROM ASSOCIAL_acompanhamento ac${dica}
       WHERE ac.id = @id AND ${where}`,
     params,
   );
@@ -155,7 +155,7 @@ async function listar(req, consulta) {
       SELECT ac.id AS acompanhamento_id, ac.familia_id, ac.unidade_id, un.sigla AS unidade_sigla,
              ac.status, ac.data_inicio, ac.data_prevista_final, ac.data_encerramento,
              p.id AS responsavel_id, p.nome AS responsavel_nome, p.cpf AS responsavel_cpf,
-             (SELECT COUNT(*) FROM familia_membro fm WHERE fm.familia_id = ac.familia_id) + 1 AS qtd_membros,
+             (SELECT COUNT(*) FROM ASSOCIAL_familia_membro fm WHERE fm.familia_id = ac.familia_id) + 1 AS qtd_membros,
              CAST(CASE WHEN qi.concluido = 1 THEN 1 ELSE 0 END AS BIT) AS inicial_concluido,
              CAST(CASE WHEN qf.concluido = 1 THEN 1 ELSE 0 END AS BIT) AS final_concluido,
              ${contato.sqlUltimoContato('ac', 'f')} AS ultimo_contato,
@@ -167,12 +167,12 @@ async function listar(req, consulta) {
                WHEN DATEDIFF(DAY, @hoje, ac.data_prevista_final) <= @alerta THEN 'VENCENDO'
                ELSE 'EM_DIA'
              END AS situacao_final
-        FROM acompanhamento ac
-        JOIN familia f ON f.id = ac.familia_id
-        JOIN pessoa p ON p.id = f.responsavel_pessoa_id
-        JOIN unidade un ON un.id = ac.unidade_id
-        LEFT JOIN questionario qi ON qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL'
-        LEFT JOIN questionario qf ON qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL'
+        FROM ASSOCIAL_acompanhamento ac
+        JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+        JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id
+        JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+        LEFT JOIN ASSOCIAL_questionario qi ON qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL'
+        LEFT JOIN ASSOCIAL_questionario qf ON qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL'
        WHERE ${filtros.join(' AND ')}
     )`;
 
@@ -219,16 +219,16 @@ async function detalhar(req, id) {
     consultarUm(
       `SELECT f.id, p.id AS pessoa_id, p.cpf, p.nome, p.data_nascimento, p.nis, p.telefone, p.telefone2, p.endereco, p.cep, p.bairro,
               p.trabalho_atual, p.genero_id, p.escolaridade_id, p.raca_id, p.genero_outro, p.escolaridade_outro, p.raca_outro
-         FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id
+         FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id
         WHERE f.id = @familia`, { familia: ac.familiaId }),
     consultar(
       `SELECT id, nome, data_nascimento, idade, genero_id, genero_outro, parentesco, trabalha
-         FROM familia_membro WHERE familia_id = @familia ORDER BY id`, { familia: ac.familiaId }),
+         FROM ASSOCIAL_familia_membro WHERE familia_id = @familia ORDER BY id`, { familia: ac.familiaId }),
     consultar(
       `SELECT id, tipo, data_aplicacao, concluido, modelo, alterado_em, criado_em
-         FROM questionario WHERE acompanhamento_id = @id`, { id: ac.id }),
-    consultarUm('SELECT id, sigla, nome FROM unidade WHERE id = @id', { id: ac.unidadeId }),
-    consultarUm('SELECT id, nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
+         FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id`, { id: ac.id }),
+    consultarUm('SELECT id, sigla, nome FROM ASSOCIAL_unidade WHERE id = @id', { id: ac.unidadeId }),
+    consultarUm('SELECT id, nome FROM ASSOCIAL_usuario WHERE id = @id', { id: ac.usuarioId }),
   ]);
 
   const { alertaDias, semContatoDias } = await lerConfiguracao();
@@ -366,7 +366,7 @@ async function conferirApoio(executor, tabela, ids, campoErro, problemas) {
   if (lista.length === 0) return;
   const params = {};
   const marcadores = lista.map((id, i) => { params[`i${i}`] = id; return `@i${i}`; });
-  const achados = await executor.consultar(`SELECT id, exige_texto FROM ${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
+  const achados = await executor.consultar(`SELECT id, exige_texto FROM ASSOCIAL_${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
   if (achados.length !== lista.length) problemas[campoErro] = 'Opção inexistente.';
   return achados;
 }
@@ -392,7 +392,7 @@ const paramData = (v) => [tipos.Date, v ?? null];
 // Insere/atualiza a pessoa (responsável) por CPF. Campos não informados NÃO apagam os existentes.
 async function gravarPessoa(tx, req, p) {
   const existente = await tx.consultarUm(
-    'SELECT id FROM pessoa WITH (UPDLOCK, HOLDLOCK) WHERE cpf = @cpf', { cpf: [tipos.Char(11), p.cpf] });
+    'SELECT id FROM ASSOCIAL_pessoa WITH (UPDLOCK, HOLDLOCK) WHERE cpf = @cpf', { cpf: [tipos.Char(11), p.cpf] });
   const params = {
     nome: p.nome, dataNascimento: paramData(p.dataNascimento), nis: p.nis, telefone: p.telefone, telefone2: p.telefone2, endereco: p.endereco, cep: p.cep,
     bairro: p.bairro, trabalhoAtual: p.trabalhoAtual, generoId: p.generoId, escolaridadeId: p.escolaridadeId,
@@ -401,7 +401,7 @@ async function gravarPessoa(tx, req, p) {
   };
   if (existente) {
     await tx.consultar(
-      `UPDATE pessoa SET nome = @nome,
+      `UPDATE ASSOCIAL_pessoa SET nome = @nome,
               data_nascimento = COALESCE(@dataNascimento, data_nascimento), nis = COALESCE(@nis, nis),
               telefone = COALESCE(@telefone, telefone), telefone2 = COALESCE(@telefone2, telefone2),
               endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
@@ -416,7 +416,7 @@ async function gravarPessoa(tx, req, p) {
     return { id: existente.id, criada: false };
   }
   const [nova] = await tx.consultar(
-    `INSERT INTO pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
+    `INSERT INTO ASSOCIAL_pessoa (cpf, nome, data_nascimento, nis, telefone, telefone2, endereco, cep, bairro, trabalho_atual,
                          genero_id, escolaridade_id, raca_id, genero_outro, escolaridade_outro, raca_outro, criado_por)
      OUTPUT INSERTED.id
      VALUES (@cpf, @nome, @dataNascimento, @nis, @telefone, @telefone2, @endereco, @cep, @bairro, @trabalhoAtual,
@@ -428,7 +428,7 @@ async function gravarPessoa(tx, req, p) {
 // Atualização parcial dos dados pessoais de uma pessoa já conhecida (id). CPF não muda aqui.
 async function atualizarPessoaPorId(tx, req, pessoaId, p) {
   await tx.consultar(
-    `UPDATE pessoa SET nome = COALESCE(@nome, nome),
+    `UPDATE ASSOCIAL_pessoa SET nome = COALESCE(@nome, nome),
             data_nascimento = COALESCE(@dataNascimento, data_nascimento), nis = COALESCE(@nis, nis),
             telefone = COALESCE(@telefone, telefone), telefone2 = COALESCE(@telefone2, telefone2),
             endereco = COALESCE(@endereco, endereco), cep = COALESCE(@cep, cep), bairro = COALESCE(@bairro, bairro),
@@ -449,10 +449,10 @@ async function atualizarPessoaPorId(tx, req, pessoaId, p) {
 
 // DELETE + INSERT dos membros (padrão N:N das convenções).
 async function substituirMembros(tx, req, familiaId, membros) {
-  await tx.consultar('DELETE FROM familia_membro WHERE familia_id = @familia', { familia: familiaId });
+  await tx.consultar('DELETE FROM ASSOCIAL_familia_membro WHERE familia_id = @familia', { familia: familiaId });
   for (const m of membros) {
     await tx.consultar(
-      `INSERT INTO familia_membro (familia_id, nome, data_nascimento, idade, genero_id, genero_outro, parentesco, trabalha, criado_por)
+      `INSERT INTO ASSOCIAL_familia_membro (familia_id, nome, data_nascimento, idade, genero_id, genero_outro, parentesco, trabalha, criado_por)
        VALUES (@familia, @nome, @dataNascimento, @idade, @generoId, @generoOutro, @parentesco, @trabalha, @usuario)`,
       {
         familia: familiaId, nome: m.nome, dataNascimento: paramData(m.dataNascimento), idade: m.idade,
@@ -491,10 +491,10 @@ async function criar(req, corpo) {
     const { id: pessoaId, criada } = await gravarPessoa(tx, req, pessoa);
 
     let familia = await tx.consultarUm(
-      'SELECT id FROM familia WITH (UPDLOCK, HOLDLOCK) WHERE responsavel_pessoa_id = @pessoa', { pessoa: pessoaId });
+      'SELECT id FROM ASSOCIAL_familia WITH (UPDLOCK, HOLDLOCK) WHERE responsavel_pessoa_id = @pessoa', { pessoa: pessoaId });
     if (familia) {
       const ativo = await tx.consultarUm(
-        "SELECT id, unidade_id FROM acompanhamento WHERE familia_id = @familia AND status = 'EM_ANDAMENTO'",
+        "SELECT id, unidade_id FROM ASSOCIAL_acompanhamento WHERE familia_id = @familia AND status = 'EM_ANDAMENTO'",
         { familia: familia.id });
       if (ativo) {
         // Não revela detalhes de outra unidade: só diz que existe.
@@ -505,14 +505,14 @@ async function criar(req, corpo) {
       }
     } else {
       [familia] = await tx.consultar(
-        'INSERT INTO familia (responsavel_pessoa_id, criado_por) OUTPUT INSERTED.id VALUES (@pessoa, @usuario)',
+        'INSERT INTO ASSOCIAL_familia (responsavel_pessoa_id, criado_por) OUTPUT INSERTED.id VALUES (@pessoa, @usuario)',
         { pessoa: pessoaId, usuario: req.usuario.id });
     }
 
     await substituirMembros(tx, req, familia.id, membros);
 
     const [ac] = await tx.consultar(
-      `INSERT INTO acompanhamento (familia_id, unidade_id, usuario_id, data_inicio, data_prevista_final, status, observacoes, criado_por)
+      `INSERT INTO ASSOCIAL_acompanhamento (familia_id, unidade_id, usuario_id, data_inicio, data_prevista_final, status, observacoes, criado_por)
        OUTPUT INSERTED.id
        VALUES (@familia, @unidade, @usuario, @inicio, @prevista, 'EM_ANDAMENTO', @observacoes, @usuario)`,
       {
@@ -567,7 +567,7 @@ async function atualizar(req, id, corpo) {
 
     if (membros) await substituirMembros(tx, req, ac.familiaId, membros);
     if (pessoaParcial) {
-      const familia = await tx.consultarUm('SELECT responsavel_pessoa_id FROM familia WHERE id = @id', { id: ac.familiaId });
+      const familia = await tx.consultarUm('SELECT responsavel_pessoa_id FROM ASSOCIAL_familia WHERE id = @id', { id: ac.familiaId });
       await atualizarPessoaPorId(tx, req, familia.responsavelPessoaId, pessoaParcial);
     }
 
@@ -584,7 +584,7 @@ async function atualizar(req, id, corpo) {
     }
     if (dataPrevistaFinal) { sets.push('data_prevista_final = @prevista'); params.prevista = paramData(dataPrevistaFinal); }
     if (observacoes !== undefined) { sets.push('observacoes = @observacoes'); params.observacoes = observacoes; }
-    await tx.consultar(`UPDATE acompanhamento SET ${sets.join(', ')} WHERE id = @id`, params);
+    await tx.consultar(`UPDATE ASSOCIAL_acompanhamento SET ${sets.join(', ')} WHERE id = @id`, params);
 
     await registrarAuditoria(req, 'ALTERAR', 'acompanhamento', ac.id, {
       membros: membros ? membros.length : undefined, responsavel: !!pessoaParcial,
@@ -616,13 +616,13 @@ async function encerrar(req, id, corpo) {
     }
     if (status === 'CONCLUIDO') {
       const final = await tx.consultarUm(
-        "SELECT concluido FROM questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'", { id: ac.id });
+        "SELECT concluido FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id AND tipo = 'FINAL'", { id: ac.id });
       if (!final || !final.concluido) {
         throw erros.conflito('Para concluir o acompanhamento é preciso concluir o questionário final. Se a família saiu do programa, use "Desligado".');
       }
     }
     await tx.consultar(
-      `UPDATE acompanhamento
+      `UPDATE ASSOCIAL_acompanhamento
           SET status = @status, data_encerramento = @encerramento,
               observacoes = COALESCE(@observacoes, observacoes),
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()

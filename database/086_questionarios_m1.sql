@@ -3,7 +3,7 @@
 
    O questionário INICIAL e o FINAL passam a ter perguntas DIFERENTES (docs/modelos/1-questionario-inicial e 3-questionario-final).
    Modelagem: as perguntas oficiais novas vivem no CATÁLOGO da P2 (formulários QUESTIONARIO_INICIAL e QUESTIONARIO_FINAL) e as
-   respostas ficam em dbo.resposta_extra (uma linha por pergunta; uma por opção na múltipla), ligadas ao questionário. Assim a
+   respostas ficam em dbo.ASSOCIAL_resposta_extra (uma linha por pergunta; uma por opção na múltipla), ligadas ao questionário. Assim a
    coordenação continua renomeando perguntas, acrescentando opções e criando perguntas adicionais, sem mudar o banco.
 
    1. catalogo_pergunta.formulario passa a aceitar QUESTIONARIO_INICIAL e QUESTIONARIO_FINAL (o QUESTIONARIO antigo fica só para
@@ -25,17 +25,17 @@ GO
    1. Formulários do catálogo
    --------------------------------------------------------------------- */
 
-IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.catalogo_pergunta') AND name = N'formulario' AND max_length < 24)
-    ALTER TABLE dbo.catalogo_pergunta ALTER COLUMN formulario VARCHAR(24) NOT NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_pergunta') AND name = N'formulario' AND max_length < 24)
+    ALTER TABLE dbo.ASSOCIAL_catalogo_pergunta ALTER COLUMN formulario VARCHAR(24) COLLATE Latin1_General_100_CI_AI NOT NULL;
 GO
 
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_catalogo_pergunta_formulario' AND parent_object_id = OBJECT_ID(N'dbo.catalogo_pergunta')
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_catalogo_pergunta_formulario' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_pergunta')
            AND definition NOT LIKE N'%QUESTIONARIO_FINAL%')
-    ALTER TABLE dbo.catalogo_pergunta DROP CONSTRAINT ck_catalogo_pergunta_formulario;
+    ALTER TABLE dbo.ASSOCIAL_catalogo_pergunta DROP CONSTRAINT ASSOCIAL_ck_catalogo_pergunta_formulario;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_catalogo_pergunta_formulario' AND parent_object_id = OBJECT_ID(N'dbo.catalogo_pergunta'))
-    ALTER TABLE dbo.catalogo_pergunta ADD CONSTRAINT ck_catalogo_pergunta_formulario
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_catalogo_pergunta_formulario' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_pergunta'))
+    ALTER TABLE dbo.ASSOCIAL_catalogo_pergunta ADD CONSTRAINT ASSOCIAL_ck_catalogo_pergunta_formulario
         CHECK (formulario IN ('QUESTIONARIO', 'QUESTIONARIO_INICIAL', 'QUESTIONARIO_FINAL', 'PESQUISA', 'ATENDIMENTO'));
 GO
 
@@ -43,28 +43,28 @@ GO
    2. Pontuação e detalhe das opções
    --------------------------------------------------------------------- */
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.catalogo_opcao') AND name = N'pontos')
-    ALTER TABLE dbo.catalogo_opcao ADD pontos TINYINT NULL;               -- regra v2 do índice: 0 (pior) a 100 (melhor); NULL = não pontua
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_opcao') AND name = N'pontos')
+    ALTER TABLE dbo.ASSOCIAL_catalogo_opcao ADD pontos TINYINT NULL;               -- regra v2 do índice: 0 (pior) a 100 (melhor); NULL = não pontua
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.catalogo_opcao') AND name = N'pede_detalhe')
-    ALTER TABLE dbo.catalogo_opcao ADD pede_detalhe BIT NOT NULL CONSTRAINT df_catalogo_opcao_pede_detalhe DEFAULT 0;   -- "Outras: ____"
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_opcao') AND name = N'pede_detalhe')
+    ALTER TABLE dbo.ASSOCIAL_catalogo_opcao ADD pede_detalhe BIT NOT NULL CONSTRAINT ASSOCIAL_df_catalogo_opcao_pede_detalhe DEFAULT 0;   -- "Outras: ____"
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_catalogo_opcao_pontos' AND parent_object_id = OBJECT_ID(N'dbo.catalogo_opcao'))
-    ALTER TABLE dbo.catalogo_opcao ADD CONSTRAINT ck_catalogo_opcao_pontos CHECK (pontos IS NULL OR pontos <= 100);
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_catalogo_opcao_pontos' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_catalogo_opcao'))
+    ALTER TABLE dbo.ASSOCIAL_catalogo_opcao ADD CONSTRAINT ASSOCIAL_ck_catalogo_opcao_pontos CHECK (pontos IS NULL OR pontos <= 100);
 GO
 
 /* ---------------------------------------------------------------------
    3. Modelo do questionário (LEGADO = formato anterior à M1)
    --------------------------------------------------------------------- */
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.questionario') AND name = N'modelo')
-    ALTER TABLE dbo.questionario ADD modelo VARCHAR(6) NOT NULL CONSTRAINT df_questionario_modelo DEFAULT 'LEGADO';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario') AND name = N'modelo')
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD modelo VARCHAR(6) COLLATE Latin1_General_100_CI_AI NOT NULL CONSTRAINT ASSOCIAL_df_questionario_modelo DEFAULT 'LEGADO';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ck_questionario_modelo' AND parent_object_id = OBJECT_ID(N'dbo.questionario'))
-    ALTER TABLE dbo.questionario ADD CONSTRAINT ck_questionario_modelo CHECK (modelo IN ('LEGADO', 'M1'));
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'ASSOCIAL_ck_questionario_modelo' AND parent_object_id = OBJECT_ID(N'dbo.ASSOCIAL_questionario'))
+    ALTER TABLE dbo.ASSOCIAL_questionario ADD CONSTRAINT ASSOCIAL_ck_questionario_modelo CHECK (modelo IN ('LEGADO', 'M1'));
 GO
 
 /* ---------------------------------------------------------------------
@@ -72,7 +72,7 @@ GO
       (gerada de server/services/modelos-m1.js — não editar a mão; a coordenação renomeia pela tela)
    --------------------------------------------------------------------- */
 
-INSERT INTO dbo.catalogo_pergunta (formulario, secao, codigo, oficial, campo, tipo, texto, obrigatoria, ordem)
+INSERT INTO dbo.ASSOCIAL_catalogo_pergunta (formulario, secao, codigo, oficial, campo, tipo, texto, obrigatoria, ordem)
 SELECT v.formulario, v.secao, v.codigo, 1, v.campo, v.tipo, v.texto, v.obrigatoria, v.ordem
 FROM (VALUES
     ('QUESTIONARIO_INICIAL', 1, '1.1', 'qtdIntegrantes', 'NUMERO', N'Número de integrantes da família', 1, 10),
@@ -111,10 +111,10 @@ FROM (VALUES
     ('QUESTIONARIO_FINAL', 4, '4.5', 'avaliacaoGeral', 'ESCOLHA', N'Qual é a avaliação geral da família sobre o armazém solidário?', 1, 200),
     ('QUESTIONARIO_FINAL', 4, '4.6', 'recomendaria', 'SIM_NAO', N'A família recomendaria o projeto para outras famílias ou comunidades?', 1, 210)
 ) AS v(formulario, secao, codigo, campo, tipo, texto, obrigatoria, ordem)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.catalogo_pergunta c WHERE c.formulario = v.formulario AND c.codigo = v.codigo);
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_catalogo_pergunta c WHERE c.formulario = v.formulario AND c.codigo = v.codigo);
 GO
 
-INSERT INTO dbo.catalogo_opcao (pergunta_id, codigo, texto, base, posicao, pontos, pede_detalhe, ordem)
+INSERT INTO dbo.ASSOCIAL_catalogo_opcao (pergunta_id, codigo, texto, base, posicao, pontos, pede_detalhe, ordem)
 SELECT p.id, v.codigo, v.texto, 1, v.posicao, v.pontos, v.pede_detalhe, v.ordem
 FROM (VALUES
     ('QUESTIONARIO_INICIAL', '1.2', 'CRIANCAS_ADOLESCENTES', N'Crianças e adolescentes (até 17 anos)', 0, NULL, 0, 10),
@@ -230,20 +230,20 @@ FROM (VALUES
     ('QUESTIONARIO_FINAL', '4.5', 'REGULAR', N'Regular', 2, 33, 0, 30),
     ('QUESTIONARIO_FINAL', '4.5', 'RUIM', N'Ruim', 3, 0, 0, 40)
 ) AS v(formulario, pergunta, codigo, texto, posicao, pontos, pede_detalhe, ordem)
-JOIN dbo.catalogo_pergunta p ON p.formulario = v.formulario AND p.codigo = v.pergunta
-WHERE NOT EXISTS (SELECT 1 FROM dbo.catalogo_opcao o WHERE o.pergunta_id = p.id AND o.codigo = v.codigo);
+JOIN dbo.ASSOCIAL_catalogo_pergunta p ON p.formulario = v.formulario AND p.codigo = v.pergunta
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_catalogo_opcao o WHERE o.pergunta_id = p.id AND o.codigo = v.codigo);
 GO
 
 /* ---------------------------------------------------------------------
    5. Configuração
    --------------------------------------------------------------------- */
 
-INSERT INTO dbo.configuracao (chave, valor, descricao)
+INSERT INTO dbo.ASSOCIAL_configuracao (chave, valor, descricao)
 SELECT v.chave, v.valor, v.descricao
 FROM (VALUES
     ('meta_projeto',
         N'Contribuir para o empoderamento econômico de 10 famílias locais vinculadas ao projeto, acompanhando os impactos do Armazém Solidário na economia familiar e na segurança alimentar.',
         N'Meta do projeto impressa no cabeçalho dos questionários inicial e final e no relatório final familiar.')
 ) AS v(chave, valor, descricao)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.configuracao c WHERE c.chave = v.chave);
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_configuracao c WHERE c.chave = v.chave);
 GO

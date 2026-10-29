@@ -4,7 +4,7 @@
 // Fonte única das perguntas oficiais: dela saem a SEMENTE da migração 086 (scripts/gerar-semente-m1.js), o catálogo padrão usado
 // quando o banco ainda não tem as tabelas e a regra do índice de progresso (versão 2).
 //
-// Depois da migração, textos, ordem, opções e perguntas adicionais vivem em dbo.catalogo_* (a coordenação edita em
+// Depois da migração, textos, ordem, opções e perguntas adicionais vivem em dbo.ASSOCIAL_catalogo_* (a coordenação edita em
 // Administração > Perguntas e opções). O que NUNCA muda por configuração é o que está aqui: o código (estável), o tipo, o
 // CAMPO (nome usado pelas regras) e a PONTUAÇÃO das opções oficiais (0 a 100; null = não pontua).
 //

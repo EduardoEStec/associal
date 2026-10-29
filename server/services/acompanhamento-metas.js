@@ -20,7 +20,7 @@ const paramData = (v) => [tipos.Date, v ?? null];
 // ---------------------------------------------------------------------------
 
 const SELECT_META = `SELECT m.id, m.dimensao, m.descricao, m.prazo, m.status, m.concluida_em, m.usuario_id, u.nome AS autor_nome, m.criado_em, m.alterado_em
-                       FROM acompanhamento_meta m JOIN usuario u ON u.id = m.usuario_id`;
+                       FROM ASSOCIAL_acompanhamento_meta m JOIN ASSOCIAL_usuario u ON u.id = m.usuario_id`;
 
 const formatarMeta = (m, hoje, historico) => ({
   id: m.id,
@@ -46,8 +46,8 @@ async function listar(req, acompanhamentoId) {
     consultar(`${SELECT_META} WHERE m.acompanhamento_id = @id ORDER BY CASE WHEN m.status = 'EM_ANDAMENTO' THEN 0 ELSE 1 END, m.criado_em DESC, m.id DESC`, { id: ac.id }),
     consultar(
       `SELECT rm.meta_id, rm.avanco, r.id AS registro_id, r.data_registro
-         FROM registro_meta rm
-         JOIN acompanhamento_registro r ON r.id = rm.registro_id
+         FROM ASSOCIAL_registro_meta rm
+         JOIN ASSOCIAL_acompanhamento_registro r ON r.id = rm.registro_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL
         ORDER BY r.data_registro DESC, r.id DESC`, { id: ac.id }),
   ]);
@@ -72,7 +72,7 @@ async function carregarMeta(executor, acId, metaId) {
   const id = inteiroPositivo(metaId);
   if (!id) throw erros.naoEncontrado('Meta não encontrada.');
   const m = await executor.consultarUm(
-    'SELECT id, status, concluida_em FROM acompanhamento_meta WHERE id = @id AND acompanhamento_id = @ac', { id, ac: acId });
+    'SELECT id, status, concluida_em FROM ASSOCIAL_acompanhamento_meta WHERE id = @id AND acompanhamento_id = @ac', { id, ac: acId });
   if (!m) throw erros.naoEncontrado('Meta não encontrada.');
   return m;
 }
@@ -85,7 +85,7 @@ async function criar(req, acompanhamentoId, corpo) {
     const { dados, erros: problemas } = regras.validarMeta(corpo, { hoje, dataInicio: isoData(ac.dataInicio) });
     lancarSeErros(problemas);
     const [nova] = await tx.consultar(
-      `INSERT INTO acompanhamento_meta (acompanhamento_id, dimensao, descricao, prazo, status, usuario_id, criado_por)
+      `INSERT INTO ASSOCIAL_acompanhamento_meta (acompanhamento_id, dimensao, descricao, prazo, status, usuario_id, criado_por)
        OUTPUT INSERTED.id
        VALUES (@ac, @dimensao, @descricao, @prazo, 'EM_ANDAMENTO', @usuario, @usuario)`,
       { ac: ac.id, dimensao: dados.dimensao, descricao: dados.descricao, prazo: paramData(dados.prazo), usuario: req.usuario.id });
@@ -104,7 +104,7 @@ async function atualizar(req, acompanhamentoId, metaId, corpo) {
     const { dados, erros: problemas } = regras.validarMeta(corpo, { hoje, dataInicio: isoData(ac.dataInicio), existente: meta });
     lancarSeErros(problemas);
     await tx.consultar(
-      `UPDATE acompanhamento_meta
+      `UPDATE ASSOCIAL_acompanhamento_meta
           SET dimensao = @dimensao, descricao = @descricao, prazo = @prazo, status = @status, concluida_em = @concluida,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
@@ -123,19 +123,19 @@ async function atualizar(req, acompanhamentoId, metaId, corpo) {
 
 // Ids das metas que um registro pode marcar: as em andamento mais as que ele já tinha marcado (na edição).
 async function metasMarcaveis(executor, acId, registroId = null) {
-  const abertas = await executor.consultar("SELECT id FROM acompanhamento_meta WHERE acompanhamento_id = @ac AND status = 'EM_ANDAMENTO'", { ac: acId });
+  const abertas = await executor.consultar("SELECT id FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @ac AND status = 'EM_ANDAMENTO'", { ac: acId });
   const ids = abertas.map((m) => m.id);
   if (registroId) {
-    const ja = await executor.consultar('SELECT meta_id FROM registro_meta WHERE registro_id = @r', { r: registroId });
+    const ja = await executor.consultar('SELECT meta_id FROM ASSOCIAL_registro_meta WHERE registro_id = @r', { r: registroId });
     for (const j of ja) if (!ids.includes(j.metaId)) ids.push(j.metaId);
   }
   return ids;
 }
 
 async function gravarMetasDoRegistro(tx, registroId, itens) {
-  await tx.consultar('DELETE FROM registro_meta WHERE registro_id = @r', { r: registroId });
+  await tx.consultar('DELETE FROM ASSOCIAL_registro_meta WHERE registro_id = @r', { r: registroId });
   for (const it of itens) {
-    await tx.consultar('INSERT INTO registro_meta (registro_id, meta_id, avanco) VALUES (@r, @m, @a)', { r: registroId, m: it.metaId, a: it.avanco });
+    await tx.consultar('INSERT INTO ASSOCIAL_registro_meta (registro_id, meta_id, avanco) VALUES (@r, @m, @a)', { r: registroId, m: it.metaId, a: it.avanco });
   }
 }
 
@@ -143,9 +143,9 @@ async function gravarMetasDoRegistro(tx, registroId, itens) {
 async function metasPorRegistro(acId) {
   const linhas = await consultar(
     `SELECT rm.registro_id, rm.meta_id, rm.avanco, m.dimensao, m.descricao
-       FROM registro_meta rm
-       JOIN acompanhamento_registro r ON r.id = rm.registro_id
-       JOIN acompanhamento_meta m ON m.id = rm.meta_id
+       FROM ASSOCIAL_registro_meta rm
+       JOIN ASSOCIAL_acompanhamento_registro r ON r.id = rm.registro_id
+       JOIN ASSOCIAL_acompanhamento_meta m ON m.id = rm.meta_id
       WHERE r.acompanhamento_id = @ac AND r.anulado_em IS NULL
       ORDER BY m.id`, { ac: acId });
   const mapa = new Map();

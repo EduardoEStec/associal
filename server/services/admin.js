@@ -18,14 +18,14 @@ function gerarSenhaProvisoria(tamanho = 12) {
 
 // ---------- Sessões ----------
 
-// Apaga as sessões abertas do usuário (dbo.sessao.dados é JSON com usuarioId). `manterSid` preserva a sessão atual.
+// Apaga as sessões abertas do usuário (dbo.ASSOCIAL_sessao.dados é JSON com usuarioId). `manterSid` preserva a sessão atual.
 // Devolve quantas foram encerradas.
 async function encerrarSessoes(executor, usuarioId, manterSid) {
   const params = { id: usuarioId };
   let extra = '';
   if (manterSid) { extra = ' AND sid <> @manterSid'; params.manterSid = manterSid; }
   const apagadas = await executor.consultar(
-    `DELETE FROM sessao OUTPUT DELETED.sid WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id${extra}`, params);
+    `DELETE FROM ASSOCIAL_sessao OUTPUT DELETED.sid WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id${extra}`, params);
   return apagadas.length;
 }
 
@@ -44,7 +44,7 @@ async function referenciasDe(tabela) {
       `SELECT OBJECT_NAME(fkc.parent_object_id) AS tabela, COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS coluna
          FROM sys.foreign_key_columns fkc
         WHERE fkc.referenced_object_id = OBJECT_ID(@nome)`,
-      { nome: `dbo.${tabela}` },
+      { nome: `dbo.ASSOCIAL_${tabela}` },
     );
     cacheReferencias.set(tabela, linhas);
   }

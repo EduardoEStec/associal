@@ -36,7 +36,7 @@ function idDaRota(req) {
 const SQL_USUARIOS = `
   SELECT u.id, u.login, u.nome, u.email, u.cress, p.codigo AS perfil, u.ativo,
          u.deve_trocar_senha, u.ultimo_login_em, u.criado_em
-    FROM usuario u JOIN perfil p ON p.id = u.perfil_id`;
+    FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil p ON p.id = u.perfil_id`;
 
 async function unidadesDosUsuarios(ids, executor = { consultar }) {
   const mapa = new Map(ids.map((id) => [id, []]));
@@ -45,7 +45,7 @@ async function unidadesDosUsuarios(ids, executor = { consultar }) {
   const marcas = ids.map((id, i) => { params[`u${i}`] = id; return `@u${i}`; });
   const linhas = await executor.consultar(
     `SELECT uu.usuario_id, un.id, un.sigla, un.nome
-       FROM usuario_unidade uu JOIN unidade un ON un.id = uu.unidade_id
+       FROM ASSOCIAL_usuario_unidade uu JOIN ASSOCIAL_unidade un ON un.id = uu.unidade_id
       WHERE uu.usuario_id IN (${marcas.join(',')}) ORDER BY un.ordem, un.sigla`, params);
   for (const l of linhas) mapa.get(l.usuarioId).push({ id: l.id, sigla: l.sigla, nome: l.nome });
   return mapa;
@@ -88,7 +88,7 @@ async function validarUsuario(corpo, { criacao }) {
   if (unidadesGravar.length) {
     const params = {};
     const marcas = unidadesGravar.map((id, i) => { params[`u${i}`] = id; return `@u${i}`; });
-    const [{ total }] = await consultar(`SELECT COUNT(*) AS total FROM unidade WHERE id IN (${marcas.join(',')})`, params);
+    const [{ total }] = await consultar(`SELECT COUNT(*) AS total FROM ASSOCIAL_unidade WHERE id IN (${marcas.join(',')})`, params);
     if (total !== unidadesGravar.length) problemas.unidadeIds = 'Unidade inexistente.';
   }
 
@@ -97,16 +97,16 @@ async function validarUsuario(corpo, { criacao }) {
 }
 
 async function gravarVinculos(tx, usuarioId, unidadeIds) {
-  await tx.consultar('DELETE FROM usuario_unidade WHERE usuario_id = @id', { id: usuarioId });
+  await tx.consultar('DELETE FROM ASSOCIAL_usuario_unidade WHERE usuario_id = @id', { id: usuarioId });
   for (const unidadeId of unidadeIds) {
-    await tx.consultar('INSERT INTO usuario_unidade (usuario_id, unidade_id) VALUES (@id, @unidadeId)', { id: usuarioId, unidadeId });
+    await tx.consultar('INSERT INTO ASSOCIAL_usuario_unidade (usuario_id, unidade_id) VALUES (@id, @unidadeId)', { id: usuarioId, unidadeId });
   }
 }
 
 // Garante que sempre reste ao menos um ADMIN ativo depois de `usuarioId` deixar de ser ADMIN ativo.
 async function exigirOutroAdminAtivo(tx, usuarioId) {
   const [{ total }] = await tx.consultar(
-    `SELECT COUNT(*) AS total FROM usuario u JOIN perfil p ON p.id = u.perfil_id
+    `SELECT COUNT(*) AS total FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil p ON p.id = u.perfil_id
       WHERE p.codigo = 'ADMIN' AND u.ativo = 1 AND u.id <> @id`, { id: usuarioId });
   if (total === 0) throw erros.conflito('Não é possível: este é o único administrador ativo do sistema.');
 }
@@ -137,12 +137,12 @@ router.post('/usuarios', soAdmin, async (req, res) => {
   const hash = await bcrypt.hash(senhaProvisoria, svc.CUSTO_BCRYPT);
 
   const id = await transacao(async (tx) => {
-    const [existe] = await tx.consultar('SELECT 1 AS x FROM usuario WHERE login = @login', { login: dados.login });
+    const [existe] = await tx.consultar('SELECT 1 AS x FROM ASSOCIAL_usuario WHERE login = @login', { login: dados.login });
     if (existe) throw erros.validacao({ login: 'Este login já está em uso.' });
     const [novo] = await tx.consultar(
-      `INSERT INTO usuario (login, nome, email, senha_hash, perfil_id, cress, deve_trocar_senha, ativo, criado_por)
+      `INSERT INTO ASSOCIAL_usuario (login, nome, email, senha_hash, perfil_id, cress, deve_trocar_senha, ativo, criado_por)
        OUTPUT INSERTED.id
-       VALUES (@login, @nome, @email, @hash, (SELECT id FROM perfil WHERE codigo = @perfil), @cress, 1, 1, @por)`,
+       VALUES (@login, @nome, @email, @hash, (SELECT id FROM ASSOCIAL_perfil WHERE codigo = @perfil), @cress, 1, 1, @por)`,
       { login: dados.login, nome: dados.nome, email: dados.email, hash, perfil: dados.perfil, cress: dados.cress, por: req.usuario.id });
     await gravarVinculos(tx, novo.id, dados.unidadeIds);
     await registrarAuditoria(req, 'CRIAR', 'usuario', novo.id, { login: dados.login, perfil: dados.perfil }, tx);
@@ -156,7 +156,7 @@ router.put('/usuarios/:id', soAdmin, async (req, res) => {
   const dados = await validarUsuario(req.body || {}, { criacao: false });
   await transacao(async (tx) => {
     const [atual] = await tx.consultar(
-      'SELECT p.codigo AS perfil, u.ativo FROM usuario u JOIN perfil p ON p.id = u.perfil_id WHERE u.id = @id', { id });
+      'SELECT p.codigo AS perfil, u.ativo FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil p ON p.id = u.perfil_id WHERE u.id = @id', { id });
     if (!atual) throw erros.naoEncontrado('Usuário não encontrado.');
     if (atual.perfil !== dados.perfil) {
       if (id === req.usuario.id) throw erros.conflito('Você não pode alterar o seu próprio perfil.');
@@ -164,8 +164,8 @@ router.put('/usuarios/:id', soAdmin, async (req, res) => {
     }
     const antes = [...(await unidadesDosUsuarios([id], tx)).get(id).map((x) => x.id)].sort().join(',');
     await tx.consultar(
-      `UPDATE usuario SET nome = @nome, email = @email, cress = @cress,
-              perfil_id = (SELECT id FROM perfil WHERE codigo = @perfil),
+      `UPDATE ASSOCIAL_usuario SET nome = @nome, email = @email, cress = @cress,
+              perfil_id = (SELECT id FROM ASSOCIAL_perfil WHERE codigo = @perfil),
               alterado_por = @por, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
       { id, nome: dados.nome, email: dados.email, cress: dados.cress, perfil: dados.perfil, por: req.usuario.id });
@@ -185,14 +185,14 @@ router.patch('/usuarios/:id/ativo', soAdmin, async (req, res) => {
   const ativo = ehVerdadeiro(req.body?.ativo);
   await transacao(async (tx) => {
     const [atual] = await tx.consultar(
-      'SELECT p.codigo AS perfil, u.ativo FROM usuario u JOIN perfil p ON p.id = u.perfil_id WHERE u.id = @id', { id });
+      'SELECT p.codigo AS perfil, u.ativo FROM ASSOCIAL_usuario u JOIN ASSOCIAL_perfil p ON p.id = u.perfil_id WHERE u.id = @id', { id });
     if (!atual) throw erros.naoEncontrado('Usuário não encontrado.');
     if (!ativo) {
       if (id === req.usuario.id) throw erros.conflito('Você não pode desativar o próprio usuário.');
       if (atual.perfil === PERFIS.ADMIN && atual.ativo) await exigirOutroAdminAtivo(tx, id);
     }
     await tx.consultar(
-      'UPDATE usuario SET ativo = @ativo, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+      'UPDATE ASSOCIAL_usuario SET ativo = @ativo, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
       { id, ativo: ativo ? 1 : 0, por: req.usuario.id });
     const detalhes = { ativo };
     if (!ativo) detalhes.sessoesEncerradas = await svc.encerrarSessoes(tx, id);
@@ -204,13 +204,13 @@ router.patch('/usuarios/:id/ativo', soAdmin, async (req, res) => {
 // POST /api/admin/usuarios/:id/redefinir-senha — nova senha provisória, exibida uma única vez.
 router.post('/usuarios/:id/redefinir-senha', soAdmin, async (req, res) => {
   const id = idDaRota(req);
-  const alvo = await consultarUm('SELECT id FROM usuario WHERE id = @id', { id });
+  const alvo = await consultarUm('SELECT id FROM ASSOCIAL_usuario WHERE id = @id', { id });
   if (!alvo) throw erros.naoEncontrado('Usuário não encontrado.');
   const senhaProvisoria = svc.gerarSenhaProvisoria();
   const hash = await bcrypt.hash(senhaProvisoria, svc.CUSTO_BCRYPT);
   await transacao(async (tx) => {
     await tx.consultar(
-      `UPDATE usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_por = @por, alterado_em = SYSUTCDATETIME()
+      `UPDATE ASSOCIAL_usuario SET senha_hash = @hash, deve_trocar_senha = 1, alterado_por = @por, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`, { id, hash, por: req.usuario.id });
     // o admin que redefine a PRÓPRIA senha mantém a sessão atual (será levado à troca obrigatória)
     const sessoesEncerradas = await svc.encerrarSessoes(tx, id, id === req.usuario.id ? req.sessionID : undefined);
@@ -236,7 +236,7 @@ function validarUnidade(corpo) {
   return { sigla, nome, endereco, ordem };
 }
 
-const SQL_UNIDADES = 'SELECT id, sigla, nome, endereco, ativo, ordem FROM unidade';
+const SQL_UNIDADES = 'SELECT id, sigla, nome, endereco, ativo, ordem FROM ASSOCIAL_unidade';
 
 router.get('/unidades', async (req, res) => {
   res.json(await consultar(`${SQL_UNIDADES} ORDER BY ativo DESC, ordem, sigla`));
@@ -245,10 +245,10 @@ router.get('/unidades', async (req, res) => {
 router.post('/unidades', async (req, res) => {
   const d = validarUnidade(req.body || {});
   const id = await transacao(async (tx) => {
-    const [dup] = await tx.consultar('SELECT 1 AS x FROM unidade WHERE sigla = @sigla', { sigla: d.sigla });
+    const [dup] = await tx.consultar('SELECT 1 AS x FROM ASSOCIAL_unidade WHERE sigla = @sigla', { sigla: d.sigla });
     if (dup) throw erros.validacao({ sigla: 'Já existe uma unidade com esta sigla.' });
     const [novo] = await tx.consultar(
-      `INSERT INTO unidade (sigla, nome, endereco, ordem, criado_por) OUTPUT INSERTED.id
+      `INSERT INTO ASSOCIAL_unidade (sigla, nome, endereco, ordem, criado_por) OUTPUT INSERTED.id
        VALUES (@sigla, @nome, @endereco, @ordem, @por)`, { ...d, por: req.usuario.id });
     await registrarAuditoria(req, 'CRIAR', 'unidade', novo.id, { sigla: d.sigla }, tx);
     return novo.id;
@@ -260,10 +260,10 @@ router.put('/unidades/:id', async (req, res) => {
   const id = idDaRota(req);
   const d = validarUnidade(req.body || {});
   await transacao(async (tx) => {
-    const [dup] = await tx.consultar('SELECT 1 AS x FROM unidade WHERE sigla = @sigla AND id <> @id', { sigla: d.sigla, id });
+    const [dup] = await tx.consultar('SELECT 1 AS x FROM ASSOCIAL_unidade WHERE sigla = @sigla AND id <> @id', { sigla: d.sigla, id });
     if (dup) throw erros.validacao({ sigla: 'Já existe uma unidade com esta sigla.' });
     const r = await tx.consultar(
-      `UPDATE unidade SET sigla = @sigla, nome = @nome, endereco = @endereco, ordem = @ordem,
+      `UPDATE ASSOCIAL_unidade SET sigla = @sigla, nome = @nome, endereco = @endereco, ordem = @ordem,
               alterado_por = @por, alterado_em = SYSUTCDATETIME()
        OUTPUT INSERTED.id WHERE id = @id`, { ...d, id, por: req.usuario.id });
     if (!r.length) throw erros.naoEncontrado('Unidade não encontrada.');
@@ -276,7 +276,7 @@ router.patch('/unidades/:id/ativo', async (req, res) => {
   const id = idDaRota(req);
   const ativo = ehVerdadeiro(req.body?.ativo);
   const r = await consultar(
-    `UPDATE unidade SET ativo = @ativo, alterado_por = @por, alterado_em = SYSUTCDATETIME()
+    `UPDATE ASSOCIAL_unidade SET ativo = @ativo, alterado_por = @por, alterado_em = SYSUTCDATETIME()
      OUTPUT INSERTED.id WHERE id = @id`, { id, ativo: ativo ? 1 : 0, por: req.usuario.id });
   if (!r.length) throw erros.naoEncontrado('Unidade não encontrada.');
   await registrarAuditoria(req, 'ALTERAR', 'unidade', id, { ativo });
@@ -321,7 +321,7 @@ async function listarApoio(tabela, id) {
   const filtro = id ? 'WHERE t.id = @id' : '';
   const cols = svc.colunasApoio(tabela).split(', ').map((c) => `t.${c}`).join(', ');
   return consultar(
-    `SELECT ${cols}, CASE WHEN ${emUso} THEN 1 ELSE 0 END AS em_uso FROM ${tabela} t ${filtro} ORDER BY t.ativo DESC, t.ordem, t.nome`,
+    `SELECT ${cols}, CASE WHEN ${emUso} THEN 1 ELSE 0 END AS em_uso FROM ASSOCIAL_${tabela} t ${filtro} ORDER BY t.ativo DESC, t.ordem, t.nome`,
     id ? { id } : {});
 }
 
@@ -337,11 +337,11 @@ router.post('/apoio/:tabela', async (req, res) => {
   const tabela = tabelaApoio(req);
   const d = validarApoio(tabela, req.body || {});
   const id = await transacao(async (tx) => {
-    const [dup] = await tx.consultar(`SELECT 1 AS x FROM ${tabela} WHERE nome = @nome`, { nome: d.nome });
+    const [dup] = await tx.consultar(`SELECT 1 AS x FROM ASSOCIAL_${tabela} WHERE nome = @nome`, { nome: d.nome });
     if (dup) throw erros.validacao({ nome: 'Já existe uma opção com este nome.' });
     const extra = tabela === 'faixa_etaria' ? { cols: ', idade_min, idade_max', vals: ', @idadeMin, @idadeMax' } : { cols: '', vals: '' };
     const [novo] = await tx.consultar(
-      `INSERT INTO ${tabela} (nome, ordem, exige_texto${extra.cols}) OUTPUT INSERTED.id VALUES (@nome, @ordem, @exigeTexto${extra.vals})`, d);
+      `INSERT INTO ASSOCIAL_${tabela} (nome, ordem, exige_texto${extra.cols}) OUTPUT INSERTED.id VALUES (@nome, @ordem, @exigeTexto${extra.vals})`, d);
     await registrarAuditoria(req, 'CRIAR', tabela, novo.id, { nome: d.nome }, tx);
     return novo.id;
   });
@@ -353,11 +353,11 @@ router.put('/apoio/:tabela/:id', async (req, res) => {
   const id = idDaRota(req);
   const d = validarApoio(tabela, req.body || {});
   await transacao(async (tx) => {
-    const [dup] = await tx.consultar(`SELECT 1 AS x FROM ${tabela} WHERE nome = @nome AND id <> @id`, { nome: d.nome, id });
+    const [dup] = await tx.consultar(`SELECT 1 AS x FROM ASSOCIAL_${tabela} WHERE nome = @nome AND id <> @id`, { nome: d.nome, id });
     if (dup) throw erros.validacao({ nome: 'Já existe uma opção com este nome.' });
     const extra = tabela === 'faixa_etaria' ? ', idade_min = @idadeMin, idade_max = @idadeMax' : '';
     const r = await tx.consultar(
-      `UPDATE ${tabela} SET nome = @nome, ordem = @ordem, exige_texto = @exigeTexto${extra} OUTPUT INSERTED.id WHERE id = @id`,
+      `UPDATE ASSOCIAL_${tabela} SET nome = @nome, ordem = @ordem, exige_texto = @exigeTexto${extra} OUTPUT INSERTED.id WHERE id = @id`,
       { ...d, id });
     if (!r.length) throw erros.naoEncontrado('Opção não encontrada.');
     await registrarAuditoria(req, 'ALTERAR', tabela, id, { nome: d.nome }, tx);
@@ -369,7 +369,7 @@ router.patch('/apoio/:tabela/:id/ativo', async (req, res) => {
   const tabela = tabelaApoio(req);
   const id = idDaRota(req);
   const ativo = ehVerdadeiro(req.body?.ativo);
-  const r = await consultar(`UPDATE ${tabela} SET ativo = @ativo OUTPUT INSERTED.id WHERE id = @id`, { id, ativo: ativo ? 1 : 0 });
+  const r = await consultar(`UPDATE ASSOCIAL_${tabela} SET ativo = @ativo OUTPUT INSERTED.id WHERE id = @id`, { id, ativo: ativo ? 1 : 0 });
   if (!r.length) throw erros.naoEncontrado('Opção não encontrada.');
   await registrarAuditoria(req, 'ALTERAR', tabela, id, { ativo });
   res.json({ id, ativo });
@@ -384,7 +384,7 @@ router.delete('/apoio/:tabela/:id', async (req, res) => {
   if (item.emUso) {
     throw erros.conflito('Esta opção já foi usada em registros e não pode ser excluída. Desative-a para que deixe de aparecer nos formulários.');
   }
-  await consultar(`DELETE FROM ${tabela} WHERE id = @id`, { id });
+  await consultar(`DELETE FROM ASSOCIAL_${tabela} WHERE id = @id`, { id });
   await registrarAuditoria(req, 'EXCLUIR', tabela, id, { nome: item.nome });
   res.status(204).end();
 });
@@ -405,18 +405,18 @@ const configPublica = (c) => ({
 });
 
 router.get('/configuracoes', async (req, res) => {
-  const linhas = await consultar('SELECT chave, valor, descricao, alterado_em FROM configuracao ORDER BY chave');
+  const linhas = await consultar('SELECT chave, valor, descricao, alterado_em FROM ASSOCIAL_configuracao ORDER BY chave');
   res.json(linhas.map(configPublica));
 });
 
 router.put('/configuracoes/:chave', async (req, res) => {
   const chave = String(req.params.chave);
-  const atual = await consultarUm('SELECT chave, valor FROM configuracao WHERE chave = @chave', { chave });
+  const atual = await consultarUm('SELECT chave, valor FROM ASSOCIAL_configuracao WHERE chave = @chave', { chave });
   if (!atual) throw erros.naoEncontrado('Configuração não encontrada.');
   const r = svc.validarConfig(chave, req.body?.valor);
   if (r.erro) throw erros.validacao({ valor: r.erro });
   await consultar(
-    'UPDATE configuracao SET valor = @valor, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE chave = @chave',
+    'UPDATE ASSOCIAL_configuracao SET valor = @valor, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE chave = @chave',
     { chave, valor: r.valor, por: req.usuario.id });
   await registrarAuditoria(req, 'ALTERAR', 'configuracao', chave, { de: atual.valor, para: r.valor });
   res.json({ chave, valor: r.valor });
@@ -487,9 +487,9 @@ router.delete('/perguntas/:id/opcoes/:opcaoId', async (req, res) => {
 
 router.get('/auditoria/opcoes', soAdmin, async (req, res) => {
   const [acoes, tabelas, usuarios] = await Promise.all([
-    consultar('SELECT DISTINCT acao FROM auditoria ORDER BY acao'),
-    consultar('SELECT DISTINCT tabela FROM auditoria WHERE tabela IS NOT NULL ORDER BY tabela'),
-    consultar('SELECT id, nome, login FROM usuario ORDER BY nome'),
+    consultar('SELECT DISTINCT acao FROM ASSOCIAL_auditoria ORDER BY acao'),
+    consultar('SELECT DISTINCT tabela FROM ASSOCIAL_auditoria WHERE tabela IS NOT NULL ORDER BY tabela'),
+    consultar('SELECT id, nome, login FROM ASSOCIAL_usuario ORDER BY nome'),
   ]);
   res.json({ acoes: acoes.map((a) => a.acao), tabelas: tabelas.map((t) => t.tabela), usuarios });
 });
@@ -517,11 +517,11 @@ router.get('/auditoria', soAdmin, async (req, res) => {
   const pagina = inteiroPositivo(req.query.pagina) || 1;
   const onde = filtros.join(' AND ');
 
-  const [{ total }] = await consultar(`SELECT COUNT(*) AS total FROM auditoria a WHERE ${onde}`, params);
+  const [{ total }] = await consultar(`SELECT COUNT(*) AS total FROM ASSOCIAL_auditoria a WHERE ${onde}`, params);
   const itens = await consultar(
     `SELECT a.id, a.usuario_id, u.nome AS usuario_nome, u.login AS usuario_login, a.acao, a.tabela, a.registro_id,
             a.detalhes, a.ip, a.criado_em
-       FROM auditoria a LEFT JOIN usuario u ON u.id = a.usuario_id
+       FROM ASSOCIAL_auditoria a LEFT JOIN ASSOCIAL_usuario u ON u.id = a.usuario_id
       WHERE ${onde}
       ORDER BY a.criado_em DESC, a.id DESC
       OFFSET @desloc ROWS FETCH NEXT @limite ROWS ONLY`,

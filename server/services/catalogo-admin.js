@@ -57,11 +57,11 @@ function exigirFormulario(valor, { paraCriar = false } = {}) {
   return f;
 }
 
-// Quantas respostas existem para cada código de uma coluna de escolha de dbo.questionario (nome da coluna vem de COLUNAS, nunca da entrada).
+// Quantas respostas existem para cada código de uma coluna de escolha de dbo.ASSOCIAL_questionario (nome da coluna vem de COLUNAS, nunca da entrada).
 async function usoDasOpcoesOficiais(campo) {
   const coluna = COLUNAS[campo];
   if (!coluna) return new Map();
-  const linhas = await consultar(`SELECT ${coluna} AS codigo, COUNT(*) AS n FROM questionario WHERE ${coluna} IS NOT NULL GROUP BY ${coluna}`);
+  const linhas = await consultar(`SELECT ${coluna} AS codigo, COUNT(*) AS n FROM ASSOCIAL_questionario WHERE ${coluna} IS NOT NULL GROUP BY ${coluna}`);
   return new Map(linhas.map((l) => [l.codigo, l.n]));
 }
 
@@ -70,18 +70,18 @@ async function listar(formularioEntrada) {
   const formulario = exigirFormulario(formularioEntrada);
   const perguntas = await consultar(
     `SELECT p.id, p.secao, p.codigo, p.oficial, p.campo, p.tipo, p.texto, p.texto_final, p.ajuda, p.obrigatoria, p.ordem, p.ativa,
-            (SELECT COUNT(*) FROM resposta_extra r WHERE r.pergunta_id = p.id) AS respostas
-       FROM catalogo_pergunta p WHERE p.formulario = @formulario ORDER BY p.secao, p.oficial DESC, p.ordem, p.id`, { formulario });
+            (SELECT COUNT(*) FROM ASSOCIAL_resposta_extra r WHERE r.pergunta_id = p.id) AS respostas
+       FROM ASSOCIAL_catalogo_pergunta p WHERE p.formulario = @formulario ORDER BY p.secao, p.oficial DESC, p.ordem, p.id`, { formulario });
   const opcoes = await consultar(
     `SELECT o.id, o.pergunta_id, o.codigo, o.texto, o.texto_final, o.ordem, o.ativa, o.base, o.posicao, o.pontos, o.pede_detalhe, o.equivale_a_id,
             eq.codigo AS equivale_codigo, eq.texto AS equivale_texto,
-            (SELECT COUNT(*) FROM resposta_extra r WHERE r.opcao_id = o.id) AS respostas
-       FROM catalogo_opcao o
-       JOIN catalogo_pergunta p ON p.id = o.pergunta_id
-       LEFT JOIN catalogo_opcao eq ON eq.id = o.equivale_a_id
+            (SELECT COUNT(*) FROM ASSOCIAL_resposta_extra r WHERE r.opcao_id = o.id) AS respostas
+       FROM ASSOCIAL_catalogo_opcao o
+       JOIN ASSOCIAL_catalogo_pergunta p ON p.id = o.pergunta_id
+       LEFT JOIN ASSOCIAL_catalogo_opcao eq ON eq.id = o.equivale_a_id
       WHERE p.formulario = @formulario ORDER BY o.pergunta_id, o.ordem, o.id`, { formulario });
 
-  // formato anterior: as perguntas oficiais têm colunas fixas em dbo.questionario; nos demais tudo vive em resposta_extra
+  // formato anterior: as perguntas oficiais têm colunas fixas em dbo.ASSOCIAL_questionario; nos demais tudo vive em resposta_extra
   const usoOficial = new Map();
   for (const p of perguntas) {
     if (formulario === LEGADO && p.oficial && p.tipo === 'ESCOLHA') usoOficial.set(p.id, await usoDasOpcoesOficiais(p.campo));
@@ -140,31 +140,31 @@ function validarOpcaoTexto(corpo, problemas, prefixo = '') {
 }
 
 async function carregarPergunta(executor, id) {
-  const p = await executor.consultarUm('SELECT * FROM catalogo_pergunta WHERE id = @id', { id });
+  const p = await executor.consultarUm('SELECT * FROM ASSOCIAL_catalogo_pergunta WHERE id = @id', { id });
   if (!p) throw erros.naoEncontrado('Pergunta não encontrada.');
   return p;
 }
 
 async function carregarOpcao(executor, perguntaId, opcaoId) {
-  const o = await executor.consultarUm('SELECT * FROM catalogo_opcao WHERE id = @id AND pergunta_id = @perguntaId', { id: opcaoId, perguntaId });
+  const o = await executor.consultarUm('SELECT * FROM ASSOCIAL_catalogo_opcao WHERE id = @id AND pergunta_id = @perguntaId', { id: opcaoId, perguntaId });
   if (!o) throw erros.naoEncontrado('Opção não encontrada.');
   return o;
 }
 
 const respostasDaPergunta = async (executor, perguntaId) =>
-  (await executor.consultarUm('SELECT COUNT(*) AS n FROM resposta_extra WHERE pergunta_id = @perguntaId', { perguntaId })).n;
+  (await executor.consultarUm('SELECT COUNT(*) AS n FROM ASSOCIAL_resposta_extra WHERE pergunta_id = @perguntaId', { perguntaId })).n;
 
 async function respostasDaOpcao(executor, pergunta, opcao) {
-  if (!(pergunta.oficial && pergunta.formulario === LEGADO)) return (await executor.consultarUm('SELECT COUNT(*) AS n FROM resposta_extra WHERE opcao_id = @id', { id: opcao.id })).n;
+  if (!(pergunta.oficial && pergunta.formulario === LEGADO)) return (await executor.consultarUm('SELECT COUNT(*) AS n FROM ASSOCIAL_resposta_extra WHERE opcao_id = @id', { id: opcao.id })).n;
   const coluna = COLUNAS[pergunta.campo];
   if (!coluna) return 0;
-  return (await executor.consultarUm(`SELECT COUNT(*) AS n FROM questionario WHERE ${coluna} = @codigo`, { codigo: opcao.codigo })).n;
+  return (await executor.consultarUm(`SELECT COUNT(*) AS n FROM ASSOCIAL_questionario WHERE ${coluna} = @codigo`, { codigo: opcao.codigo })).n;
 }
 
 // A pergunta oficial entra no índice/comparação? Formato anterior: sempre. M1: só se alguma opção oficial tem pontos.
 async function perguntaPontua(executor, pergunta) {
   if (pergunta.formulario === LEGADO) return true;
-  const r = await executor.consultarUm('SELECT COUNT(*) AS n FROM catalogo_opcao WHERE pergunta_id = @id AND base = 1 AND pontos IS NOT NULL', { id: pergunta.id });
+  const r = await executor.consultarUm('SELECT COUNT(*) AS n FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @id AND base = 1 AND pontos IS NOT NULL', { id: pergunta.id });
   return r.n > 0;
 }
 
@@ -180,7 +180,7 @@ async function resolverEquivalencia(executor, pergunta, corpo, problemas) {
     return null;
   }
   const base = await executor.consultarUm(
-    `SELECT id FROM catalogo_opcao WHERE pergunta_id = @perguntaId AND codigo = @codigo AND base = 1${pergunta.formulario === LEGADO ? '' : ' AND pontos IS NOT NULL'}`,
+    `SELECT id FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @perguntaId AND codigo = @codigo AND base = 1${pergunta.formulario === LEGADO ? '' : ' AND pontos IS NOT NULL'}`,
     { perguntaId: pergunta.id, codigo });
   if (!base) { problemas.equivaleA = 'Escolha uma das opções oficiais da pergunta.'; return null; }
   return base.id;
@@ -188,7 +188,7 @@ async function resolverEquivalencia(executor, pergunta, corpo, problemas) {
 
 async function textoDuplicado(executor, perguntaId, t, exceto = 0) {
   const dup = await executor.consultarUm(
-    'SELECT 1 AS x FROM catalogo_opcao WHERE pergunta_id = @perguntaId AND texto = @t AND id <> @exceto', { perguntaId, t, exceto });
+    'SELECT 1 AS x FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @perguntaId AND texto = @t AND id <> @exceto', { perguntaId, t, exceto });
   return !!dup;
 }
 
@@ -230,19 +230,19 @@ async function criarPergunta(req, corpo) {
   lancarSeErros(problemas);
 
   const resultado = await transacao(async (tx) => {
-    const [{ total }] = await tx.consultar('SELECT COUNT(*) AS total FROM catalogo_pergunta WHERE formulario = @formulario AND oficial = 0', { formulario });
+    const [{ total }] = await tx.consultar('SELECT COUNT(*) AS total FROM ASSOCIAL_catalogo_pergunta WHERE formulario = @formulario AND oficial = 0', { formulario });
     if (total >= MAX_PERGUNTAS_POR_FORMULARIO) throw erros.conflito(`Limite de ${MAX_PERGUNTAS_POR_FORMULARIO} perguntas adicionais por formulário.`);
     const existentes = await tx.consultar(
-      'SELECT codigo, ordem FROM catalogo_pergunta WITH (UPDLOCK, HOLDLOCK) WHERE formulario = @formulario AND oficial = 0', { formulario });
+      'SELECT codigo, ordem FROM ASSOCIAL_catalogo_pergunta WITH (UPDLOCK, HOLDLOCK) WHERE formulario = @formulario AND oficial = 0', { formulario });
     const codigo = `E${String(proximoNumero(existentes.map((e) => e.codigo), 'E')).padStart(4, '0')}`;
     const ordem = existentes.reduce((m, e) => Math.max(m, e.ordem), 0) + 10;
     const [nova] = await tx.consultar(
-      `INSERT INTO catalogo_pergunta (formulario, secao, codigo, oficial, tipo, texto, texto_final, ajuda, obrigatoria, ordem, criado_por)
+      `INSERT INTO ASSOCIAL_catalogo_pergunta (formulario, secao, codigo, oficial, tipo, texto, texto_final, ajuda, obrigatoria, ordem, criado_por)
        OUTPUT INSERTED.id VALUES (@formulario, @secao, @codigo, 0, @tipo, @t, @textoFinal, @ajuda, @obrigatoria, @ordem, @por)`,
       { formulario, secao, codigo, tipo, t, textoFinal, ajuda, obrigatoria, ordem, por: req.usuario.id });
     for (let i = 0; i < opcoes.length; i += 1) {
       await tx.consultar(
-        'INSERT INTO catalogo_opcao (pergunta_id, codigo, texto, ordem, criado_por) VALUES (@pergunta, @codigo, @texto, @ordem, @por)',
+        'INSERT INTO ASSOCIAL_catalogo_opcao (pergunta_id, codigo, texto, ordem, criado_por) VALUES (@pergunta, @codigo, @texto, @ordem, @por)',
         { pergunta: nova.id, codigo: `OP${String(i + 1).padStart(2, '0')}`, texto: opcoes[i], ordem: (i + 1) * 10, por: req.usuario.id });
     }
     await registrarAuditoria(req, 'CRIAR', 'catalogo_pergunta', nova.id, { formulario, codigo, tipo, texto: t }, tx);
@@ -267,7 +267,7 @@ async function atualizarPergunta(req, id, corpo) {
     }
     lancarSeErros(problemas);
     await tx.consultar(
-      `UPDATE catalogo_pergunta SET texto = @t, texto_final = @textoFinal, ajuda = @ajuda, secao = @secao, obrigatoria = @obrigatoria,
+      `UPDATE ASSOCIAL_catalogo_pergunta SET texto = @t, texto_final = @textoFinal, ajuda = @ajuda, secao = @secao, obrigatoria = @obrigatoria,
               alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
       { id, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : p.textoFinal, ajuda, secao, obrigatoria, por: req.usuario.id });
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_pergunta', id,
@@ -282,7 +282,7 @@ async function definirAtiva(req, id, ativa) {
   await transacao(async (tx) => {
     const p = await carregarPergunta(tx, id);
     if (p.oficial) throw erros.conflito('As perguntas oficiais não podem ser desativadas: elas alimentam o índice de progresso e os relatórios.');
-    await tx.consultar('UPDATE catalogo_pergunta SET ativa = @ativa, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+    await tx.consultar('UPDATE ASSOCIAL_catalogo_pergunta SET ativa = @ativa, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
       { id, ativa: ativa ? 1 : 0, por: req.usuario.id });
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_pergunta', id, { formulario: p.formulario, codigo: p.codigo, ativa }, tx);
   });
@@ -297,8 +297,8 @@ async function excluirPergunta(req, id) {
     if (await respostasDaPergunta(tx, id) > 0) {
       throw erros.conflito('Esta pergunta já tem respostas e não pode ser excluída. Desative-a para que deixe de aparecer nos formulários.');
     }
-    await tx.consultar('DELETE FROM catalogo_opcao WHERE pergunta_id = @id', { id });
-    await tx.consultar('DELETE FROM catalogo_pergunta WHERE id = @id', { id });
+    await tx.consultar('DELETE FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @id', { id });
+    await tx.consultar('DELETE FROM ASSOCIAL_catalogo_pergunta WHERE id = @id', { id });
     await registrarAuditoria(req, 'EXCLUIR', 'catalogo_pergunta', id, { formulario: p.formulario, codigo: p.codigo, texto: p.texto }, tx);
   });
   await atualizado();
@@ -312,12 +312,12 @@ async function ordenarPerguntas(req, corpo) {
   if (!ids || ids.includes(null)) throw erros.validacao({ ids: 'Lista de perguntas inválida.' });
   await transacao(async (tx) => {
     const atuais = await tx.consultar(
-      'SELECT id FROM catalogo_pergunta WHERE formulario = @formulario AND secao = @secao AND oficial = 0', { formulario, secao });
+      'SELECT id FROM ASSOCIAL_catalogo_pergunta WHERE formulario = @formulario AND secao = @secao AND oficial = 0', { formulario, secao });
     if (atuais.length !== ids.length || atuais.some((a) => !ids.includes(a.id)) || new Set(ids).size !== ids.length) {
       throw erros.validacao({ ids: 'A lista deve conter todas as perguntas adicionais da seção.' });
     }
     for (let i = 0; i < ids.length; i += 1) {
-      await tx.consultar('UPDATE catalogo_pergunta SET ordem = @ordem, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+      await tx.consultar('UPDATE ASSOCIAL_catalogo_pergunta SET ordem = @ordem, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
         { id: ids[i], ordem: (i + 1) * 10, por: req.usuario.id });
     }
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_pergunta', null, { formulario, secao, ordem: ids }, tx);
@@ -353,12 +353,12 @@ async function criarOpcao(req, perguntaId, corpo) {
     if (t && await textoDuplicado(tx, p.id, t)) problemas.texto = 'Já existe uma opção com este texto.';
     lancarSeErros(problemas);
 
-    const existentes = await tx.consultar('SELECT codigo, ordem FROM catalogo_opcao WITH (UPDLOCK, HOLDLOCK) WHERE pergunta_id = @id', { id: p.id });
+    const existentes = await tx.consultar('SELECT codigo, ordem FROM ASSOCIAL_catalogo_opcao WITH (UPDLOCK, HOLDLOCK) WHERE pergunta_id = @id', { id: p.id });
     if (existentes.length >= MAX_OPCOES) throw erros.conflito(`Limite de ${MAX_OPCOES} opções por pergunta.`);
     const codigo = `OP${String(proximoNumero(existentes.map((e) => e.codigo.startsWith('OP') ? e.codigo : 'OP00'), 'OP')).padStart(2, '0')}`;
     const ordem = existentes.reduce((m, e) => Math.max(m, e.ordem), 0) + 10;
     const [nova] = await tx.consultar(
-      `INSERT INTO catalogo_opcao (pergunta_id, codigo, texto, texto_final, ordem, base, equivale_a_id, pede_detalhe, criado_por)
+      `INSERT INTO ASSOCIAL_catalogo_opcao (pergunta_id, codigo, texto, texto_final, ordem, base, equivale_a_id, pede_detalhe, criado_por)
        OUTPUT INSERTED.id VALUES (@pergunta, @codigo, @t, @textoFinal, @ordem, 0, @equivale, @pedeDetalhe, @por)`,
       { pergunta: p.id, codigo, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : null, ordem, equivale: equivaleAId,
         pedeDetalhe: aceitaDetalhe(p) && querDetalhe(corpo), por: req.usuario.id });
@@ -391,7 +391,7 @@ async function atualizarOpcao(req, perguntaId, opcaoId, corpo) {
     }
     lancarSeErros(problemas);
     await tx.consultar(
-      `UPDATE catalogo_opcao SET texto = @t, texto_final = @textoFinal, equivale_a_id = @equivale, pede_detalhe = @pedeDetalhe,
+      `UPDATE ASSOCIAL_catalogo_opcao SET texto = @t, texto_final = @textoFinal, equivale_a_id = @equivale, pede_detalhe = @pedeDetalhe,
               alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
       { id: o.id, t, textoFinal: p.formulario === 'QUESTIONARIO' ? textoFinal : o.textoFinal, equivale: equivaleAId,
         pedeDetalhe: o.base || !aceitaDetalhe(p) || corpo.pedeDetalhe === undefined ? !!o.pedeDetalhe : querDetalhe(corpo), por: req.usuario.id });
@@ -407,10 +407,10 @@ async function definirOpcaoAtiva(req, perguntaId, opcaoId, ativa) {
     const p = await exigirPerguntaDeEscolha(tx, perguntaId);
     const o = await carregarOpcao(tx, p.id, opcaoId);
     if (!ativa) {
-      const [{ n }] = await tx.consultar('SELECT COUNT(*) AS n FROM catalogo_opcao WHERE pergunta_id = @id AND ativa = 1 AND id <> @opcao', { id: p.id, opcao: o.id });
+      const [{ n }] = await tx.consultar('SELECT COUNT(*) AS n FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @id AND ativa = 1 AND id <> @opcao', { id: p.id, opcao: o.id });
       if (n < MIN_OPCOES_ATIVAS) throw erros.conflito(`A pergunta precisa de pelo menos ${MIN_OPCOES_ATIVAS} opções ativas.`);
     }
-    await tx.consultar('UPDATE catalogo_opcao SET ativa = @ativa, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+    await tx.consultar('UPDATE ASSOCIAL_catalogo_opcao SET ativa = @ativa, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
       { id: o.id, ativa: ativa ? 1 : 0, por: req.usuario.id });
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_opcao', o.id, { formulario: p.formulario, pergunta: p.codigo, codigo: o.codigo, ativa }, tx);
   });
@@ -426,7 +426,7 @@ async function excluirOpcao(req, perguntaId, opcaoId) {
     if (await respostasDaOpcao(tx, p, o) > 0) {
       throw erros.conflito('Esta opção já foi usada em respostas e não pode ser excluída. Desative-a para que deixe de aparecer nos formulários.');
     }
-    await tx.consultar('DELETE FROM catalogo_opcao WHERE id = @id', { id: o.id });
+    await tx.consultar('DELETE FROM ASSOCIAL_catalogo_opcao WHERE id = @id', { id: o.id });
     await registrarAuditoria(req, 'EXCLUIR', 'catalogo_opcao', o.id, { formulario: p.formulario, pergunta: p.codigo, codigo: o.codigo, texto: o.texto }, tx);
   });
   await atualizado();
@@ -438,12 +438,12 @@ async function ordenarOpcoes(req, perguntaId, corpo) {
   if (!ids || ids.includes(null)) throw erros.validacao({ ids: 'Lista de opções inválida.' });
   await transacao(async (tx) => {
     const p = await exigirPerguntaDeEscolha(tx, perguntaId);
-    const atuais = await tx.consultar('SELECT id FROM catalogo_opcao WHERE pergunta_id = @id', { id: p.id });
+    const atuais = await tx.consultar('SELECT id FROM ASSOCIAL_catalogo_opcao WHERE pergunta_id = @id', { id: p.id });
     if (atuais.length !== ids.length || atuais.some((a) => !ids.includes(a.id)) || new Set(ids).size !== ids.length) {
       throw erros.validacao({ ids: 'A lista deve conter todas as opções da pergunta.' });
     }
     for (let i = 0; i < ids.length; i += 1) {
-      await tx.consultar('UPDATE catalogo_opcao SET ordem = @ordem, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
+      await tx.consultar('UPDATE ASSOCIAL_catalogo_opcao SET ordem = @ordem, alterado_por = @por, alterado_em = SYSUTCDATETIME() WHERE id = @id',
         { id: ids[i], ordem: (i + 1) * 10, por: req.usuario.id });
     }
     await registrarAuditoria(req, 'ALTERAR', 'catalogo_pergunta', p.id, { formulario: p.formulario, codigo: p.codigo, ordemOpcoes: ids }, tx);

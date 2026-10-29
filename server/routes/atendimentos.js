@@ -33,9 +33,9 @@ function carregar(req, id) {
     `SELECT a.id, a.unidade_id, un.sigla AS unidade_sigla, un.nome AS unidade_nome, a.pessoa_id, a.usuario_id,
             u.nome AS atendente, a.data_atendimento, a.faixa_etaria_id, a.nivel_vulnerabilidade_id,
             a.demanda_outra, a.vulnerabilidade_outra, a.encaminhamento_outro, a.resumo, a.criado_em, a.alterado_em
-       FROM atendimento a
-       JOIN unidade un ON un.id = a.unidade_id
-       JOIN usuario u ON u.id = a.usuario_id
+       FROM ASSOCIAL_atendimento a
+       JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id
+       JOIN ASSOCIAL_usuario u ON u.id = a.usuario_id
       WHERE a.id = @id AND ${where}`,
     params,
   );
@@ -76,26 +76,26 @@ router.get('/', async (req, res) => {
   }
   const demandaId = inteiroPositivo(req.query.demandaId);
   if (demandaId) {
-    filtros.push('EXISTS (SELECT 1 FROM atendimento_demanda ad WHERE ad.atendimento_id = a.id AND ad.demanda_id = @demandaId)');
+    filtros.push('EXISTS (SELECT 1 FROM ASSOCIAL_atendimento_demanda ad WHERE ad.atendimento_id = a.id AND ad.demanda_id = @demandaId)');
     params.demandaId = demandaId;
   }
   const encaminhamentoId = inteiroPositivo(req.query.encaminhamentoId);
   if (encaminhamentoId) {
-    filtros.push('EXISTS (SELECT 1 FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id AND ae.encaminhamento_id = @encaminhamentoId)');
+    filtros.push('EXISTS (SELECT 1 FROM ASSOCIAL_atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id AND ae.encaminhamento_id = @encaminhamentoId)');
     params.encaminhamentoId = encaminhamentoId;
   }
 
   const pagina = inteiroPositivo(req.query.pagina) || 1;
   const porPagina = Math.min(inteiroPositivo(req.query.porPagina) || 20, 100);
   const where = filtros.join(' AND ');
-  const de = `FROM atendimento a JOIN pessoa p ON p.id = a.pessoa_id JOIN unidade un ON un.id = a.unidade_id WHERE ${where}`;
+  const de = `FROM ASSOCIAL_atendimento a JOIN ASSOCIAL_pessoa p ON p.id = a.pessoa_id JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id WHERE ${where}`;
 
   const [{ total }] = await consultar(`SELECT COUNT(*) AS total ${de}`, params);
   const itens = await consultar(
     `SELECT a.id, a.data_atendimento, a.unidade_id, un.sigla AS unidade_sigla, p.id AS pessoa_id, p.nome, p.cpf,
             (SELECT STRING_AGG(d.nome, N', ') WITHIN GROUP (ORDER BY d.ordem)
-               FROM atendimento_demanda ad JOIN demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas,
-            (SELECT COUNT(*) FROM atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id) AS qtd_encaminhamentos
+               FROM ASSOCIAL_atendimento_demanda ad JOIN ASSOCIAL_demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas,
+            (SELECT COUNT(*) FROM ASSOCIAL_atendimento_encaminhamento ae WHERE ae.atendimento_id = a.id) AS qtd_encaminhamentos
      ${de}
      ORDER BY a.data_atendimento DESC, a.id DESC
      OFFSET @desvio ROWS FETCH NEXT @limite ROWS ONLY`,
@@ -112,10 +112,10 @@ router.get('/:id', async (req, res) => {
   if (!atendimento) throw erros.naoEncontrado();
 
   const [pessoa, demandas, vulnerabilidades, encaminhamentos, adicionais] = await Promise.all([
-    consultarUm(`SELECT ${pessoas.COLUNAS_PESSOA} FROM pessoa p WHERE p.id = @id`, { id: atendimento.pessoaId }),
-    consultar('SELECT demanda_id AS id FROM atendimento_demanda WHERE atendimento_id = @id', { id }),
-    consultar('SELECT vulnerabilidade_id AS id FROM atendimento_vulnerabilidade WHERE atendimento_id = @id', { id }),
-    consultar('SELECT encaminhamento_id AS id FROM atendimento_encaminhamento WHERE atendimento_id = @id', { id }),
+    consultarUm(`SELECT ${pessoas.COLUNAS_PESSOA} FROM ASSOCIAL_pessoa p WHERE p.id = @id`, { id: atendimento.pessoaId }),
+    consultar('SELECT demanda_id AS id FROM ASSOCIAL_atendimento_demanda WHERE atendimento_id = @id', { id }),
+    consultar('SELECT vulnerabilidade_id AS id FROM ASSOCIAL_atendimento_vulnerabilidade WHERE atendimento_id = @id', { id }),
+    consultar('SELECT encaminhamento_id AS id FROM ASSOCIAL_atendimento_encaminhamento WHERE atendimento_id = @id', { id }),
     extras.carregarRespostas({ consultar }, 'ATENDIMENTO', id),
   ]);
 
@@ -124,8 +124,8 @@ router.get('/:id', async (req, res) => {
   const historico = await consultar(
     `SELECT a.id, a.data_atendimento, un.sigla AS unidade_sigla,
             (SELECT STRING_AGG(d.nome, N', ') WITHIN GROUP (ORDER BY d.ordem)
-               FROM atendimento_demanda ad JOIN demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas
-       FROM atendimento a JOIN unidade un ON un.id = a.unidade_id
+               FROM ASSOCIAL_atendimento_demanda ad JOIN ASSOCIAL_demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas
+       FROM ASSOCIAL_atendimento a JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id
       WHERE a.pessoa_id = @pessoaId AND a.id <> @id AND ${whereHist}
       ORDER BY a.data_atendimento DESC, a.id DESC`,
     paramsHist,
@@ -152,7 +152,7 @@ async function resolverPessoa(req, tx, dados, pessoaIdInformada) {
   let pessoaId = pessoaIdInformada;
 
   if (pessoaId) {
-    const existe = await tx.consultarUm('SELECT id FROM pessoa WHERE id = @id', { id: pessoaId });
+    const existe = await tx.consultarUm('SELECT id FROM ASSOCIAL_pessoa WHERE id = @id', { id: pessoaId });
     if (!existe || (!pessoas.foiLocalizada(req, pessoaId) && !(await pessoas.pessoaNoEscopo(req, pessoaId, tx)))) {
       throw erros.validacao({ pessoaId: 'Pessoa não encontrada.' });
     }
@@ -183,7 +183,7 @@ router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req
   const id = await transacao(async (tx) => {
     const pessoaId = await resolverPessoa(req, tx, dados, dados.pessoaId);
     const [novo] = await tx.consultar(
-      `INSERT INTO atendimento (unidade_id, pessoa_id, usuario_id, data_atendimento, faixa_etaria_id,
+      `INSERT INTO ASSOCIAL_atendimento (unidade_id, pessoa_id, usuario_id, data_atendimento, faixa_etaria_id,
                                 nivel_vulnerabilidade_id, demanda_outra, vulnerabilidade_outra,
                                 encaminhamento_outro, resumo, criado_por)
        OUTPUT INSERTED.id
@@ -224,7 +224,7 @@ router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (r
   await transacao(async (tx) => {
     await pessoas.atualizarPessoa(tx, atual.pessoaId, dados.pessoa, req.usuario.id);
     await tx.consultar(
-      `UPDATE atendimento
+      `UPDATE ASSOCIAL_atendimento
           SET unidade_id = @unidadeId, data_atendimento = @dataAtendimento, faixa_etaria_id = @faixaEtariaId,
               nivel_vulnerabilidade_id = @nivelVulnerabilidadeId, demanda_outra = @demandaOutra,
               vulnerabilidade_outra = @vulnerabilidadeOutra, encaminhamento_outro = @encaminhamentoOutro,
@@ -249,7 +249,7 @@ router.delete('/:id', async (req, res) => {
     throw erros.proibido('Só o autor (em até 24 horas) ou a coordenação pode excluir este atendimento.');
   }
   await transacao(async (tx) => {
-    await tx.consultar('DELETE FROM atendimento WHERE id = @id', { id }); // N:N em cascata
+    await tx.consultar('DELETE FROM ASSOCIAL_atendimento WHERE id = @id', { id }); // N:N em cascata
     await registrarAuditoria(req, 'EXCLUIR', 'atendimento', id, undefined, tx);
   });
   res.status(204).end();

@@ -45,7 +45,7 @@ test('quem não coleta complemento (atendimento, pesquisa, questionário anterio
 const LISTAS = { genero: [{ id: 1, exigeTexto: false }, { id: 4, exigeTexto: true }], escolaridade: [{ id: 7, exigeTexto: true }], raca: [{ id: 6, exigeTexto: true }] };
 const executor = {
   consultar: async (sql, p) => {
-    const tabela = /FROM (\w+) WHERE id/.exec(sql)[1];
+    const tabela = /FROM ASSOCIAL_(\w+) WHERE id/.exec(sql)[1];
     return (LISTAS[tabela] || []).filter((o) => o.id === p.id);
   },
 };

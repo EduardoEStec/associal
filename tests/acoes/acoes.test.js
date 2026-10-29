@@ -28,56 +28,56 @@ const ver = (a) => ({
 
 async function consultar(sql, p = {}) {
   const s = sql.replace(/\s+/g, ' ');
-  if (/FROM tipo_acao WHERE id/.test(s)) return p.id === 1 ? [{ id: 1, ativo: true, exigeTexto: false }] : p.id === 2 ? [{ id: 2, ativo: true, exigeTexto: true }] : [];
-  if (/FROM tema WHERE id IN/.test(s)) return TEMAS.filter((t) => Object.entries(p).some(([k, v]) => /^t\d+$/.test(k) && v === t.id));
-  if (/FROM configuracao/.test(s)) return [{ valor: '1' }]; // 1 MB
-  if (/INSERT INTO auditoria/.test(s)) return [];
+  if (/FROM ASSOCIAL_tipo_acao WHERE id/.test(s)) return p.id === 1 ? [{ id: 1, ativo: true, exigeTexto: false }] : p.id === 2 ? [{ id: 2, ativo: true, exigeTexto: true }] : [];
+  if (/FROM ASSOCIAL_tema WHERE id IN/.test(s)) return TEMAS.filter((t) => Object.entries(p).some(([k, v]) => /^t\d+$/.test(k) && v === t.id));
+  if (/FROM ASSOCIAL_configuracao/.test(s)) return [{ valor: '1' }]; // 1 MB
+  if (/INSERT INTO ASSOCIAL_auditoria/.test(s)) return [];
   if (/^SELECT TOP/.test(s)) {
     let l = visiveis(p);
     if (p.filtroStatus) l = l.filter((a) => a.status === p.filtroStatus);
     return l.map((a) => ({ ...ver(a), qtdFotos: estado.fotos.filter((f) => f.acaoVisitaId === a.id).length }));
   }
-  if (/FROM acao_visita_tema avt JOIN tema tm ON tm.id = avt.tema_id JOIN acao_visita a/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita_tema avt JOIN ASSOCIAL_tema tm ON tm.id = avt.tema_id JOIN ASSOCIAL_acao_visita a/.test(s)) {
     const ids = visiveis(p).map((a) => a.id);
     return estado.temas.filter((t) => ids.includes(t.acaoVisitaId)).map((t) => ({ acaoVisitaId: t.acaoVisitaId, ordem: t.ordem, temaId: t.temaId, nome: `Tema ${t.temaId}` }));
   }
-  if (/FROM acao_visita a JOIN unidade un.*WHERE a.id = @id/.test(s)) {
+  if (/FROM ASSOCIAL_acao_visita a JOIN ASSOCIAL_unidade un.*WHERE a.id = @id/.test(s)) {
     const a = visiveis(p).find((x) => x.id === p.id);
     return a ? [ver(a)] : [];
   }
-  if (/SELECT tema_id FROM acao_visita_tema/.test(s)) return estado.temas.filter((t) => t.acaoVisitaId === p.id).map((t) => ({ temaId: t.temaId }));
+  if (/SELECT tema_id FROM ASSOCIAL_acao_visita_tema/.test(s)) return estado.temas.filter((t) => t.acaoVisitaId === p.id).map((t) => ({ temaId: t.temaId }));
   if (/SELECT tm.id, tm.nome, avt.ordem/.test(s)) return estado.temas.filter((t) => t.acaoVisitaId === p.id).map((t) => ({ id: t.temaId, nome: `Tema ${t.temaId}`, ordem: t.ordem }));
   if (/SELECT id, legenda, ordem, nome_original/.test(s)) return estado.fotos.filter((f) => f.acaoVisitaId === p.id).map((f) => ({ ...f, nomeOriginal: f.nomeOriginal }));
-  if (/INSERT INTO acao_visita \(/.test(s)) {
+  if (/INSERT INTO ASSOCIAL_acao_visita \(/.test(s)) {
     const a = { id: ++estado.seqAcao, unidadeId: p.unidadeId, tipoAcaoId: p.tipoAcaoId, tipoAcaoOutro: p.tipoAcaoOutro, dataAcao: p.dataAcao[1], instituicaoLocal: p.instituicaoLocal, endereco: p.endereco, status: p.status, qtdParticipantes: p.qtdParticipantes, descricao: p.descricao, criadoPor: p.usuario };
     estado.acoes.push(a);
     return [{ id: a.id }];
   }
-  if (/^DELETE FROM acao_visita_tema/.test(s)) { estado.temas = estado.temas.filter((t) => t.acaoVisitaId !== p.id); return []; }
-  if (/^INSERT INTO acao_visita_tema/.test(s)) { estado.temas.push({ acaoVisitaId: p.id, ordem: p.ordem, temaId: p.temaId }); return []; }
-  if (/^UPDATE acao_visita SET status/.test(s)) { Object.assign(estado.acoes.find((a) => a.id === p.id), { status: p.status, qtdParticipantes: p.qtd }); return []; }
-  if (/^UPDATE acao_visita SET unidade_id/.test(s)) {
+  if (/^DELETE FROM ASSOCIAL_acao_visita_tema/.test(s)) { estado.temas = estado.temas.filter((t) => t.acaoVisitaId !== p.id); return []; }
+  if (/^INSERT INTO ASSOCIAL_acao_visita_tema/.test(s)) { estado.temas.push({ acaoVisitaId: p.id, ordem: p.ordem, temaId: p.temaId }); return []; }
+  if (/^UPDATE ASSOCIAL_acao_visita SET status/.test(s)) { Object.assign(estado.acoes.find((a) => a.id === p.id), { status: p.status, qtdParticipantes: p.qtd }); return []; }
+  if (/^UPDATE ASSOCIAL_acao_visita SET unidade_id/.test(s)) {
     Object.assign(estado.acoes.find((a) => a.id === p.id), { unidadeId: p.unidadeId, status: p.status, qtdParticipantes: p.qtdParticipantes, instituicaoLocal: p.instituicaoLocal });
     return [];
   }
-  if (/^DELETE FROM acao_visita WHERE/.test(s)) {
+  if (/^DELETE FROM ASSOCIAL_acao_visita WHERE/.test(s)) {
     estado.acoes = estado.acoes.filter((a) => a.id !== p.id);
     estado.fotos = estado.fotos.filter((f) => f.acaoVisitaId !== p.id);
     return [];
   }
-  if (/SELECT arquivo FROM acao_visita_foto/.test(s)) return estado.fotos.filter((f) => f.acaoVisitaId === p.id).map((f) => ({ arquivo: f.arquivo }));
+  if (/SELECT arquivo FROM ASSOCIAL_acao_visita_foto/.test(s)) return estado.fotos.filter((f) => f.acaoVisitaId === p.id).map((f) => ({ arquivo: f.arquivo }));
   if (/COUNT\(\*\) AS total/.test(s)) {
     const l = estado.fotos.filter((f) => f.acaoVisitaId === p.id);
     return [{ total: l.length, maior: Math.max(0, ...l.map((f) => f.ordem)) }];
   }
-  if (/INSERT INTO acao_visita_foto/.test(s)) {
+  if (/INSERT INTO ASSOCIAL_acao_visita_foto/.test(s)) {
     const f = { id: ++estado.seqFoto, acaoVisitaId: p.acaoId, arquivo: p.arquivo, mimeType: p.mime, legenda: p.legenda, ordem: p.ordem, nomeOriginal: p.nomeOriginal };
     estado.fotos.push(f);
     return [{ id: f.id }];
   }
-  if (/FROM acao_visita_foto WHERE id = @fotoId/.test(s)) return estado.fotos.filter((f) => f.id === p.fotoId && f.acaoVisitaId === p.acaoId);
-  if (/^UPDATE acao_visita_foto/.test(s)) { Object.assign(estado.fotos.find((f) => f.id === p.id), { legenda: p.legenda, ordem: p.ordem }); return []; }
-  if (/^DELETE FROM acao_visita_foto/.test(s)) { estado.fotos = estado.fotos.filter((f) => f.id !== p.id); return []; }
+  if (/FROM ASSOCIAL_acao_visita_foto WHERE id = @fotoId/.test(s)) return estado.fotos.filter((f) => f.id === p.fotoId && f.acaoVisitaId === p.acaoId);
+  if (/^UPDATE ASSOCIAL_acao_visita_foto/.test(s)) { Object.assign(estado.fotos.find((f) => f.id === p.id), { legenda: p.legenda, ordem: p.ordem }); return []; }
+  if (/^DELETE FROM ASSOCIAL_acao_visita_foto/.test(s)) { estado.fotos = estado.fotos.filter((f) => f.id !== p.id); return []; }
   if (/GROUP BY a.unidade_id/.test(s)) {
     const l = visiveis(p).filter((a) => a.status === 'REALIZADA');
     return [...new Set(l.map((a) => a.unidadeId))].map((u) => ({

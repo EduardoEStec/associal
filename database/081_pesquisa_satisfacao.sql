@@ -14,29 +14,29 @@ GO
    1. Modelo e perguntas
    --------------------------------------------------------------------- */
 
-IF OBJECT_ID(N'dbo.pesquisa_modelo', N'U') IS NULL
-CREATE TABLE dbo.pesquisa_modelo (
-    id        INT IDENTITY(1,1) CONSTRAINT pk_pesquisa_modelo PRIMARY KEY,
-    codigo    VARCHAR(30)   NOT NULL,                     -- ex.: SATISFACAO
+IF OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_modelo', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_pesquisa_modelo (
+    id        INT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_pesquisa_modelo PRIMARY KEY,
+    codigo    VARCHAR(30) COLLATE Latin1_General_100_CI_AI   NOT NULL,                     -- ex.: SATISFACAO
     versao    SMALLINT      NOT NULL,
-    titulo    NVARCHAR(150) NOT NULL,
-    aviso     NVARCHAR(1500) NOT NULL,                    -- texto lido à família antes de começar (consentimento)
-    ativo     BIT           NOT NULL CONSTRAINT df_pesquisa_modelo_ativo DEFAULT 1,
-    criado_em DATETIME2(0)  NOT NULL CONSTRAINT df_pesquisa_modelo_criado_em DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT uq_pesquisa_modelo UNIQUE (codigo, versao)
+    titulo    NVARCHAR(150) COLLATE Latin1_General_100_CI_AI NOT NULL,
+    aviso     NVARCHAR(1500) COLLATE Latin1_General_100_CI_AI NOT NULL,                    -- texto lido à família antes de começar (consentimento)
+    ativo     BIT           NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_modelo_ativo DEFAULT 1,
+    criado_em DATETIME2(0)  NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_modelo_criado_em DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT ASSOCIAL_uq_pesquisa_modelo UNIQUE (codigo, versao)
 );
 GO
 
-IF OBJECT_ID(N'dbo.pesquisa_pergunta', N'U') IS NULL
-CREATE TABLE dbo.pesquisa_pergunta (
-    id        INT IDENTITY(1,1) CONSTRAINT pk_pesquisa_pergunta PRIMARY KEY,
-    modelo_id INT NOT NULL CONSTRAINT fk_pesquisa_pergunta_modelo REFERENCES dbo.pesquisa_modelo(id),
-    codigo    VARCHAR(20)   NOT NULL,                     -- NPS | L1..L6 | T1 | T2
+IF OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_pergunta', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_pesquisa_pergunta (
+    id        INT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_pesquisa_pergunta PRIMARY KEY,
+    modelo_id INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_pergunta_modelo REFERENCES dbo.ASSOCIAL_pesquisa_modelo(id),
+    codigo    VARCHAR(20) COLLATE Latin1_General_100_CI_AI   NOT NULL,                     -- NPS | L1..L6 | T1 | T2
     ordem     SMALLINT      NOT NULL,
-    tipo      VARCHAR(8)    NOT NULL,                     -- NPS (0-10) | LIKERT (1-5) | TEXTO
-    texto     NVARCHAR(500) NOT NULL,
-    CONSTRAINT uq_pesquisa_pergunta UNIQUE (modelo_id, codigo),
-    CONSTRAINT ck_pesquisa_pergunta_tipo CHECK (tipo IN ('NPS', 'LIKERT', 'TEXTO'))
+    tipo      VARCHAR(8) COLLATE Latin1_General_100_CI_AI    NOT NULL,                     -- NPS (0-10) | LIKERT (1-5) | TEXTO
+    texto     NVARCHAR(500) COLLATE Latin1_General_100_CI_AI NOT NULL,
+    CONSTRAINT ASSOCIAL_uq_pesquisa_pergunta UNIQUE (modelo_id, codigo),
+    CONSTRAINT ASSOCIAL_ck_pesquisa_pergunta_tipo CHECK (tipo IN ('NPS', 'LIKERT', 'TEXTO'))
 );
 GO
 
@@ -45,45 +45,45 @@ GO
       situacao: RASCUNHO -> CONCLUIDA | RECUSADA (a família preferiu não responder); ANULADA (com motivo; fora dos números).
    --------------------------------------------------------------------- */
 
-IF OBJECT_ID(N'dbo.pesquisa_resposta', N'U') IS NULL
-CREATE TABLE dbo.pesquisa_resposta (
-    id                INT IDENTITY(1,1) CONSTRAINT pk_pesquisa_resposta PRIMARY KEY,
-    modelo_id         INT NOT NULL CONSTRAINT fk_pesquisa_resposta_modelo REFERENCES dbo.pesquisa_modelo(id),
-    acompanhamento_id INT NOT NULL CONSTRAINT fk_pesquisa_resposta_acompanhamento REFERENCES dbo.acompanhamento(id),
-    usuario_id        INT NOT NULL CONSTRAINT fk_pesquisa_resposta_usuario REFERENCES dbo.usuario(id),   -- quem aplicou
-    momento           VARCHAR(10) NOT NULL,               -- FINAL | SEMESTRAL | AVULSA
+IF OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_resposta', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_pesquisa_resposta (
+    id                INT IDENTITY(1,1) CONSTRAINT ASSOCIAL_pk_pesquisa_resposta PRIMARY KEY,
+    modelo_id         INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_modelo REFERENCES dbo.ASSOCIAL_pesquisa_modelo(id),
+    acompanhamento_id INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_acompanhamento REFERENCES dbo.ASSOCIAL_acompanhamento(id),
+    usuario_id        INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_usuario REFERENCES dbo.ASSOCIAL_usuario(id),   -- quem aplicou
+    momento           VARCHAR(10) COLLATE Latin1_General_100_CI_AI NOT NULL,               -- FINAL | SEMESTRAL | AVULSA
     data_aplicacao    DATE NOT NULL,
-    modo              VARCHAR(20) NULL,                   -- FAMILIA_FALOU | FAMILIA_PREENCHEU | COM_AJUDA
-    situacao          VARCHAR(10) NOT NULL CONSTRAINT df_pesquisa_resposta_situacao DEFAULT 'RASCUNHO',
-    consentimento_lido BIT NOT NULL CONSTRAINT df_pesquisa_resposta_consentimento DEFAULT 0,
-    comentario_oculto BIT NOT NULL CONSTRAINT df_pesquisa_resposta_oculto DEFAULT 0,   -- coordenação oculta dos relatórios
+    modo              VARCHAR(20) COLLATE Latin1_General_100_CI_AI NULL,                   -- FAMILIA_FALOU | FAMILIA_PREENCHEU | COM_AJUDA
+    situacao          VARCHAR(10) COLLATE Latin1_General_100_CI_AI NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_resposta_situacao DEFAULT 'RASCUNHO',
+    consentimento_lido BIT NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_resposta_consentimento DEFAULT 0,
+    comentario_oculto BIT NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_resposta_oculto DEFAULT 0,   -- coordenação oculta dos relatórios
     anulado_em        DATETIME2(0) NULL,
-    anulado_por       INT NULL CONSTRAINT fk_pesquisa_resposta_anulado_por REFERENCES dbo.usuario(id),
-    anulado_motivo    NVARCHAR(200) NULL,
-    criado_por   INT NULL CONSTRAINT fk_pesquisa_resposta_criado_por   REFERENCES dbo.usuario(id),
-    criado_em    DATETIME2(0) NOT NULL CONSTRAINT df_pesquisa_resposta_criado_em DEFAULT SYSUTCDATETIME(),
-    alterado_por INT NULL CONSTRAINT fk_pesquisa_resposta_alterado_por REFERENCES dbo.usuario(id),
+    anulado_por       INT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_anulado_por REFERENCES dbo.ASSOCIAL_usuario(id),
+    anulado_motivo    NVARCHAR(200) COLLATE Latin1_General_100_CI_AI NULL,
+    criado_por   INT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_criado_por   REFERENCES dbo.ASSOCIAL_usuario(id),
+    criado_em    DATETIME2(0) NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_resposta_criado_em DEFAULT SYSUTCDATETIME(),
+    alterado_por INT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_resposta_alterado_por REFERENCES dbo.ASSOCIAL_usuario(id),
     alterado_em  DATETIME2(0) NULL,
-    CONSTRAINT ck_pesquisa_resposta_momento CHECK (momento IN ('FINAL', 'SEMESTRAL', 'AVULSA')),
-    CONSTRAINT ck_pesquisa_resposta_modo CHECK (modo IS NULL OR modo IN ('FAMILIA_FALOU', 'FAMILIA_PREENCHEU', 'COM_AJUDA')),
-    CONSTRAINT ck_pesquisa_resposta_situacao CHECK (situacao IN ('RASCUNHO', 'CONCLUIDA', 'RECUSADA', 'ANULADA'))
+    CONSTRAINT ASSOCIAL_ck_pesquisa_resposta_momento CHECK (momento IN ('FINAL', 'SEMESTRAL', 'AVULSA')),
+    CONSTRAINT ASSOCIAL_ck_pesquisa_resposta_modo CHECK (modo IS NULL OR modo IN ('FAMILIA_FALOU', 'FAMILIA_PREENCHEU', 'COM_AJUDA')),
+    CONSTRAINT ASSOCIAL_ck_pesquisa_resposta_situacao CHECK (situacao IN ('RASCUNHO', 'CONCLUIDA', 'RECUSADA', 'ANULADA'))
 );
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_pesquisa_resposta_acompanhamento' AND object_id = OBJECT_ID(N'dbo.pesquisa_resposta'))
-CREATE INDEX ix_pesquisa_resposta_acompanhamento ON dbo.pesquisa_resposta (acompanhamento_id, data_aplicacao DESC)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ix_pesquisa_resposta_acompanhamento' AND object_id = OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_resposta'))
+CREATE INDEX ix_pesquisa_resposta_acompanhamento ON dbo.ASSOCIAL_pesquisa_resposta (acompanhamento_id, data_aplicacao DESC)
     INCLUDE (momento, situacao);
 GO
 
-IF OBJECT_ID(N'dbo.pesquisa_resposta_item', N'U') IS NULL
-CREATE TABLE dbo.pesquisa_resposta_item (
-    resposta_id INT NOT NULL CONSTRAINT fk_pesquisa_item_resposta REFERENCES dbo.pesquisa_resposta(id) ON DELETE CASCADE,
-    pergunta_id INT NOT NULL CONSTRAINT fk_pesquisa_item_pergunta REFERENCES dbo.pesquisa_pergunta(id),
+IF OBJECT_ID(N'dbo.ASSOCIAL_pesquisa_resposta_item', N'U') IS NULL
+CREATE TABLE dbo.ASSOCIAL_pesquisa_resposta_item (
+    resposta_id INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_item_resposta REFERENCES dbo.ASSOCIAL_pesquisa_resposta(id) ON DELETE CASCADE,
+    pergunta_id INT NOT NULL CONSTRAINT ASSOCIAL_fk_pesquisa_item_pergunta REFERENCES dbo.ASSOCIAL_pesquisa_pergunta(id),
     valor_num   TINYINT NULL,
-    valor_texto NVARCHAR(1000) NULL,
-    prefere_nao_responder BIT NOT NULL CONSTRAINT df_pesquisa_item_recusa DEFAULT 0,
-    CONSTRAINT pk_pesquisa_resposta_item PRIMARY KEY (resposta_id, pergunta_id),
-    CONSTRAINT ck_pesquisa_item_valor CHECK (valor_num IS NULL OR valor_num <= 10)
+    valor_texto NVARCHAR(1000) COLLATE Latin1_General_100_CI_AI NULL,
+    prefere_nao_responder BIT NOT NULL CONSTRAINT ASSOCIAL_df_pesquisa_item_recusa DEFAULT 0,
+    CONSTRAINT ASSOCIAL_pk_pesquisa_resposta_item PRIMARY KEY (resposta_id, pergunta_id),
+    CONSTRAINT ASSOCIAL_ck_pesquisa_item_valor CHECK (valor_num IS NULL OR valor_num <= 10)
 );
 GO
 
@@ -91,8 +91,8 @@ GO
    3. Modelo v1 (texto provisório: o formato do Termo de Colaboração, D6, e o aviso, D12, ainda serão definidos)
    --------------------------------------------------------------------- */
 
-IF NOT EXISTS (SELECT 1 FROM dbo.pesquisa_modelo WHERE codigo = 'SATISFACAO' AND versao = 1)
-INSERT INTO dbo.pesquisa_modelo (codigo, versao, titulo, aviso)
+IF NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_pesquisa_modelo WHERE codigo = 'SATISFACAO' AND versao = 1)
+INSERT INTO dbo.ASSOCIAL_pesquisa_modelo (codigo, versao, titulo, aviso)
 VALUES ('SATISFACAO', 1, N'Pesquisa de satisfação do Armazém Solidário',
     N'Vamos fazer algumas perguntas sobre o que a família acha do Armazém Solidário e do acompanhamento da assistente social. '
   + N'Não existe resposta certa ou errada: a opinião de vocês ajuda a melhorar o projeto, e podem dizer também o que não gostaram. '
@@ -101,8 +101,8 @@ VALUES ('SATISFACAO', 1, N'Pesquisa de satisfação do Armazém Solidário',
   + N'A família quer responder agora?');
 GO
 
-DECLARE @modelo INT = (SELECT id FROM dbo.pesquisa_modelo WHERE codigo = 'SATISFACAO' AND versao = 1);
-INSERT INTO dbo.pesquisa_pergunta (modelo_id, codigo, ordem, tipo, texto)
+DECLARE @modelo INT = (SELECT id FROM dbo.ASSOCIAL_pesquisa_modelo WHERE codigo = 'SATISFACAO' AND versao = 1);
+INSERT INTO dbo.ASSOCIAL_pesquisa_pergunta (modelo_id, codigo, ordem, tipo, texto)
 SELECT @modelo, v.codigo, v.ordem, v.tipo, v.texto
 FROM (VALUES
     ('NPS', 1, 'NPS',    N'De 0 a 10, quanto você recomendaria o Armazém Solidário e o acompanhamento da assistente social a um amigo ou vizinho?'),
@@ -116,14 +116,14 @@ FROM (VALUES
     ('T2',  9, 'TEXTO',  N'O que precisa melhorar?')
 ) AS v(codigo, ordem, tipo, texto)
 WHERE @modelo IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM dbo.pesquisa_pergunta p WHERE p.modelo_id = @modelo AND p.codigo = v.codigo);
+  AND NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_pesquisa_pergunta p WHERE p.modelo_id = @modelo AND p.codigo = v.codigo);
 GO
 
 /* ---------------------------------------------------------------------
    4. Configurações (Administração > Configurações)
    --------------------------------------------------------------------- */
 
-INSERT INTO dbo.configuracao (chave, valor, descricao)
+INSERT INTO dbo.ASSOCIAL_configuracao (chave, valor, descricao)
 SELECT v.chave, v.valor, v.descricao
 FROM (VALUES
     ('pesquisa_intervalo_dias', N'180',
@@ -133,5 +133,5 @@ FROM (VALUES
     ('pesquisa_n_minimo', N'5',
         N'Número mínimo de respostas para exibir percentuais e NPS nos números agregados (painel e relatórios).')
 ) AS v(chave, valor, descricao)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.configuracao c WHERE c.chave = v.chave);
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ASSOCIAL_configuracao c WHERE c.chave = v.chave);
 GO

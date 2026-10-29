@@ -1,6 +1,6 @@
 'use strict';
 
-// Trilha de auditoria (tabela dbo.auditoria). Complementa criado_por/alterado_por das tabelas.
+// Trilha de auditoria (tabela dbo.ASSOCIAL_auditoria). Complementa criado_por/alterado_por das tabelas.
 // Nunca derruba a requisição: falha de auditoria é apenas registrada no console.
 
 const { consultar } = require('../db');
@@ -8,7 +8,7 @@ const { consultar } = require('../db');
 async function registrarAuditoria(req, acao, tabela, registroId, detalhes, executor = { consultar }) {
   try {
     await executor.consultar(
-      `INSERT INTO auditoria (usuario_id, acao, tabela, registro_id, detalhes, ip)
+      `INSERT INTO ASSOCIAL_auditoria (usuario_id, acao, tabela, registro_id, detalhes, ip)
        VALUES (@usuarioId, @acao, @tabela, @registroId, @detalhes, @ip)`,
       {
         usuarioId: req?.usuario?.id ?? null,

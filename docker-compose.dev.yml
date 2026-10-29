@@ -33,7 +33,7 @@ services:
       DB_PORT: 1433
       DB_USER: sa
       DB_PASSWORD: ${DEV_SA_PASSWORD:-Associal#Dev2026}
-      DB_NAME: ASSOCIAL
+      DB_NAME: ASSOCIAL   # só no dev; em produção o banco é o INTERNO (compartilhado), ver .env.example
       DB_ENCRYPT: "false"
       DB_TRUST_SERVER_CERTIFICATE: "true"
 

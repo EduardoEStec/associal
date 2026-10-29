@@ -3,7 +3,7 @@
 // Pool único do `mssql` + helpers. TODA query deve ser parametrizada:
 //
 //   const linhas = await consultar(
-//     'SELECT id, nome FROM pessoa WHERE cpf = @cpf', { cpf });
+//     'SELECT id, nome FROM ASSOCIAL_pessoa WHERE cpf = @cpf', { cpf });
 //
 // Parâmetros: { nome: valor } (tipo inferido) ou { nome: [tipos.Decimal(10, 2), valor] }
 // (tipo explícito — obrigatório para decimais e datas só-data: [tipos.Date, '2026-03-01']).

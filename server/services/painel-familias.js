@@ -73,7 +73,7 @@ function lerLimiares(mapa) {
 
 async function lerConfig(executor = { consultar }) {
   const linhas = await executor.consultar(
-    `SELECT chave, valor FROM configuracao WHERE chave IN ('pesquisa_n_minimo', 'semaforo_progresso_verde_pct', 'semaforo_progresso_amarelo_pct',
+    `SELECT chave, valor FROM ASSOCIAL_configuracao WHERE chave IN ('pesquisa_n_minimo', 'semaforo_progresso_verde_pct', 'semaforo_progresso_amarelo_pct',
        'semaforo_nps_verde', 'semaforo_nps_amarelo', 'semaforo_concordancia_verde', 'semaforo_concordancia_amarelo')`);
   const mapa = Object.fromEntries(linhas.map((l) => [l.chave, l.valor]));
   const nMin = Number(mapa.pesquisa_n_minimo);
@@ -287,7 +287,7 @@ async function carregarUnidades(ids) {
   if (!ids.length) return [];
   const params = {};
   const nomes = ids.map((id, i) => { params[`u${i}`] = id; return `@u${i}`; });
-  return consultar(`SELECT id, sigla, nome FROM unidade WHERE id IN (${nomes.join(', ')}) ORDER BY ordem, nome`, params);
+  return consultar(`SELECT id, sigla, nome FROM ASSOCIAL_unidade WHERE id IN (${nomes.join(', ')}) ORDER BY ordem, nome`, params);
 }
 
 const dataParam = (v) => [tipos.Date, v];
@@ -316,14 +316,14 @@ async function carregarProgresso(req, periodo, ids, cfg, unidades) {
   p1.fim = dataParam(periodo.fim);
   const acompanhamentos = await consultar(
     `SELECT ac.id, ac.unidade_id, ac.status, ac.data_inicio, ac.data_encerramento
-       FROM acompanhamento ac WHERE ${w1} AND ac.data_inicio <= @fim`, p1);
+       FROM ASSOCIAL_acompanhamento ac WHERE ${w1} AND ac.data_inicio <= @fim`, p1);
 
   const p2 = {};
   const w2 = filtroEscopo(req, 'ac.unidade_id', ids, p2);
   p2.fim = dataParam(periodo.fim);
   const linhas = await consultar(
     `SELECT ai.acompanhamento_id, ai.questionario_id, ai.tipo, ai.data_ref, ai.dimensao, ai.nivel
-       FROM acompanhamento_indice ai JOIN acompanhamento ac ON ac.id = ai.acompanhamento_id
+       FROM ASSOCIAL_acompanhamento_indice ai JOIN ASSOCIAL_acompanhamento ac ON ac.id = ai.acompanhamento_id
       WHERE ${w2} AND ai.data_ref <= @fim`, p2);
   const porQ = new Map();
   for (const l of linhas) {
@@ -349,7 +349,7 @@ async function carregarContatos(req, periodo, ids) {
   p.ini = dataParam(periodo.inicio); p.fim = dataParam(periodo.fim);
   const [c] = await consultar(
     `SELECT COUNT(*) AS total, COUNT(DISTINCT r.acompanhamento_id) AS familias
-       FROM acompanhamento_registro r JOIN acompanhamento ac ON ac.id = r.acompanhamento_id
+       FROM ASSOCIAL_acompanhamento_registro r JOIN ASSOCIAL_acompanhamento ac ON ac.id = r.acompanhamento_id
       WHERE ${w} AND r.houve_contato = 1 AND r.anulado_em IS NULL AND r.data_registro BETWEEN @ini AND @fim`, p);
   return { total: Number(c?.total || 0), familiasComContato: Number(c?.familias || 0) };
 }
@@ -360,7 +360,7 @@ async function carregarMetas(req, ids, fim) {
   p.fim = dataParam(fim);
   return consultar(
     `SELECT m.acompanhamento_id, ac.unidade_id, m.dimensao, m.status, m.concluida_em, m.criado_em
-       FROM acompanhamento_meta m JOIN acompanhamento ac ON ac.id = m.acompanhamento_id
+       FROM ASSOCIAL_acompanhamento_meta m JOIN ASSOCIAL_acompanhamento ac ON ac.id = m.acompanhamento_id
       WHERE ${w} AND CAST(m.criado_em AS DATE) <= @fim`, p);
 }
 
@@ -398,7 +398,7 @@ async function carregarSatisfacao(req, periodo, ids, comComentarios) {
   p1.ini = dataParam(periodo.inicio); p1.fim = dataParam(periodo.fim);
   const respostas = await consultar(
     `SELECT r.id, r.acompanhamento_id, ac.unidade_id, r.situacao, r.momento, r.data_aplicacao, r.comentario_oculto
-       FROM pesquisa_resposta r JOIN acompanhamento ac ON ac.id = r.acompanhamento_id
+       FROM ASSOCIAL_pesquisa_resposta r JOIN ASSOCIAL_acompanhamento ac ON ac.id = r.acompanhamento_id
       WHERE ${w1} AND r.situacao IN ('CONCLUIDA', 'RECUSADA') AND r.data_aplicacao BETWEEN @ini AND @fim`, p1);
 
   const p2 = {};
@@ -406,10 +406,10 @@ async function carregarSatisfacao(req, periodo, ids, comComentarios) {
   p2.ini = dataParam(periodo.inicio); p2.fim = dataParam(periodo.fim);
   const linhas = await consultar(
     `SELECT i.resposta_id, p.codigo, p.tipo, p.texto AS pergunta, i.valor_num, i.valor_texto, i.prefere_nao_responder
-       FROM pesquisa_resposta_item i
-       JOIN pesquisa_pergunta p ON p.id = i.pergunta_id
-       JOIN pesquisa_resposta r ON r.id = i.resposta_id
-       JOIN acompanhamento ac ON ac.id = r.acompanhamento_id
+       FROM ASSOCIAL_pesquisa_resposta_item i
+       JOIN ASSOCIAL_pesquisa_pergunta p ON p.id = i.pergunta_id
+       JOIN ASSOCIAL_pesquisa_resposta r ON r.id = i.resposta_id
+       JOIN ASSOCIAL_acompanhamento ac ON ac.id = r.acompanhamento_id
       WHERE ${w2} AND r.situacao = 'CONCLUIDA' AND r.data_aplicacao BETWEEN @ini AND @fim`, p2);
   const itens = new Map();
   const textos = new Map();
@@ -423,7 +423,7 @@ async function carregarSatisfacao(req, periodo, ids, comComentarios) {
   const w3 = filtroEscopo(req, 'ac.unidade_id', ids, p3);
   p3.ini = dataParam(periodo.inicio); p3.fim = dataParam(periodo.fim);
   const elegiveisLinhas = await consultar(
-    `SELECT ac.unidade_id, COUNT(*) AS familias FROM acompanhamento ac
+    `SELECT ac.unidade_id, COUNT(*) AS familias FROM ASSOCIAL_acompanhamento ac
       WHERE ${w3} AND ac.data_inicio <= @fim AND (ac.data_encerramento IS NULL OR ac.data_encerramento >= @ini)
       GROUP BY ac.unidade_id`, p3);
   const elegiveis = new Map(elegiveisLinhas.map((l) => [l.unidadeId, Number(l.familias)]));
@@ -470,13 +470,13 @@ async function listarReavaliacoesPendentes(req, hoje, unidadeId = null) {
   const w = filtroEscopo(req, 'ac.unidade_id', unidadeId ? [unidadeId] : null, params);
   const linhas = await consultar(
     `SELECT ac.id AS acompanhamento_id, ac.unidade_id, un.sigla AS unidade_sigla, pe.nome AS responsavel_nome, ac.data_inicio
-       FROM acompanhamento ac
-       JOIN unidade un ON un.id = ac.unidade_id
-       JOIN familia f ON f.id = ac.familia_id
-       JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+       FROM ASSOCIAL_acompanhamento ac
+       JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+       JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+       JOIN ASSOCIAL_pessoa pe ON pe.id = f.responsavel_pessoa_id
       WHERE ${w} AND ac.status = 'EM_ANDAMENTO'
-        AND EXISTS (SELECT 1 FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'INICIAL' AND q.concluido = 1)
-        AND NOT EXISTS (SELECT 1 FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo IN ('REAVALIACAO', 'FINAL') AND q.concluido = 1)`, params);
+        AND EXISTS (SELECT 1 FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'INICIAL' AND q.concluido = 1)
+        AND NOT EXISTS (SELECT 1 FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo IN ('REAVALIACAO', 'FINAL') AND q.concluido = 1)`, params);
   const saida = [];
   for (const l of linhas) {
     const r = indice.situacaoReavaliacao({

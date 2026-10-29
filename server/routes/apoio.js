@@ -18,7 +18,7 @@ const router = express.Router();
 function listar(tabela) {
   const extras = tabela === 'faixa_etaria' ? ', idade_min, idade_max' : '';
   return consultar(
-    `SELECT id, nome, ordem, exige_texto${extras} FROM ${tabela} WHERE ativo = 1 ORDER BY ordem, nome`,
+    `SELECT id, nome, ordem, exige_texto${extras} FROM ASSOCIAL_${tabela} WHERE ativo = 1 ORDER BY ordem, nome`,
   );
 }
 

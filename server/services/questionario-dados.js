@@ -1,8 +1,8 @@
 'use strict';
 
 // Persistência do questionário familiar (INICIAL/REAVALIACAO/FINAL) e consultas de comparação.
-// Dois formatos convivem: M1 (modelos oficiais; respostas em dbo.resposta_extra, regras em ./questionario-m1.js) e LEGADO
-// (formato anterior, colunas fixas de dbo.questionario; regras em ./questionario.js). Questionário LEGADO concluído é só leitura.
+// Dois formatos convivem: M1 (modelos oficiais; respostas em dbo.ASSOCIAL_resposta_extra, regras em ./questionario-m1.js) e LEGADO
+// (formato anterior, colunas fixas de dbo.ASSOCIAL_questionario; regras em ./questionario.js). Questionário LEGADO concluído é só leitura.
 
 const { consultar, consultarUm, transacao, tipos } = require('../db');
 const { clausulaUnidades, exigirUnidade } = require('../middlewares/auth');
@@ -20,7 +20,7 @@ const extras = require('./extras');
 const m1 = require('./modelos-m1');
 const qm1 = require('./questionario-m1');
 
-// Campos de escolha fechada com opções configuráveis (colunas de dbo.questionario)
+// Campos de escolha fechada com opções configuráveis (colunas de dbo.ASSOCIAL_questionario)
 const CAMPOS_ESCOLHA = Object.keys(estado.ESCALAS);
 
 const CAMPOS_DECIMAIS = new Set(['rendaMensalMedia', 'economiaMensalValor']);
@@ -33,14 +33,14 @@ function exigirTipo(tipo) {
 
 async function carregarLinha(executor, acompanhamentoId, tipo) {
   return executor.consultarUm(
-    'SELECT * FROM questionario WHERE acompanhamento_id = @ac AND tipo = @tipo', { ac: acompanhamentoId, tipo });
+    'SELECT * FROM ASSOCIAL_questionario WHERE acompanhamento_id = @ac AND tipo = @tipo', { ac: acompanhamentoId, tipo });
 }
 
 async function carregarSelecoes(executor, questionarioId) {
   if (!questionarioId) return { beneficioIds: [], destinoEconomiaIds: [] };
   // em sequência: dentro de uma transação, duas consultas simultâneas na mesma conexão dão EREQINPROG
-  const b = await executor.consultar('SELECT beneficio_id FROM questionario_beneficio WHERE questionario_id = @id ORDER BY beneficio_id', { id: questionarioId });
-  const d = await executor.consultar('SELECT destino_economia_id FROM questionario_destino_economia WHERE questionario_id = @id ORDER BY destino_economia_id', { id: questionarioId });
+  const b = await executor.consultar('SELECT beneficio_id FROM ASSOCIAL_questionario_beneficio WHERE questionario_id = @id ORDER BY beneficio_id', { id: questionarioId });
+  const d = await executor.consultar('SELECT destino_economia_id FROM ASSOCIAL_questionario_destino_economia WHERE questionario_id = @id ORDER BY destino_economia_id', { id: questionarioId });
   return { beneficioIds: b.map((x) => x.beneficioId), destinoEconomiaIds: d.map((x) => x.destinoEconomiaId) };
 }
 
@@ -55,12 +55,12 @@ async function cabecalhoDoAcompanhamento(ac) {
     `SELECT un.nome AS unidade_nome, u.nome AS assistente_nome,
             p.nome AS resp_nome, p.cpf AS resp_cpf, p.nis AS resp_nis, p.telefone AS resp_telefone,
             p.endereco AS resp_endereco, p.bairro AS resp_bairro,
-            (SELECT valor FROM configuracao WHERE chave = 'meta_projeto') AS meta
-       FROM acompanhamento a
-       JOIN unidade un ON un.id = a.unidade_id
-       JOIN familia f ON f.id = a.familia_id
-       JOIN pessoa p ON p.id = f.responsavel_pessoa_id
-       LEFT JOIN usuario u ON u.id = a.usuario_id
+            (SELECT valor FROM ASSOCIAL_configuracao WHERE chave = 'meta_projeto') AS meta
+       FROM ASSOCIAL_acompanhamento a
+       JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id
+       JOIN ASSOCIAL_familia f ON f.id = a.familia_id
+       JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id
+       LEFT JOIN ASSOCIAL_usuario u ON u.id = a.usuario_id
       WHERE a.id = @id`, { id: ac.id });
   return {
     unidade: dados?.unidadeNome || null,
@@ -107,7 +107,7 @@ async function obterM1(req, ac, tipo, linha) {
   const formulario = m1.formularioDoTipo(tipo);
   const bloqueio = await bloqueioDoFluxo(ac, tipo, linha);
   const lidas = linha ? await extras.carregarRespostas({ consultar }, formulario, linha.id, { tipoQuestionario: tipo }) : { mapa: {}, detalhes: {}, lista: [] };
-  const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM familia_membro WHERE familia_id = @f', { f: ac.familiaId });
+  const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM ASSOCIAL_familia_membro WHERE familia_id = @f', { f: ac.familiaId });
   const codigosDoTipo = new Set(qm1.perguntasDoTipo(tipo).map((p) => p.codigo));
   return {
     acompanhamentoId: ac.id,
@@ -144,7 +144,7 @@ async function obterLegado(req, ac, tipo, linha) {
 
   if (!bloqueio && linha && linha.concluido) bloqueio = AVISO_LEGADO;
 
-  const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM familia_membro WHERE familia_id = @f', { f: ac.familiaId });
+  const [{ total }] = await consultar('SELECT COUNT(*) AS total FROM ASSOCIAL_familia_membro WHERE familia_id = @f', { f: ac.familiaId });
   // perguntas extras (P2): a reavaliação rápida não tem
   const adicionais = tipo === 'REAVALIACAO' ? { mapa: {}, lista: [] }
     : await extras.carregarRespostas({ consultar }, 'QUESTIONARIO', linha?.id, { tipoQuestionario: tipo });
@@ -171,7 +171,7 @@ async function conferirOpcoes(tx, tabela, ids, jaSelecionados, campoErro, proble
   if (ids.length === 0) return [];
   const params = {};
   const marcadores = ids.map((id, i) => { params[`i${i}`] = id; return `@i${i}`; });
-  const linhas = await tx.consultar(`SELECT id, ativo, exige_texto FROM ${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
+  const linhas = await tx.consultar(`SELECT id, ativo, exige_texto FROM ASSOCIAL_${tabela} WHERE id IN (${marcadores.join(', ')})`, params);
   if (linhas.length !== ids.length) problemas[campoErro] = 'Opção inexistente.';
   else if (linhas.some((l) => !l.ativo && !jaSelecionados.includes(l.id))) problemas[campoErro] = 'Há uma opção que não está mais disponível.';
   return linhas;
@@ -241,11 +241,11 @@ async function salvarM1(req, acompanhamentoId, tipo, corpo) {
     if (existente) {
       questionarioId = existente.id;
       await tx.consultar(
-        `UPDATE questionario SET data_aplicacao = @data, concluido = @concluido, alterado_por = @usuario, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
+        `UPDATE ASSOCIAL_questionario SET data_aplicacao = @data, concluido = @concluido, alterado_por = @usuario, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
         { id: existente.id, data: [tipos.Date, data], concluido: concluir, usuario: req.usuario.id });
     } else {
       const [novo] = await tx.consultar(
-        `INSERT INTO questionario (acompanhamento_id, tipo, data_aplicacao, concluido, modelo, criado_por)
+        `INSERT INTO ASSOCIAL_questionario (acompanhamento_id, tipo, data_aplicacao, concluido, modelo, criado_por)
          OUTPUT INSERTED.id VALUES (@ac, @tipo, @data, @concluido, 'M1', @usuario)`,
         { ac: ac.id, tipo, data: [tipos.Date, data], concluido: concluir, usuario: req.usuario.id });
       questionarioId = novo.id;
@@ -338,7 +338,7 @@ async function salvarLegado(req, acompanhamentoId, tipo, corpo) {
       questionarioId = existente.id;
       const sets = campos.map((c) => `${COLUNAS[c]} = @${c}`).join(', ');
       await tx.consultar(
-        `UPDATE questionario SET data_aplicacao = @dataAplicacao, concluido = @concluido, ${sets},
+        `UPDATE ASSOCIAL_questionario SET data_aplicacao = @dataAplicacao, concluido = @concluido, ${sets},
                 alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
           WHERE id = @id`,
         { ...params, id: existente.id });
@@ -346,20 +346,20 @@ async function salvarLegado(req, acompanhamentoId, tipo, corpo) {
       const colunas = campos.map((c) => COLUNAS[c]).join(', ');
       const valores = campos.map((c) => `@${c}`).join(', ');
       const [novo] = await tx.consultar(
-        `INSERT INTO questionario (acompanhamento_id, tipo, data_aplicacao, concluido, ${colunas}, criado_por)
+        `INSERT INTO ASSOCIAL_questionario (acompanhamento_id, tipo, data_aplicacao, concluido, ${colunas}, criado_por)
          OUTPUT INSERTED.id
          VALUES (@ac, @tipo, @dataAplicacao, @concluido, ${valores}, @usuario)`,
         params);
       questionarioId = novo.id;
     }
 
-    await tx.consultar('DELETE FROM questionario_beneficio WHERE questionario_id = @id', { id: questionarioId });
+    await tx.consultar('DELETE FROM ASSOCIAL_questionario_beneficio WHERE questionario_id = @id', { id: questionarioId });
     for (const id of idsBeneficio) {
-      await tx.consultar('INSERT INTO questionario_beneficio (questionario_id, beneficio_id) VALUES (@q, @b)', { q: questionarioId, b: id });
+      await tx.consultar('INSERT INTO ASSOCIAL_questionario_beneficio (questionario_id, beneficio_id) VALUES (@q, @b)', { q: questionarioId, b: id });
     }
-    await tx.consultar('DELETE FROM questionario_destino_economia WHERE questionario_id = @id', { id: questionarioId });
+    await tx.consultar('DELETE FROM ASSOCIAL_questionario_destino_economia WHERE questionario_id = @id', { id: questionarioId });
     for (const id of destinoEconomiaIds) {
-      await tx.consultar('INSERT INTO questionario_destino_economia (questionario_id, destino_economia_id) VALUES (@q, @d)', { q: questionarioId, d: id });
+      await tx.consultar('INSERT INTO ASSOCIAL_questionario_destino_economia (questionario_id, destino_economia_id) VALUES (@q, @d)', { q: questionarioId, d: id });
     }
 
     if (extrasValidados) await extras.gravarExtras(tx, 'QUESTIONARIO', questionarioId, extrasValidados);
@@ -376,8 +376,8 @@ async function salvarLegado(req, acompanhamentoId, tipo, corpo) {
 
 async function nomesApoio() {
   const [b, d] = await Promise.all([
-    consultar('SELECT id, nome FROM beneficio'),
-    consultar('SELECT id, nome FROM destino_economia'),
+    consultar('SELECT id, nome FROM ASSOCIAL_beneficio'),
+    consultar('SELECT id, nome FROM ASSOCIAL_destino_economia'),
   ]);
   return {
     beneficio: Object.fromEntries(b.map((x) => [x.id, x.nome])),
@@ -388,7 +388,7 @@ async function nomesApoio() {
 async function comparacaoFamilia(req, acompanhamentoId) {
   const ac = await carregarAcompanhamento(req, acompanhamentoId);
   const familia = await consultarUm(
-    'SELECT p.nome FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @f', { f: ac.familiaId });
+    'SELECT p.nome FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @f', { f: ac.familiaId });
   const [linhaI, linhaF] = await Promise.all([
     carregarLinha({ consultarUm }, ac.id, 'INICIAL'),
     carregarLinha({ consultarUm }, ac.id, 'FINAL'),
@@ -488,21 +488,21 @@ async function comparacaoConsolidada(req, consulta) {
   if (fim) { filtros.push('qf.data_aplicacao <= @fim'); params.fim = [tipos.Date, fim]; }
 
   const elegiveis = `
-    SELECT ac.id FROM acompanhamento ac
-      JOIN questionario qi ON qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL' AND qi.concluido = 1
-      JOIN questionario qf ON qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL' AND qf.concluido = 1
+    SELECT ac.id FROM ASSOCIAL_acompanhamento ac
+      JOIN ASSOCIAL_questionario qi ON qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL' AND qi.concluido = 1
+      JOIN ASSOCIAL_questionario qf ON qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL' AND qf.concluido = 1
      WHERE ${filtros.join(' AND ')}`;
 
   const [linhas, benef, dest, apoio, unidades] = await Promise.all([
     consultar(
-      `SELECT q.*, ac.unidade_id FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
+      `SELECT q.*, ac.unidade_id FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac ON ac.id = q.acompanhamento_id
         WHERE q.concluido = 1 AND q.tipo IN ('INICIAL', 'FINAL') AND q.acompanhamento_id IN (${elegiveis})`, params),
-    consultar(`SELECT qb.questionario_id, qb.beneficio_id FROM questionario_beneficio qb
-                 JOIN questionario q ON q.id = qb.questionario_id WHERE q.acompanhamento_id IN (${elegiveis})`, params),
-    consultar(`SELECT qd.questionario_id, qd.destino_economia_id FROM questionario_destino_economia qd
-                 JOIN questionario q ON q.id = qd.questionario_id WHERE q.acompanhamento_id IN (${elegiveis})`, params),
+    consultar(`SELECT qb.questionario_id, qb.beneficio_id FROM ASSOCIAL_questionario_beneficio qb
+                 JOIN ASSOCIAL_questionario q ON q.id = qb.questionario_id WHERE q.acompanhamento_id IN (${elegiveis})`, params),
+    consultar(`SELECT qd.questionario_id, qd.destino_economia_id FROM ASSOCIAL_questionario_destino_economia qd
+                 JOIN ASSOCIAL_questionario q ON q.id = qd.questionario_id WHERE q.acompanhamento_id IN (${elegiveis})`, params),
     nomesApoio(),
-    consultar('SELECT id, sigla, nome FROM unidade'),
+    consultar('SELECT id, sigla, nome FROM ASSOCIAL_unidade'),
   ]);
 
   const idsPor = (lista, chave) => {

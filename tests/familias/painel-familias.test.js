@@ -282,21 +282,21 @@ test('progresso e satisfação: todas as consultas passam pelo filtro de unidade
     assert.equal(r.status, 200);
     assert.deepEqual(r.corpo.comentarios, []);
     assert.equal(r.corpo.geral.semaforo, null);
-    const deDados = chamadas.filter((c) => /FROM (acompanhamento|pesquisa_resposta|acompanhamento_indice|acompanhamento_meta)\b/.test(c.sql) && !/FROM configuracao/.test(c.sql));
+    const deDados = chamadas.filter((c) => /FROM ASSOCIAL_(acompanhamento|pesquisa_resposta|acompanhamento_indice|acompanhamento_meta)\b/.test(c.sql) && !/FROM ASSOCIAL_configuracao/.test(c.sql));
     assert.ok(deDados.length >= 6);
     assert.ok(deDados.every((c) => /unidade_id IN \(@un0/.test(c.sql)), `consulta sem filtro de unidade: ${deDados.find((c) => !/unidade_id IN \(@un0/.test(c.sql))?.sql.slice(0, 120)}`);
-    const comFiltro = chamadas.find((c) => /FROM acompanhamento ac\s+WHERE/.test(c.sql) && c.params.sel0 === 2);
+    const comFiltro = chamadas.find((c) => /FROM ASSOCIAL_acompanhamento ac\s+WHERE/.test(c.sql) && c.params.sel0 === 2);
     assert.ok(comFiltro, 'o filtro de unidade escolhido também vai para a consulta');
   } finally { await srv.fechar(); }
 });
 
 test('satisfação: ADMIN lê os comentários como a coordenação; comentário oculto não aparece', async () => {
   respostas = [
-    { teste: /FROM unidade WHERE id IN/, resp: () => [{ id: 1, sigla: 'BRA', nome: 'Brasilândia' }, { id: 2, sigla: 'TIR', nome: 'Cidade Tiradentes' }] },
-    { teste: /FROM pesquisa_resposta r JOIN acompanhamento ac/, resp: () => [
+    { teste: /FROM ASSOCIAL_unidade WHERE id IN/, resp: () => [{ id: 1, sigla: 'BRA', nome: 'Brasilândia' }, { id: 2, sigla: 'TIR', nome: 'Cidade Tiradentes' }] },
+    { teste: /FROM ASSOCIAL_pesquisa_resposta r JOIN ASSOCIAL_acompanhamento ac/, resp: () => [
       { id: 1, acompanhamentoId: 11, unidadeId: 1, situacao: 'CONCLUIDA', momento: 'AVULSA', dataAplicacao: new Date('2026-09-01'), comentarioOculto: false },
       { id: 2, acompanhamentoId: 12, unidadeId: 1, situacao: 'CONCLUIDA', momento: 'AVULSA', dataAplicacao: new Date('2026-09-02'), comentarioOculto: true }] },
-    { teste: /FROM pesquisa_resposta_item i/, resp: () => [
+    { teste: /FROM ASSOCIAL_pesquisa_resposta_item i/, resp: () => [
       { respostaId: 1, codigo: 'T1', tipo: 'TEXTO', pergunta: 'x', valorNum: null, valorTexto: 'Preço justo', prefereNaoResponder: false },
       { respostaId: 2, codigo: 'T2', tipo: 'TEXTO', pergunta: 'x', valorNum: null, valorTexto: 'Texto ocultado', prefereNaoResponder: false }] },
   ];

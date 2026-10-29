@@ -53,7 +53,7 @@ async function gravar(req, { ac, registro }, recebidas, corpo) {
 
   return transacao(async (tx) => {
     const atual = await tx.consultarUm(
-      'SELECT COUNT(*) AS total, COALESCE(MAX(ordem), 0) AS maior FROM acompanhamento_registro_foto WHERE registro_id = @id', { id: registro.id });
+      'SELECT COUNT(*) AS total, COALESCE(MAX(ordem), 0) AS maior FROM ASSOCIAL_acompanhamento_registro_foto WHERE registro_id = @id', { id: registro.id });
     if (atual.total + recebidas.length > MAX_FOTOS_POR_REGISTRO) {
       throw erros.validacao({ fotos: `Cada registro aceita no máximo ${MAX_FOTOS_POR_REGISTRO} fotos.` });
     }
@@ -61,7 +61,7 @@ async function gravar(req, { ac, registro }, recebidas, corpo) {
     for (let i = 0; i < recebidas.length; i += 1) {
       const f = recebidas[i];
       const [nova] = await tx.consultar(
-        `INSERT INTO acompanhamento_registro_foto (registro_id, arquivo, nome_original, mime_type, tamanho_bytes, legenda, data_foto, ordem, criado_por)
+        `INSERT INTO ASSOCIAL_acompanhamento_registro_foto (registro_id, arquivo, nome_original, mime_type, tamanho_bytes, legenda, data_foto, ordem, criado_por)
          OUTPUT INSERTED.id
          VALUES (@registro, @arquivo, @nomeOriginal, @mime, @tamanho, @legenda, @data, @ordem, @usuario)`,
         {
@@ -85,7 +85,7 @@ async function carregarFoto(req, { escrita = false } = {}) {
   if (!registroId || !fotoId) throw erros.naoEncontrado();
   const foto = await consultarUm(
     `SELECT f.id, f.registro_id, f.arquivo, f.mime_type, f.legenda, f.data_foto
-       FROM acompanhamento_registro_foto f JOIN acompanhamento_registro r ON r.id = f.registro_id
+       FROM ASSOCIAL_acompanhamento_registro_foto f JOIN ASSOCIAL_acompanhamento_registro r ON r.id = f.registro_id
       WHERE f.id = @foto AND f.registro_id = @registro AND r.acompanhamento_id = @ac AND r.anulado_em IS NULL`,
     { foto: fotoId, registro: registroId, ac: ac.id });
   if (!foto) throw erros.naoEncontrado('Foto não encontrada.');
@@ -107,7 +107,7 @@ async function atualizar(req, corpo) {
     if (d > familias.hojeIso()) throw erros.validacao({ dataFoto: 'A data da foto não pode ser futura.' });
     data = d;
   }
-  await consultar('UPDATE acompanhamento_registro_foto SET legenda = @legenda, data_foto = @data WHERE id = @id',
+  await consultar('UPDATE ASSOCIAL_acompanhamento_registro_foto SET legenda = @legenda, data_foto = @data WHERE id = @id',
     { id: foto.id, legenda, data: [tipos.Date, data] });
   await registrarAuditoria(req, 'ALTERAR_FOTO', 'acompanhamento_registro', foto.registroId, { acompanhamentoId: ac.id, fotoId: foto.id });
   return { id: foto.id, legenda, dataFoto: data };
@@ -115,7 +115,7 @@ async function atualizar(req, corpo) {
 
 async function excluir(req) {
   const { ac, foto } = await carregarFoto(req, { escrita: true });
-  await consultar('DELETE FROM acompanhamento_registro_foto WHERE id = @id', { id: foto.id });
+  await consultar('DELETE FROM ASSOCIAL_acompanhamento_registro_foto WHERE id = @id', { id: foto.id });
   arquivos.removerArquivo(foto.arquivo);
   await registrarAuditoria(req, 'EXCLUIR_FOTO', 'acompanhamento_registro', foto.registroId, { acompanhamentoId: ac.id, fotoId: foto.id });
 }

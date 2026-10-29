@@ -31,10 +31,10 @@ router.get('/buscar', async (req, res) => {
   const whereC = clausulaUnidades(req, 'ac.unidade_id', params, 'uc');
   const pessoas = await consultar(
     `SELECT TOP (20) ${svc.COLUNAS_PESSOA}
-       FROM pessoa p
+       FROM ASSOCIAL_pessoa p
       WHERE p.nome LIKE @nome
-        AND (EXISTS (SELECT 1 FROM atendimento a WHERE a.pessoa_id = p.id AND ${whereA})
-          OR EXISTS (SELECT 1 FROM acompanhamento ac JOIN familia f ON f.id = ac.familia_id
+        AND (EXISTS (SELECT 1 FROM ASSOCIAL_atendimento a WHERE a.pessoa_id = p.id AND ${whereA})
+          OR EXISTS (SELECT 1 FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
                       WHERE f.responsavel_pessoa_id = p.id AND ${whereC}))
       ORDER BY p.nome`,
     params,
@@ -64,7 +64,7 @@ router.post('/', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req
 router.put('/:id', requirePerfil('ASSISTENTE', 'COORDENADOR', 'ADMIN'), async (req, res) => {
   const id = inteiroPositivo(req.params.id);
   if (!id) throw erros.naoEncontrado();
-  const existe = await consultarUm('SELECT id FROM pessoa WHERE id = @id', { id });
+  const existe = await consultarUm('SELECT id FROM ASSOCIAL_pessoa WHERE id = @id', { id });
   if (!existe) throw erros.naoEncontrado();
   if (!svc.foiLocalizada(req, id) && !(await svc.pessoaNoEscopo(req, id))) throw erros.naoEncontrado();
 

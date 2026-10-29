@@ -95,7 +95,7 @@ function calcularSemMeta({ status, dataInicio, metas, hoje, dias = SEM_META_PADR
 }
 
 async function lerConfig(executor = { consultar }) {
-  const linhas = await executor.consultar("SELECT valor FROM configuracao WHERE chave = 'alerta_sem_meta_dias'");
+  const linhas = await executor.consultar("SELECT valor FROM ASSOCIAL_configuracao WHERE chave = 'alerta_sem_meta_dias'");
   const v = Number(linhas[0]?.valor);
   return { semMetaDias: Number.isInteger(v) && v > 0 ? v : SEM_META_PADRAO_DIAS };
 }
@@ -104,7 +104,7 @@ async function lerConfig(executor = { consultar }) {
 async function lerResumo(ac, hoje) {
   const [cfg, metas] = await Promise.all([
     lerConfig(),
-    consultar('SELECT status, concluida_em, prazo FROM acompanhamento_meta WHERE acompanhamento_id = @id', { id: ac.id }),
+    consultar('SELECT status, concluida_em, prazo FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @id', { id: ac.id }),
   ]);
   const conta = (s) => metas.filter((m) => m.status === s).length;
   return {
@@ -122,12 +122,12 @@ async function listarSemMeta(req, hoje, unidadeId = null) {
   if (unidadeId) { filtros.push('ac.unidade_id = @unidadeFiltro'); params.unidadeFiltro = unidadeId; }
   const acs = await consultar(
     `SELECT ac.id AS acompanhamento_id, ac.unidade_id, un.sigla AS unidade_sigla, pe.nome AS responsavel_nome, ac.data_inicio,
-            (SELECT COUNT(*) FROM acompanhamento_meta m WHERE m.acompanhamento_id = ac.id AND m.status = 'EM_ANDAMENTO') AS metas_abertas,
-            (SELECT MAX(m.concluida_em) FROM acompanhamento_meta m WHERE m.acompanhamento_id = ac.id) AS ultima_conclusao
-       FROM acompanhamento ac
-       JOIN unidade un ON un.id = ac.unidade_id
-       JOIN familia f ON f.id = ac.familia_id
-       JOIN pessoa pe ON pe.id = f.responsavel_pessoa_id
+            (SELECT COUNT(*) FROM ASSOCIAL_acompanhamento_meta m WHERE m.acompanhamento_id = ac.id AND m.status = 'EM_ANDAMENTO') AS metas_abertas,
+            (SELECT MAX(m.concluida_em) FROM ASSOCIAL_acompanhamento_meta m WHERE m.acompanhamento_id = ac.id) AS ultima_conclusao
+       FROM ASSOCIAL_acompanhamento ac
+       JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
+       JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+       JOIN ASSOCIAL_pessoa pe ON pe.id = f.responsavel_pessoa_id
       WHERE ${filtros.join(' AND ')} AND ac.status = 'EM_ANDAMENTO'`,
     params);
   const saida = [];

@@ -15,13 +15,13 @@ const LIMITE_PADRAO_DIAS = 30;
 function sqlUltimoContato(ac = 'ac', familia = 'f') {
   return `(SELECT MAX(v.d) FROM (VALUES
       (${ac}.data_inicio),
-      ((SELECT MAX(r.data_registro) FROM acompanhamento_registro r
+      ((SELECT MAX(r.data_registro) FROM ASSOCIAL_acompanhamento_registro r
          WHERE r.acompanhamento_id = ${ac}.id AND r.houve_contato = 1 AND r.anulado_em IS NULL)),
-      ((SELECT MAX(a.data_atendimento) FROM atendimento a
+      ((SELECT MAX(a.data_atendimento) FROM ASSOCIAL_atendimento a
          WHERE a.pessoa_id = ${familia}.responsavel_pessoa_id AND a.unidade_id = ${ac}.unidade_id AND a.data_atendimento <= @hoje)),
-      ((SELECT MAX(q.data_aplicacao) FROM questionario q
+      ((SELECT MAX(q.data_aplicacao) FROM ASSOCIAL_questionario q
          WHERE q.acompanhamento_id = ${ac}.id AND q.concluido = 1)),
-      ((SELECT MAX(ps.data_aplicacao) FROM pesquisa_resposta ps
+      ((SELECT MAX(ps.data_aplicacao) FROM ASSOCIAL_pesquisa_resposta ps
          WHERE ps.acompanhamento_id = ${ac}.id AND ps.situacao IN ('CONCLUIDA', 'RECUSADA')))
     ) AS v(d))`;
 }
@@ -47,18 +47,18 @@ function resumoContato({ status, ultimoContato, hoje, limiteDias = LIMITE_PADRAO
 async function lerResumoContato(ac, hoje, limiteDias) {
   const [linha] = await consultar(
     `SELECT ${sqlUltimoContato('ac', 'f')} AS ultimo_contato
-       FROM acompanhamento ac JOIN familia f ON f.id = ac.familia_id
+       FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
       WHERE ac.id = @id`,
     { id: ac.id, hoje: [tipos.Date, hoje] },
   );
   const ultimaSituacao = await consultarUm(
-    `SELECT TOP 1 situacao, data_registro FROM acompanhamento_registro
+    `SELECT TOP 1 situacao, data_registro FROM ASSOCIAL_acompanhamento_registro
       WHERE acompanhamento_id = @id AND houve_contato = 1 AND anulado_em IS NULL
       ORDER BY data_registro DESC, id DESC`,
     { id: ac.id },
   );
   const proximo = await consultarUm(
-    `SELECT TOP 1 proximo_contato_em FROM acompanhamento_registro
+    `SELECT TOP 1 proximo_contato_em FROM ASSOCIAL_acompanhamento_registro
       WHERE acompanhamento_id = @id AND anulado_em IS NULL AND proximo_contato_em IS NOT NULL
       ORDER BY data_registro DESC, id DESC`,
     { id: ac.id },

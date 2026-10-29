@@ -5,7 +5,8 @@
 //
 //   npm run db:migrate
 //
-// 1. Cria o banco (DB_NAME) se não existir.
+// 1. Cria o banco (DB_NAME) se não existir. Se já existir (caso do INTERNO, compartilhado com outros sistemas), só segue.
+//    Todas as tabelas do ASSOCIAL são dbo.ASSOCIAL_<nome>; a 000_prefixo_associal.sql converte o layout antigo (sem prefixo).
 // 2. Roda cada script, dividindo os lotes nas linhas "GO".
 // 3. Se o usuário "admin" ainda não tem senha, define uma (ADMIN_SENHA_INICIAL do .env,
 //    ou aleatória, impressa uma única vez).
@@ -49,11 +50,19 @@ function dividirLotes(conteudo) {
 
 async function garantirBanco() {
   if (!/^[A-Za-z0-9_]+$/.test(cfg.database)) throw new Error(`DB_NAME inválido: ${cfg.database}`);
-  const pool = await new sql.ConnectionPool(opcoes('master')).connect();
+  let pool;
+  try {
+    pool = await new sql.ConnectionPool(opcoes('master')).connect();
+  } catch (err) {
+    // Banco compartilhado: o login do ASSOCIAL pode não ter acesso ao master. O banco já existe; se não existir, o passo seguinte falha com a mensagem certa.
+    console.log(`Sem acesso ao master (${err.message}); assumindo que o banco ${cfg.database} já existe.`);
+    return;
+  }
   try {
     const r = await pool.request().input('nome', cfg.database).query('SELECT DB_ID(@nome) AS id');
     if (r.recordset[0].id === null) {
-      // Collation insensível a acentos/caixa: buscas por nome sem se preocupar com acentuação.
+      // Banco novo (dev/teste). Cada coluna de texto já declara Latin1_General_100_CI_AI (busca sem acento/caixa),
+      // então o sistema funciona igual num banco existente com outra collation (ex.: SQL_Latin1_General_CP1_CI_AS).
       await pool.request().batch(`CREATE DATABASE [${cfg.database}] COLLATE Latin1_General_100_CI_AI`);
       console.log(`Banco ${cfg.database} criado.`);
     } else {
@@ -87,7 +96,7 @@ async function executarScripts() {
 }
 
 async function senhaInicialAdmin() {
-  const [admin] = await db.consultar("SELECT senha_hash FROM usuario WHERE login = 'admin'");
+  const [admin] = await db.consultar("SELECT senha_hash FROM ASSOCIAL_usuario WHERE login = 'admin'");
   if (!admin || admin.senhaHash !== '!') return;
   const nova = await definirSenha(db.consultar, 'admin', process.env.ADMIN_SENHA_INICIAL || undefined);
   console.log('\nUsuário ADMIN criado:');

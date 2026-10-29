@@ -183,7 +183,7 @@ const PERGUNTAS_REAVALIACAO = Object.freeze([
 // Colunas gravadas na reavaliação: as perguntas acima + o valor aproximado da economia (detalhe de 3b)
 const CAMPOS_REAVALIACAO = Object.freeze([...PERGUNTAS_REAVALIACAO, 'economiaMensalValor']);
 
-// Colunas escalares de dbo.questionario (campo da API -> coluna) — fora data/concluido.
+// Colunas escalares de dbo.ASSOCIAL_questionario (campo da API -> coluna) — fora data/concluido.
 const COLUNAS = Object.freeze({
   qtdMembrosFamilia: 'qtd_membros_familia',
   rendaMensalMedia: 'renda_mensal_media',

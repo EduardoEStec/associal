@@ -54,7 +54,7 @@ async function unidadesPorId(selecionadas) {
     params[`u${i}`] = id;
     return `@u${i}`;
   });
-  return consultar(`SELECT id, sigla, nome FROM unidade WHERE id IN (${nomes.join(', ')}) ORDER BY ordem, nome`, params);
+  return consultar(`SELECT id, sigla, nome FROM ASSOCIAL_unidade WHERE id IN (${nomes.join(', ')}) ORDER BY ordem, nome`, params);
 }
 
 // ---------- Relatório Individual ----------
@@ -73,12 +73,12 @@ async function listarAcompanhamentos(req, { unidadeId, busca }) {
   }
   return consultar(
     `SELECT TOP 200 ac.id, ac.data_inicio, ac.status, un.sigla AS unidade_sigla, p.nome AS responsavel_nome,
-            (SELECT COUNT(*) FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'INICIAL' AND q.concluido = 1) AS tem_inicial,
-            (SELECT COUNT(*) FROM questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'FINAL' AND q.concluido = 1) AS tem_final
-       FROM acompanhamento ac
-       JOIN familia f ON f.id = ac.familia_id
-       JOIN pessoa p ON p.id = f.responsavel_pessoa_id
-       JOIN unidade un ON un.id = ac.unidade_id
+            (SELECT COUNT(*) FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'INICIAL' AND q.concluido = 1) AS tem_inicial,
+            (SELECT COUNT(*) FROM ASSOCIAL_questionario q WHERE q.acompanhamento_id = ac.id AND q.tipo = 'FINAL' AND q.concluido = 1) AS tem_final
+       FROM ASSOCIAL_acompanhamento ac
+       JOIN ASSOCIAL_familia f ON f.id = ac.familia_id
+       JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id
+       JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
       WHERE ${filtros.join(' AND ')}
       ORDER BY p.nome`,
     params,
@@ -90,7 +90,7 @@ async function carregarEvolucao(req, acompanhamentoId) {
   const indicadores = await indice.obterIndicadores(req, acompanhamentoId);
   const [c] = await consultar(
     `SELECT COUNT(*) AS total, MIN(data_registro) AS primeiro, MAX(data_registro) AS ultimo
-       FROM acompanhamento_registro WHERE acompanhamento_id = @id AND houve_contato = 1 AND anulado_em IS NULL`,
+       FROM ASSOCIAL_acompanhamento_registro WHERE acompanhamento_id = @id AND houve_contato = 1 AND anulado_em IS NULL`,
     { id: acompanhamentoId });
   const dia = (v) => (v ? new Date(v).toISOString().slice(0, 10) : null);
   const total = c ? c.total : 0;
@@ -99,7 +99,7 @@ async function carregarEvolucao(req, acompanhamentoId) {
     : null;
   // metas combinadas com a família (F4), na ordem em que foram definidas
   const metas = await consultar(
-    `SELECT dimensao, descricao, prazo, status, concluida_em FROM acompanhamento_meta WHERE acompanhamento_id = @id ORDER BY criado_em, id`,
+    `SELECT dimensao, descricao, prazo, status, concluida_em FROM ASSOCIAL_acompanhamento_meta WHERE acompanhamento_id = @id ORDER BY criado_em, id`,
     { id: acompanhamentoId });
   return { ...indicadores, metas, contatos: { total, primeiro: dia(c?.primeiro), ultimo: dia(c?.ultimo), intervaloMedioDias } };
 }
@@ -110,7 +110,7 @@ async function carregarIndividual(req, acompanhamentoId) {
   const acompanhamento = await consultarUm(
     `SELECT ac.id, ac.familia_id, ac.unidade_id, ac.data_inicio, ac.status,
             un.sigla AS unidade_sigla, un.nome AS unidade_nome
-       FROM acompanhamento ac JOIN unidade un ON un.id = ac.unidade_id
+       FROM ASSOCIAL_acompanhamento ac JOIN ASSOCIAL_unidade un ON un.id = ac.unidade_id
       WHERE ac.id = @id AND ${where}`,
     params,
   );
@@ -118,17 +118,17 @@ async function carregarIndividual(req, acompanhamentoId) {
 
   const responsavel = await consultarUm(
     `SELECT p.nome, p.cpf, p.nis, p.telefone, p.telefone2, p.endereco, p.cep, p.bairro, p.trabalho_atual
-       FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id
+       FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id
       WHERE f.id = @familiaId`,
     { familiaId: acompanhamento.familiaId },
   );
   const membros = await consultar(
     `SELECT m.id, m.nome, m.data_nascimento, m.idade, m.parentesco, m.trabalha
-       FROM familia_membro m WHERE m.familia_id = @familiaId ORDER BY m.id`,
+       FROM ASSOCIAL_familia_membro m WHERE m.familia_id = @familiaId ORDER BY m.id`,
     { familiaId: acompanhamento.familiaId },
   );
   const questionarios = await consultar(
-    'SELECT * FROM questionario WHERE acompanhamento_id = @id',
+    'SELECT * FROM ASSOCIAL_questionario WHERE acompanhamento_id = @id',
     { id: acompanhamentoId },
   );
   const inicial = questionarios.find((q) => q.tipo === 'INICIAL') || null;
@@ -142,14 +142,14 @@ async function carregarIndividual(req, acompanhamentoId) {
 
   const beneficiosInicial = inicial && inicial.modelo !== 'M1'
     ? (await consultar(
-      `SELECT b.nome FROM questionario_beneficio qb JOIN beneficio b ON b.id = qb.beneficio_id
+      `SELECT b.nome FROM ASSOCIAL_questionario_beneficio qb JOIN ASSOCIAL_beneficio b ON b.id = qb.beneficio_id
         WHERE qb.questionario_id = @q ORDER BY b.ordem, b.nome`,
       { q: inicial.id },
     )).map((l) => l.nome)
     : [];
   const destinosFinal = final && final.modelo !== 'M1'
     ? (await consultar(
-      `SELECT d.nome FROM questionario_destino_economia qd JOIN destino_economia d ON d.id = qd.destino_economia_id
+      `SELECT d.nome FROM ASSOCIAL_questionario_destino_economia qd JOIN ASSOCIAL_destino_economia d ON d.id = qd.destino_economia_id
         WHERE qd.questionario_id = @q ORDER BY d.ordem, d.nome`,
       { q: final.id },
     )).map((l) => l.nome)
@@ -242,22 +242,22 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   let w = filtroUnidades(req, 'a.unidade_id', selecionadas, p);
   const atendPorUnidade = await consultar(
     `SELECT a.unidade_id, COUNT(*) AS atendimentos
-       FROM atendimento a WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim GROUP BY a.unidade_id`, p);
+       FROM ASSOCIAL_atendimento a WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim GROUP BY a.unidade_id`, p);
 
   p = datas({});
   w = filtroUnidades(req, 'a.unidade_id', selecionadas, p);
   const encPorUnidade = await consultar(
     `SELECT a.unidade_id, COUNT(*) AS encaminhamentos, COUNT(DISTINCT a.id) AS atendimentos_com_encaminhamento
-       FROM atendimento a JOIN atendimento_encaminhamento ae ON ae.atendimento_id = a.id
+       FROM ASSOCIAL_atendimento a JOIN ASSOCIAL_atendimento_encaminhamento ae ON ae.atendimento_id = a.id
       WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim GROUP BY a.unidade_id`, p);
 
   p = datas({});
   w = filtroUnidades(req, 'a.unidade_id', selecionadas, p);
   const encPorInstituicao = await consultar(
     `SELECT e.nome, COUNT(*) AS quantidade
-       FROM atendimento a
-       JOIN atendimento_encaminhamento ae ON ae.atendimento_id = a.id
-       JOIN encaminhamento e ON e.id = ae.encaminhamento_id
+       FROM ASSOCIAL_atendimento a
+       JOIN ASSOCIAL_atendimento_encaminhamento ae ON ae.atendimento_id = a.id
+       JOIN ASSOCIAL_encaminhamento e ON e.id = ae.encaminhamento_id
       WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim
       GROUP BY e.id, e.nome ORDER BY COUNT(*) DESC, e.nome`, p);
 
@@ -278,7 +278,7 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'av.unidade_id', selecionadas, p);
   const acoes = await consultar(
     `SELECT av.id, av.unidade_id, av.data_acao, av.instituicao_local, av.endereco, av.qtd_participantes, ta.nome AS tipo
-       FROM acao_visita av JOIN tipo_acao ta ON ta.id = av.tipo_acao_id
+       FROM ASSOCIAL_acao_visita av JOIN ASSOCIAL_tipo_acao ta ON ta.id = av.tipo_acao_id
       WHERE ${w} AND av.status = 'REALIZADA' AND av.data_acao BETWEEN @ini AND @fim
       ORDER BY av.data_acao, av.id`, p);
 
@@ -286,9 +286,9 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'av.unidade_id', selecionadas, p);
   const temasLinhas = await consultar(
     `SELECT t.acao_visita_id, tm.nome
-       FROM acao_visita_tema t
-       JOIN tema tm ON tm.id = t.tema_id
-       JOIN acao_visita av ON av.id = t.acao_visita_id
+       FROM ASSOCIAL_acao_visita_tema t
+       JOIN ASSOCIAL_tema tm ON tm.id = t.tema_id
+       JOIN ASSOCIAL_acao_visita av ON av.id = t.acao_visita_id
       WHERE ${w} AND av.status = 'REALIZADA' AND av.data_acao BETWEEN @ini AND @fim
       ORDER BY t.acao_visita_id, t.ordem`, p);
   const temasPorAcao = new Map();
@@ -320,7 +320,7 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'ac.unidade_id', selecionadas, p);
   const familiasPorUnidade = await consultar(
     `SELECT ac.unidade_id, COUNT(*) AS familias
-       FROM acompanhamento ac
+       FROM ASSOCIAL_acompanhamento ac
       WHERE ${w} AND ac.data_inicio <= @fim AND (ac.data_encerramento IS NULL OR ac.data_encerramento >= @ini)
       GROUP BY ac.unidade_id`, p);
   const familiasTotal = familiasPorUnidade.reduce((t, l) => t + l.familias, 0);
@@ -330,11 +330,11 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'ac.unidade_id', selecionadas, p);
   const questionarios = await consultar(
     `SELECT q.*, ac.unidade_id
-       FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
+       FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac ON ac.id = q.acompanhamento_id
       WHERE ${w} AND q.concluido = 1 AND q.tipo IN ('INICIAL', 'FINAL')
-        AND EXISTS (SELECT 1 FROM questionario qf WHERE qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL'
+        AND EXISTS (SELECT 1 FROM ASSOCIAL_questionario qf WHERE qf.acompanhamento_id = ac.id AND qf.tipo = 'FINAL'
                        AND qf.concluido = 1 AND qf.data_aplicacao BETWEEN @ini AND @fim)
-        AND EXISTS (SELECT 1 FROM questionario qi WHERE qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL' AND qi.concluido = 1)`, p);
+        AND EXISTS (SELECT 1 FROM ASSOCIAL_questionario qi WHERE qi.acompanhamento_id = ac.id AND qi.tipo = 'INICIAL' AND qi.concluido = 1)`, p);
   const porAcomp = new Map();
   for (const q of questionarios) {
     if (!porAcomp.has(q.acompanhamentoId)) porAcomp.set(q.acompanhamentoId, {});
@@ -400,7 +400,7 @@ async function coletarSemestral(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'av.unidade_id', selecionadas, p);
   const fotos = await consultar(
     `SELECT TOP 500 f.id, f.arquivo, f.mime_type, f.legenda, av.unidade_id, av.data_acao, av.instituicao_local
-       FROM acao_visita_foto f JOIN acao_visita av ON av.id = f.acao_visita_id
+       FROM ASSOCIAL_acao_visita_foto f JOIN ASSOCIAL_acao_visita av ON av.id = f.acao_visita_id
       WHERE ${w} AND av.status = 'REALIZADA' AND av.data_acao BETWEEN @ini AND @fim
       ORDER BY av.unidade_id, av.data_acao, f.ordem, f.id`, p);
 
@@ -457,7 +457,7 @@ async function carregarFotoDoUsuario(req, fotoId) {
   const params = { id: fotoId };
   const w = clausulaUnidades(req, 'av.unidade_id', params);
   const foto = await consultarUm(
-    `SELECT f.id, f.arquivo, f.mime_type FROM acao_visita_foto f JOIN acao_visita av ON av.id = f.acao_visita_id
+    `SELECT f.id, f.arquivo, f.mime_type FROM ASSOCIAL_acao_visita_foto f JOIN ASSOCIAL_acao_visita av ON av.id = f.acao_visita_id
       WHERE f.id = @id AND ${w}`, params);
   if (!foto) return null;
   const caminho = caminhoFoto(foto.arquivo);
@@ -475,7 +475,7 @@ async function resumoMensal(req, { dataInicio, dataFim, unidadeIds }) {
   let w = filtroUnidades(req, 'a.unidade_id', selecionadas, p);
   const atend = await consultar(
     `SELECT a.unidade_id, YEAR(a.data_atendimento) AS ano, MONTH(a.data_atendimento) AS mes, COUNT(*) AS atendimentos
-       FROM atendimento a WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim
+       FROM ASSOCIAL_atendimento a WHERE ${w} AND a.data_atendimento BETWEEN @ini AND @fim
       GROUP BY a.unidade_id, YEAR(a.data_atendimento), MONTH(a.data_atendimento)`, p);
 
   p = datas({});
@@ -483,7 +483,7 @@ async function resumoMensal(req, { dataInicio, dataFim, unidadeIds }) {
   const acoes = await consultar(
     `SELECT av.unidade_id, YEAR(av.data_acao) AS ano, MONTH(av.data_acao) AS mes, COUNT(*) AS acoes,
             COALESCE(SUM(av.qtd_participantes), 0) AS participantes
-       FROM acao_visita av WHERE ${w} AND av.status = 'REALIZADA' AND av.data_acao BETWEEN @ini AND @fim
+       FROM ASSOCIAL_acao_visita av WHERE ${w} AND av.status = 'REALIZADA' AND av.data_acao BETWEEN @ini AND @fim
       GROUP BY av.unidade_id, YEAR(av.data_acao), MONTH(av.data_acao)`, p);
 
   // famílias acompanhadas no mês: acompanhamentos ativos em algum dia do mês (contagem em JS)
@@ -491,7 +491,7 @@ async function resumoMensal(req, { dataInicio, dataFim, unidadeIds }) {
   w = filtroUnidades(req, 'ac.unidade_id', selecionadas, p);
   const acomps = await consultar(
     `SELECT ac.unidade_id, ac.data_inicio, ac.data_encerramento
-       FROM acompanhamento ac
+       FROM ASSOCIAL_acompanhamento ac
       WHERE ${w} AND ac.data_inicio <= @fim AND (ac.data_encerramento IS NULL OR ac.data_encerramento >= @ini)`, p);
   const iso = (d) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
   const familias = [];
@@ -540,20 +540,20 @@ async function respostasExtrasPeriodo(req, { dataInicio, dataFim, unidadeIds }) 
   const unidades = new Map((await unidadesPorId(selecionadas)).map((u) => [u.id, u.sigla]));
   const periodo = (p) => { p.ini = [tipos.Date, dataInicio]; p.fim = [tipos.Date, dataFim]; return p; };
   const consultaQuestionarios = (p, condicao) => `SELECT q.id AS dono_id, q.data_aplicacao AS data, ac.unidade_id, q.tipo AS momento
-       FROM questionario q JOIN acompanhamento ac ON ac.id = q.acompanhamento_id
+       FROM ASSOCIAL_questionario q JOIN ASSOCIAL_acompanhamento ac ON ac.id = q.acompanhamento_id
       WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND q.concluido = 1 AND q.data_aplicacao BETWEEN @ini AND @fim
-        AND ${condicao} AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.questionario_id = q.id)`;
+        AND ${condicao} AND EXISTS (SELECT 1 FROM ASSOCIAL_resposta_extra r WHERE r.questionario_id = q.id)`;
   const consultas = {
     ATENDIMENTO: (p) => `SELECT a.id AS dono_id, a.data_atendimento AS data, a.unidade_id, 'Atendimento' AS momento
-       FROM atendimento a WHERE ${filtroUnidades(req, 'a.unidade_id', selecionadas, p)} AND a.data_atendimento BETWEEN @ini AND @fim
-        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.atendimento_id = a.id)`,
+       FROM ASSOCIAL_atendimento a WHERE ${filtroUnidades(req, 'a.unidade_id', selecionadas, p)} AND a.data_atendimento BETWEEN @ini AND @fim
+        AND EXISTS (SELECT 1 FROM ASSOCIAL_resposta_extra r WHERE r.atendimento_id = a.id)`,
     QUESTIONARIO: (p) => consultaQuestionarios(p, "q.modelo <> 'M1'"),
     QUESTIONARIO_INICIAL: (p) => consultaQuestionarios(p, "q.modelo = 'M1' AND q.tipo = 'INICIAL'"),
     QUESTIONARIO_FINAL: (p) => consultaQuestionarios(p, "q.modelo = 'M1' AND q.tipo = 'FINAL'"),
     PESQUISA: (p) => `SELECT pr.id AS dono_id, pr.data_aplicacao AS data, ac.unidade_id, pr.momento
-       FROM pesquisa_resposta pr JOIN acompanhamento ac ON ac.id = pr.acompanhamento_id
+       FROM ASSOCIAL_pesquisa_resposta pr JOIN ASSOCIAL_acompanhamento ac ON ac.id = pr.acompanhamento_id
       WHERE ${filtroUnidades(req, 'ac.unidade_id', selecionadas, p)} AND pr.situacao = 'CONCLUIDA' AND pr.data_aplicacao BETWEEN @ini AND @fim
-        AND EXISTS (SELECT 1 FROM resposta_extra r WHERE r.pesquisa_resposta_id = pr.id)`,
+        AND EXISTS (SELECT 1 FROM ASSOCIAL_resposta_extra r WHERE r.pesquisa_resposta_id = pr.id)`,
   };
   const saida = [];
   for (const formulario of estado.TODOS_FORMULARIOS) {
@@ -582,14 +582,14 @@ async function listaAcoes(req, { dataInicio, dataFim, unidadeIds }) {
   let w = filtroUnidades(req, 'av.unidade_id', selecionadas, p);
   const acoes = await consultar(
     `SELECT av.id, av.data_acao, un.sigla, av.instituicao_local, av.endereco, av.status, av.qtd_participantes, ta.nome AS tipo
-       FROM acao_visita av JOIN unidade un ON un.id = av.unidade_id JOIN tipo_acao ta ON ta.id = av.tipo_acao_id
+       FROM ASSOCIAL_acao_visita av JOIN ASSOCIAL_unidade un ON un.id = av.unidade_id JOIN ASSOCIAL_tipo_acao ta ON ta.id = av.tipo_acao_id
       WHERE ${w} AND av.data_acao BETWEEN @ini AND @fim
       ORDER BY av.data_acao, av.id`, p);
   p = { ini: [tipos.Date, dataInicio], fim: [tipos.Date, dataFim] };
   w = filtroUnidades(req, 'av.unidade_id', selecionadas, p);
   const temas = await consultar(
-    `SELECT t.acao_visita_id, tm.nome FROM acao_visita_tema t
-       JOIN tema tm ON tm.id = t.tema_id JOIN acao_visita av ON av.id = t.acao_visita_id
+    `SELECT t.acao_visita_id, tm.nome FROM ASSOCIAL_acao_visita_tema t
+       JOIN ASSOCIAL_tema tm ON tm.id = t.tema_id JOIN ASSOCIAL_acao_visita av ON av.id = t.acao_visita_id
       WHERE ${w} AND av.data_acao BETWEEN @ini AND @fim ORDER BY t.acao_visita_id, t.ordem`, p);
   return acoes.map((a) => ({
     ...a,

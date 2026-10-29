@@ -35,7 +35,7 @@ router.post('/', podeEscrever, async (req, res) => {
 
   const id = await transacao(async (tx) => {
     const [novo] = await tx.consultar(
-      `INSERT INTO acao_visita (unidade_id, tipo_acao_id, tipo_acao_outro, data_acao, instituicao_local, endereco, status,
+      `INSERT INTO ASSOCIAL_acao_visita (unidade_id, tipo_acao_id, tipo_acao_outro, data_acao, instituicao_local, endereco, status,
                                 qtd_participantes, descricao, criado_por)
        OUTPUT INSERTED.id
        VALUES (@unidadeId, @tipoAcaoId, @tipoAcaoOutro, @dataAcao, @instituicaoLocal, @endereco, @status,
@@ -62,13 +62,13 @@ router.post('/', podeEscrever, async (req, res) => {
 
 router.put('/:id', podeEscrever, async (req, res) => {
   const atual = await servico.carregarAcao(req, req.params.id);
-  const temasAtuais = (await consultar('SELECT tema_id FROM acao_visita_tema WHERE acao_visita_id = @id', { id: atual.id }))
+  const temasAtuais = (await consultar('SELECT tema_id FROM ASSOCIAL_acao_visita_tema WHERE acao_visita_id = @id', { id: atual.id }))
     .map((t) => t.temaId);
   const dados = await servico.validarCorpo(req, req.body || {}, { atual, temasAtuais });
 
   await transacao(async (tx) => {
     await tx.consultar(
-      `UPDATE acao_visita
+      `UPDATE ASSOCIAL_acao_visita
           SET unidade_id = @unidadeId, tipo_acao_id = @tipoAcaoId, tipo_acao_outro = @tipoAcaoOutro, data_acao = @dataAcao,
               instituicao_local = @instituicaoLocal, endereco = @endereco, status = @status,
               qtd_participantes = @qtdParticipantes, descricao = @descricao,
@@ -115,7 +115,7 @@ router.patch('/:id/status', podeEscrever, async (req, res) => {
 
   await transacao(async (tx) => {
     await tx.consultar(
-      `UPDATE acao_visita SET status = @status, qtd_participantes = @qtd,
+      `UPDATE ASSOCIAL_acao_visita SET status = @status, qtd_participantes = @qtd,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME() WHERE id = @id`,
       { id: atual.id, status, qtd, usuario: req.usuario.id },
     );
@@ -129,9 +129,9 @@ router.delete('/:id', podeEscrever, async (req, res) => {
   const atual = await servico.carregarAcao(req, req.params.id);
   if (!servico.podeExcluir(req, atual)) throw erros.proibido('Somente o autor ou a coordenação podem excluir esta ação.');
 
-  const arquivos = await consultar('SELECT arquivo FROM acao_visita_foto WHERE acao_visita_id = @id', { id: atual.id });
+  const arquivos = await consultar('SELECT arquivo FROM ASSOCIAL_acao_visita_foto WHERE acao_visita_id = @id', { id: atual.id });
   await transacao(async (tx) => {
-    await tx.consultar('DELETE FROM acao_visita WHERE id = @id', { id: atual.id }); // temas e fotos em cascata
+    await tx.consultar('DELETE FROM ASSOCIAL_acao_visita WHERE id = @id', { id: atual.id }); // temas e fotos em cascata
     await registrarAuditoria(req, 'EXCLUIR', 'acao_visita', atual.id, undefined, tx);
   });
   for (const f of arquivos) fotos.removerArquivo(f.arquivo);
@@ -156,7 +156,7 @@ router.post('/:id/fotos', podeEscrever, async (req, res, next) => {
     }
     const acaoId = req.acaoAtual.id;
     const existente = await consultarUm(
-      'SELECT COUNT(*) AS total, COALESCE(MAX(ordem), 0) AS maior FROM acao_visita_foto WHERE acao_visita_id = @id', { id: acaoId });
+      'SELECT COUNT(*) AS total, COALESCE(MAX(ordem), 0) AS maior FROM ASSOCIAL_acao_visita_foto WHERE acao_visita_id = @id', { id: acaoId });
     if (existente.total + arquivos.length > fotos.MAX_FOTOS_POR_ACAO) {
       throw erros.validacao({ fotos: `Cada ação aceita no máximo ${fotos.MAX_FOTOS_POR_ACAO} fotos.` });
     }
@@ -167,7 +167,7 @@ router.post('/:id/fotos', podeEscrever, async (req, res, next) => {
       for (let i = 0; i < arquivos.length; i++) {
         const f = arquivos[i];
         const [nova] = await tx.consultar(
-          `INSERT INTO acao_visita_foto (acao_visita_id, arquivo, nome_original, mime_type, tamanho_bytes, legenda, ordem, criado_por)
+          `INSERT INTO ASSOCIAL_acao_visita_foto (acao_visita_id, arquivo, nome_original, mime_type, tamanho_bytes, legenda, ordem, criado_por)
            OUTPUT INSERTED.id
            VALUES (@acaoId, @arquivo, @nomeOriginal, @mime, @tamanho, @legenda, @ordem, @usuario)`,
           {
@@ -198,7 +198,7 @@ async function carregarFoto(req) {
   const fotoId = inteiroPositivo(req.params.fotoId);
   if (!fotoId) throw erros.naoEncontrado();
   const foto = await consultarUm(
-    'SELECT id, arquivo, mime_type, legenda, ordem FROM acao_visita_foto WHERE id = @fotoId AND acao_visita_id = @acaoId',
+    'SELECT id, arquivo, mime_type, legenda, ordem FROM ASSOCIAL_acao_visita_foto WHERE id = @fotoId AND acao_visita_id = @acaoId',
     { fotoId, acaoId: acao.id },
   );
   if (!foto) throw erros.naoEncontrado();
@@ -228,7 +228,7 @@ router.patch('/:id/fotos/:fotoId', podeEscrever, async (req, res) => {
   }
   lancarSeErros(problemas);
   await consultar(
-    'UPDATE acao_visita_foto SET legenda = @legenda, ordem = @ordem WHERE id = @id',
+    'UPDATE ASSOCIAL_acao_visita_foto SET legenda = @legenda, ordem = @ordem WHERE id = @id',
     { id: foto.id, legenda, ordem },
   );
   await registrarAuditoria(req, 'ALTERAR_FOTO', 'acao_visita', acao.id, { fotoId: foto.id });
@@ -237,7 +237,7 @@ router.patch('/:id/fotos/:fotoId', podeEscrever, async (req, res) => {
 
 router.delete('/:id/fotos/:fotoId', podeEscrever, async (req, res) => {
   const { acao, foto } = await carregarFoto(req);
-  await consultar('DELETE FROM acao_visita_foto WHERE id = @id', { id: foto.id });
+  await consultar('DELETE FROM ASSOCIAL_acao_visita_foto WHERE id = @id', { id: foto.id });
   fotos.removerArquivo(foto.arquivo);
   await registrarAuditoria(req, 'EXCLUIR_FOTO', 'acao_visita', acao.id, { fotoId: foto.id });
   res.status(204).end();

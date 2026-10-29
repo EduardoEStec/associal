@@ -33,29 +33,29 @@ class Cliente {
 }
 
 const sessoesDe = async (id) => (await db.consultar(
-  "SELECT COUNT(*) AS n FROM sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id }))[0].n;
+  "SELECT COUNT(*) AS n FROM ASSOCIAL_sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id }))[0].n;
 const ultimaAuditoria = async (id, acaoLike) => JSON.parse((await db.consultar(
-  `SELECT TOP 1 detalhes FROM auditoria WHERE tabela = 'usuario' AND registro_id = @id AND detalhes LIKE @l ORDER BY id DESC`,
+  `SELECT TOP 1 detalhes FROM ASSOCIAL_auditoria WHERE tabela = 'usuario' AND registro_id = @id AND detalhes LIKE @l ORDER BY id DESC`,
   { id: String(id), l: `%${acaoLike}%` }))[0].detalhes);
 
 async function limpar() {
-  const ids = (await db.consultar("SELECT id FROM usuario WHERE login LIKE 't9[_]%'")).map((u) => u.id);
+  const ids = (await db.consultar("SELECT id FROM ASSOCIAL_usuario WHERE login LIKE 't9[_]%'")).map((u) => u.id);
   for (const id of ids) {
-    await db.consultar("DELETE FROM sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
-    await db.consultar('DELETE FROM usuario_unidade WHERE usuario_id = @id', { id });
-    await db.consultar('UPDATE usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
-    await db.consultar('UPDATE configuracao SET alterado_por = NULL WHERE alterado_por = @id', { id });
-    await db.consultar('DELETE FROM auditoria WHERE usuario_id = @id OR (tabela = \'usuario\' AND registro_id = @rid)', { id, rid: String(id) });
-    await db.consultar('DELETE FROM usuario WHERE id = @id', { id });
+    await db.consultar("DELETE FROM ASSOCIAL_sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario_unidade WHERE usuario_id = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_usuario SET criado_por = NULL, alterado_por = NULL WHERE criado_por = @id OR alterado_por = @id', { id });
+    await db.consultar('UPDATE ASSOCIAL_configuracao SET alterado_por = NULL WHERE alterado_por = @id', { id });
+    await db.consultar('DELETE FROM ASSOCIAL_auditoria WHERE usuario_id = @id OR (tabela = \'usuario\' AND registro_id = @rid)', { id, rid: String(id) });
+    await db.consultar('DELETE FROM ASSOCIAL_usuario WHERE id = @id', { id });
   }
 }
 
 async function criar(login, perfil, unidadeId) {
   const hash = await bcrypt.hash(SENHA, 10);
   const [u] = await db.consultar(
-    `INSERT INTO usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
-     OUTPUT INSERTED.id VALUES (@login, @login, @hash, (SELECT id FROM perfil WHERE codigo = @perfil), 0, 1)`, { login, hash, perfil });
-  if (unidadeId) await db.consultar('INSERT INTO usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
+    `INSERT INTO ASSOCIAL_usuario (login, nome, senha_hash, perfil_id, deve_trocar_senha, ativo)
+     OUTPUT INSERTED.id VALUES (@login, @login, @hash, (SELECT id FROM ASSOCIAL_perfil WHERE codigo = @perfil), 0, 1)`, { login, hash, perfil });
+  if (unidadeId) await db.consultar('INSERT INTO ASSOCIAL_usuario_unidade VALUES (@id, @un)', { id: u.id, un: unidadeId });
   return u.id;
 }
 
@@ -64,7 +64,7 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
 
 (async () => {
   await limpar();
-  const unidades = await db.consultar('SELECT TOP 2 id FROM unidade WHERE ativo = 1 ORDER BY id');
+  const unidades = await db.consultar('SELECT TOP 2 id FROM ASSOCIAL_unidade WHERE ativo = 1 ORDER BY id');
   assert.ok(unidades.length >= 2, 'precisa de 2 unidades no banco');
   const idAdmin = await criar('t9_admin', 'ADMIN');
   const idAssist = await criar('t9_assist', 'ASSISTENTE', unidades[0].id);
@@ -93,12 +93,12 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
       assert.strictEqual((await ultimaAuditoria(idAssist, 'redefinicao')).sessoesEncerradas, 2);
       const novo = await new Cliente().entrar('t9_assist', r.corpo.senhaProvisoria);
       assert.strictEqual((await novo.req('GET', '/api/auth/me')).corpo.usuario.deveTrocarSenha, true);
-      await db.consultar('UPDATE usuario SET deve_trocar_senha = 0 WHERE id = @id', { id: idAssist });
+      await db.consultar('UPDATE ASSOCIAL_usuario SET deve_trocar_senha = 0 WHERE id = @id', { id: idAssist });
     });
 
     await teste('trocar a própria senha mantém a sessão atual e derruba as outras', async () => {
-      await db.consultar('UPDATE usuario SET senha_hash = @h WHERE id = @id', { h: await bcrypt.hash(SENHA, 10), id: idAssist });
-      await db.consultar("DELETE FROM sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id: idAssist }); // sobra do teste anterior
+      await db.consultar('UPDATE ASSOCIAL_usuario SET senha_hash = @h WHERE id = @id', { h: await bcrypt.hash(SENHA, 10), id: idAssist });
+      await db.consultar("DELETE FROM ASSOCIAL_sessao WHERE TRY_CAST(JSON_VALUE(dados, '$.usuarioId') AS INT) = @id", { id: idAssist }); // sobra do teste anterior
       const a = await new Cliente().entrar('t9_assist', SENHA);
       const b = await new Cliente().entrar('t9_assist', SENHA);
       const r = await a.req('POST', '/api/auth/senha', { senhaAtual: SENHA, novaSenha: 'T9-outra-senha-2' });
@@ -110,7 +110,7 @@ const teste = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok - ${n
     });
 
     await teste('mudar unidades/perfil derruba sessões; salvar sem mudança de acesso não', async () => {
-      await db.consultar('UPDATE usuario SET senha_hash = @h WHERE id = @id', { h: await bcrypt.hash(SENHA, 10), id: idAssist });
+      await db.consultar('UPDATE ASSOCIAL_usuario SET senha_hash = @h WHERE id = @id', { h: await bcrypt.hash(SENHA, 10), id: idAssist });
       const a = await new Cliente().entrar('t9_assist', SENHA);
       const corpo = { nome: 'T9 Assist', perfil: 'ASSISTENTE', unidadeIds: [unidades[0].id] };
       assert.strictEqual((await admin.req('PUT', `/api/admin/usuarios/${idAssist}`, { ...corpo, nome: 'T9 Renomeado' })).status, 200);

@@ -135,15 +135,15 @@ function validarRegistro(corpo, { hoje, dataInicio, tiposAtivos, usosAtivos = []
 }
 
 async function tiposContatoAtivos(executor = { consultar }) {
-  return executor.consultar('SELECT id, nome, exige_texto FROM tipo_contato WHERE ativo = 1 ORDER BY ordem, nome');
+  return executor.consultar('SELECT id, nome, exige_texto FROM ASSOCIAL_tipo_contato WHERE ativo = 1 ORDER BY ordem, nome');
 }
 
 // Listas de apoio do formulário (só as ativas): uso do Armazém, orientações/encaminhamentos e frases-sugestão. Uma consulta só.
 async function apoiosDoRegistro(executor = { consultar }) {
   const linhas = await executor.consultar(
-    `SELECT 'USO' AS lista, id, nome, exige_texto, ordem FROM uso_armazem WHERE ativo = 1
-     UNION ALL SELECT 'ORI', id, nome, exige_texto, ordem FROM orientacao_registro WHERE ativo = 1
-     UNION ALL SELECT 'FRA', id, nome, exige_texto, ordem FROM frase_registro WHERE ativo = 1
+    `SELECT 'USO' AS lista, id, nome, exige_texto, ordem FROM ASSOCIAL_uso_armazem WHERE ativo = 1
+     UNION ALL SELECT 'ORI', id, nome, exige_texto, ordem FROM ASSOCIAL_orientacao_registro WHERE ativo = 1
+     UNION ALL SELECT 'FRA', id, nome, exige_texto, ordem FROM ASSOCIAL_frase_registro WHERE ativo = 1
      ORDER BY lista, ordem, nome`);
   const de = (lista) => linhas.filter((l) => l.lista === lista).map((l) => ({ id: l.id, nome: l.nome, exigeTexto: !!l.exigeTexto }));
   return { usosArmazem: de('USO'), orientacoes: de('ORI'), frases: de('FRA') };
@@ -193,14 +193,14 @@ async function listarRegistros(req, acompanhamentoId) {
       `SELECT r.id, r.data_registro, r.tipo_contato_id, tc.nome AS tipo_contato_nome, r.tipo_contato_outro, r.houve_contato,
               r.situacao, r.resumo, r.proximo_contato_em, r.usuario_id, u.nome AS autor_nome, r.criado_em, r.alterado_em,
               r.mes_referencia, r.uso_armazem_id, ua.nome AS uso_armazem_nome, r.orientacao_outro, r.familia_aceita_foto,
-              (SELECT o.id, o.nome, o.exige_texto FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+              (SELECT o.id, o.nome, o.exige_texto FROM ASSOCIAL_acompanhamento_registro_orientacao ro JOIN ASSOCIAL_orientacao_registro o ON o.id = ro.orientacao_id
                 WHERE ro.registro_id = r.id ORDER BY o.ordem, o.nome FOR JSON PATH) AS orientacoes_json,
-              (SELECT f.id, f.legenda, CONVERT(VARCHAR(10), f.data_foto, 23) AS data_foto FROM acompanhamento_registro_foto f
+              (SELECT f.id, f.legenda, CONVERT(VARCHAR(10), f.data_foto, 23) AS data_foto FROM ASSOCIAL_acompanhamento_registro_foto f
                 WHERE f.registro_id = r.id ORDER BY f.data_foto, f.ordem, f.id FOR JSON PATH) AS fotos_json
-         FROM acompanhamento_registro r
-         JOIN tipo_contato tc ON tc.id = r.tipo_contato_id
-         JOIN usuario u ON u.id = r.usuario_id
-         LEFT JOIN uso_armazem ua ON ua.id = r.uso_armazem_id
+         FROM ASSOCIAL_acompanhamento_registro r
+         JOIN ASSOCIAL_tipo_contato tc ON tc.id = r.tipo_contato_id
+         JOIN ASSOCIAL_usuario u ON u.id = r.usuario_id
+         LEFT JOIN ASSOCIAL_uso_armazem ua ON ua.id = r.uso_armazem_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL
         ORDER BY r.data_registro DESC, r.id DESC`,
       { id: ac.id },
@@ -228,7 +228,7 @@ async function carregarRegistro(executor, acId, registroId) {
   const id = inteiroPositivo(registroId);
   if (!id) throw erros.naoEncontrado('Registro não encontrado.');
   const r = await executor.consultarUm(
-    `SELECT id, acompanhamento_id, usuario_id, anulado_em, data_registro, familia_aceita_foto FROM acompanhamento_registro
+    `SELECT id, acompanhamento_id, usuario_id, anulado_em, data_registro, familia_aceita_foto FROM ASSOCIAL_acompanhamento_registro
       WHERE id = @id AND acompanhamento_id = @ac`,
     { id, ac: acId },
   );
@@ -243,9 +243,9 @@ function exigirAutorOuCoordenacao(req, registro) {
 }
 
 async function gravarOrientacoes(tx, registroId, ids) {
-  await tx.consultar('DELETE FROM acompanhamento_registro_orientacao WHERE registro_id = @id', { id: registroId });
+  await tx.consultar('DELETE FROM ASSOCIAL_acompanhamento_registro_orientacao WHERE registro_id = @id', { id: registroId });
   for (const orientacaoId of ids) {
-    await tx.consultar('INSERT INTO acompanhamento_registro_orientacao (registro_id, orientacao_id) VALUES (@r, @o)', { r: registroId, o: orientacaoId });
+    await tx.consultar('INSERT INTO ASSOCIAL_acompanhamento_registro_orientacao (registro_id, orientacao_id) VALUES (@r, @o)', { r: registroId, o: orientacaoId });
   }
 }
 
@@ -262,7 +262,7 @@ async function criarRegistro(req, acompanhamentoId, corpo) {
     const marcadas = metasRegras.validarMetasDoRegistro(corpo.metas, { houveContato: dados.houveContato, abertas: await metas.metasMarcaveis(tx, ac.id) });
     lancarSeErros({ ...problemas, ...marcadas.erros });
     const [novo] = await tx.consultar(
-      `INSERT INTO acompanhamento_registro
+      `INSERT INTO ASSOCIAL_acompanhamento_registro
          (acompanhamento_id, usuario_id, data_registro, tipo_contato_id, tipo_contato_outro, houve_contato, situacao,
           resumo, proximo_contato_em, mes_referencia, uso_armazem_id, orientacao_outro, familia_aceita_foto, criado_por)
        OUTPUT INSERTED.id
@@ -294,18 +294,18 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
     // tipos inativos já usados por este registro continuam aceitos na edição
     const ativos = (await tiposContatoAtivos(tx)).map((t) => ({ id: t.id, exigeTexto: !!t.exigeTexto }));
     const atual = await tx.consultarUm(
-      'SELECT tc.id, tc.exige_texto FROM acompanhamento_registro r JOIN tipo_contato tc ON tc.id = r.tipo_contato_id WHERE r.id = @id',
+      'SELECT tc.id, tc.exige_texto FROM ASSOCIAL_acompanhamento_registro r JOIN ASSOCIAL_tipo_contato tc ON tc.id = r.tipo_contato_id WHERE r.id = @id',
       { id: registro.id });
     if (atual && !ativos.some((t) => t.id === atual.id)) ativos.push({ id: atual.id, exigeTexto: !!atual.exigeTexto });
     // usos/orientações já gravados neste registro continuam aceitos mesmo se a coordenação os desativou depois
     let apoios = {};
     if (corpo.usoArmazemId !== undefined || corpo.orientacaoIds !== undefined) {
       apoios = await apoiosDoRegistro(tx);
-      const gravado = await tx.consultarUm('SELECT uso_armazem_id FROM acompanhamento_registro WHERE id = @id', { id: registro.id });
+      const gravado = await tx.consultarUm('SELECT uso_armazem_id FROM ASSOCIAL_acompanhamento_registro WHERE id = @id', { id: registro.id });
       if (gravado?.usoArmazemId && !apoios.usosArmazem.some((u) => u.id === gravado.usoArmazemId)) apoios.usosArmazem.push({ id: gravado.usoArmazemId });
       const antigas = await tx.consultar(
-        `SELECT o.id, o.exige_texto FROM acompanhamento_registro_orientacao ro
-           JOIN orientacao_registro o ON o.id = ro.orientacao_id WHERE ro.registro_id = @id`, { id: registro.id });
+        `SELECT o.id, o.exige_texto FROM ASSOCIAL_acompanhamento_registro_orientacao ro
+           JOIN ASSOCIAL_orientacao_registro o ON o.id = ro.orientacao_id WHERE ro.registro_id = @id`, { id: registro.id });
       for (const o of antigas) if (!apoios.orientacoes.some((x) => x.id === o.id)) apoios.orientacoes.push({ id: o.id, exigeTexto: !!o.exigeTexto });
     }
     const { dados, erros: problemas } = validarRegistro(corpo, {
@@ -313,7 +313,7 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
     });
     // não dá para desmarcar "a família aceitou fotos" com fotos já anexadas
     if (dados.familiaAceitaFoto === false) {
-      const fotos = await tx.consultarUm('SELECT COUNT(*) AS n FROM acompanhamento_registro_foto WHERE registro_id = @id', { id: registro.id });
+      const fotos = await tx.consultarUm('SELECT COUNT(*) AS n FROM ASSOCIAL_acompanhamento_registro_foto WHERE registro_id = @id', { id: registro.id });
       if (fotos && fotos.n > 0) problemas.familiaAceitaFoto = 'Remova as fotos deste registro antes de desmarcar o aceite da família.';
     }
     // metas: só mexe nelas se vierem no corpo (ou se virou tentativa sem contato, que não marca metas)
@@ -330,7 +330,7 @@ async function atualizarRegistro(req, acompanhamentoId, registroId, corpo) {
     if (dados.orientacaoIds !== undefined) { extra.push('orientacao_outro = @orientacaoOutro'); paramsExtra.orientacaoOutro = dados.orientacaoOutro ?? null; }
     if (dados.familiaAceitaFoto !== undefined) { extra.push('familia_aceita_foto = @aceitaFoto'); paramsExtra.aceitaFoto = dados.familiaAceitaFoto; }
     await tx.consultar(
-      `UPDATE acompanhamento_registro
+      `UPDATE ASSOCIAL_acompanhamento_registro
           SET data_registro = @data, tipo_contato_id = @tipo, tipo_contato_outro = @outro, houve_contato = @houve,
               situacao = @situacao, resumo = @resumo, proximo_contato_em = @proximo${extra.map((e) => `, ${e}`).join('')},
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
@@ -356,7 +356,7 @@ async function anularRegistro(req, acompanhamentoId, registroId, corpo) {
     const registro = await carregarRegistro(tx, ac.id, registroId);
     exigirAutorOuCoordenacao(req, registro);
     await tx.consultar(
-      `UPDATE acompanhamento_registro
+      `UPDATE ASSOCIAL_acompanhamento_registro
           SET anulado_em = SYSUTCDATETIME(), anulado_por = @usuario, anulado_motivo = @motivo,
               alterado_por = @usuario, alterado_em = SYSUTCDATETIME()
         WHERE id = @id`,
@@ -516,7 +516,7 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
   const ac = await familias.carregarAcompanhamento(req, acompanhamentoId);
   const hoje = familias.hojeIso();
   const familia = await consultarUm(
-    'SELECT f.responsavel_pessoa_id, p.nome FROM familia f JOIN pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @familia',
+    'SELECT f.responsavel_pessoa_id, p.nome FROM ASSOCIAL_familia f JOIN ASSOCIAL_pessoa p ON p.id = f.responsavel_pessoa_id WHERE f.id = @familia',
     { familia: ac.familiaId });
   const paramsAt = { pessoa: familia.responsavelPessoaId, hoje: paramData(hoje) };
   const filtroUnidade = clausulaUnidades(req, 'a.unidade_id', paramsAt);
@@ -526,12 +526,12 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
       `SELECT r.id, r.data_registro, r.tipo_contato_outro, tc.nome AS tipo_contato_nome, r.houve_contato, r.situacao, r.resumo,
               r.proximo_contato_em, u.nome AS autor_nome, r.criado_em, ua.nome AS uso_armazem_nome,
               (SELECT STRING_AGG(o.nome, N', ') WITHIN GROUP (ORDER BY o.ordem, o.nome)
-                 FROM acompanhamento_registro_orientacao ro JOIN orientacao_registro o ON o.id = ro.orientacao_id
+                 FROM ASSOCIAL_acompanhamento_registro_orientacao ro JOIN ASSOCIAL_orientacao_registro o ON o.id = ro.orientacao_id
                 WHERE ro.registro_id = r.id) AS orientacoes_texto
-         FROM acompanhamento_registro r
-         JOIN tipo_contato tc ON tc.id = r.tipo_contato_id
-         JOIN usuario u ON u.id = r.usuario_id
-         LEFT JOIN uso_armazem ua ON ua.id = r.uso_armazem_id
+         FROM ASSOCIAL_acompanhamento_registro r
+         JOIN ASSOCIAL_tipo_contato tc ON tc.id = r.tipo_contato_id
+         JOIN ASSOCIAL_usuario u ON u.id = r.usuario_id
+         LEFT JOIN ASSOCIAL_uso_armazem ua ON ua.id = r.uso_armazem_id
         WHERE r.acompanhamento_id = @id AND r.anulado_em IS NULL`,
       { id: ac.id }),
     // atendimentos do RESPONSÁVEL (membros não são "pessoa"), apenas de unidades que o usuário pode ver
@@ -539,20 +539,20 @@ async function linhaDoTempo(req, acompanhamentoId, consulta = {}) {
         `SELECT a.id, a.data_atendimento, a.criado_em, a.resumo, a.demanda_outra, a.encaminhamento_outro,
                 un.sigla AS unidade_sigla, u.nome AS autor_nome,
                 (SELECT STRING_AGG(d.nome, N', ') WITHIN GROUP (ORDER BY d.ordem, d.nome)
-                   FROM atendimento_demanda ad JOIN demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas,
+                   FROM ASSOCIAL_atendimento_demanda ad JOIN ASSOCIAL_demanda d ON d.id = ad.demanda_id WHERE ad.atendimento_id = a.id) AS demandas,
                 (SELECT STRING_AGG(e.nome, N', ') WITHIN GROUP (ORDER BY e.ordem, e.nome)
-                   FROM atendimento_encaminhamento ae JOIN encaminhamento e ON e.id = ae.encaminhamento_id WHERE ae.atendimento_id = a.id) AS encaminhamentos
-           FROM atendimento a
-           JOIN unidade un ON un.id = a.unidade_id
-           JOIN usuario u ON u.id = a.usuario_id
+                   FROM ASSOCIAL_atendimento_encaminhamento ae JOIN ASSOCIAL_encaminhamento e ON e.id = ae.encaminhamento_id WHERE ae.atendimento_id = a.id) AS encaminhamentos
+           FROM ASSOCIAL_atendimento a
+           JOIN ASSOCIAL_unidade un ON un.id = a.unidade_id
+           JOIN ASSOCIAL_usuario u ON u.id = a.usuario_id
           WHERE a.pessoa_id = @pessoa AND a.data_atendimento <= @hoje AND ${filtroUnidade}`,
         paramsAt),
     consultar(
       `SELECT q.id, q.tipo, q.data_aplicacao, q.criado_em, q.alterado_em, u.nome AS autor_nome
-         FROM questionario q LEFT JOIN usuario u ON u.id = COALESCE(q.alterado_por, q.criado_por)
+         FROM ASSOCIAL_questionario q LEFT JOIN ASSOCIAL_usuario u ON u.id = COALESCE(q.alterado_por, q.criado_por)
         WHERE q.acompanhamento_id = @id AND q.concluido = 1`,
       { id: ac.id }),
-    consultarUm('SELECT nome FROM usuario WHERE id = @id', { id: ac.usuarioId }),
+    consultarUm('SELECT nome FROM ASSOCIAL_usuario WHERE id = @id', { id: ac.usuarioId }),
     pesquisa.paraLinhaDoTempo(req, ac.id),
     metas.paraLinhaDoTempo(ac.id),
     metas.metasPorRegistro(ac.id),
